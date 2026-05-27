@@ -26,7 +26,21 @@ It displays the observed spawn order of Penance Healers, highlights them in the 
 
 \- Displays an optional semi-transparent food-count panel.
 
-\- Supports configurable hull color, text color, text size, and food panel visibility.
+\- Optionally displays each healer’s food count directly on the NPC.
+
+\- Supports configurable hull color, number color, number size, food-count color, food-count size, and food-count height.
+
+
+
+\## Food Count Tracking
+
+
+
+Food counts are based on inventory consumption after using poisoned food on a tracked Penance Healer.
+
+
+
+The plugin does not count every menu click as a successful feed. Instead, it tracks when a poisoned food item is actually consumed from the inventory after being used on a tracked healer. Wrong-food attempts are ignored when the Barbarian Assault wrong-food penalty message appears.
 
 
 
@@ -34,27 +48,39 @@ It displays the observed spawn order of Penance Healers, highlights them in the 
 
 
 
-The food panel lists each tracked healer by spawn order and shows how many poisoned food items have been successfully consumed for that healer.
+The food-count panel lists each tracked healer by spawn order and shows how many poisoned food items have been successfully consumed for that healer.
 
 
 
-Food counts are based on inventory consumption after using poisoned food on a tracked Penance Healer. Wrong-food attempts are ignored when the Barbarian Assault wrong-food penalty message appears.
+Example:
 
 
 
-\## Configuration
+```text
+
+BA Healer Order
+
+\#1    2 fed
+
+\#2    5 fed
+
+\#3    1 fed
+
+\#4    1 fed
 
 
 
-The plugin includes the following options:
+Credits
 
 
 
-\- \*\*Hull Color\*\*: Color used for the Penance Healer hull outline.
+Thanks to slayermusiq for contributing improvements to the food-count overlay and helping with the project.
 
-\- \*\*Text Color\*\*: Color used for the spawn-order number.
 
-\- \*\*Text Size\*\*: Font size for the number above each healer.
 
-\- \*\*Show Food Panel\*\*: Toggles the food-count panel.
+Notes
+
+
+
+BA Healer Order does not automate gameplay. It provides visual tracking for Penance Healer spawn order and poisoned-food usage.
 
