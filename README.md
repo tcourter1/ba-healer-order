@@ -52,25 +52,7 @@ The food-count panel lists each tracked healer by spawn order and shows how many
 
 
 
-Example:
-
-
-
-```text
-
-BA Healer Order
-
-\#1    2 fed
-
-\#2    5 fed
-
-\#3    1 fed
-
-\#4    1 fed
-
-
-
-Credits
+\## Credits
 
 
 
@@ -78,7 +60,7 @@ Thanks to slayermusiq for contributing improvements to the food-count overlay an
 
 
 
-Notes
+\## Notes
 
 
 
