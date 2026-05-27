@@ -23,7 +23,6 @@ public class BaHealerOrderOverlay extends Overlay
 	private static final Color TEXT_SHADOW_COLOR = Color.BLACK;
 	private static final int TEXT_Z_OFFSET = 60;
 	private static final float HULL_STROKE_WIDTH = 2.0f;
-	private static final int FOOD_COUNT_Z_OFFSET = 30;
 
 	private final BaHealerOrderPlugin plugin;
 	private final BaHealerOrderConfig config;
@@ -115,12 +114,12 @@ public class BaHealerOrderOverlay extends Overlay
 
 	private void renderFoodCount(Graphics2D graphics, NPC npc, int foodFed)
 	{
-		String text = foodFed + " fed";
+		String text = foodFed + "f";
 
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,
 				text,
-				npc.getLogicalHeight() + FOOD_COUNT_Z_OFFSET
+				(npc.getLogicalHeight() / 2) + config.foodCountZOffset()
 		);
 
 		if (textLocation == null)
@@ -130,7 +129,7 @@ public class BaHealerOrderOverlay extends Overlay
 
 		Font originalFont = graphics.getFont();
 
-		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.textSize()));
+		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.foodCountTextSize()));
 
 		renderOutlinedText(graphics, textLocation, text, config.foodCountColor());
 
