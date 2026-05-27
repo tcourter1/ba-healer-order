@@ -59,4 +59,27 @@ public interface BaHealerOrderConfig extends Config
     {
         return true;
     }
+
+    @ConfigItem(
+            keyName = "showFoodCountOnNpc",
+            name = "Show Food Count on NPC",
+            description = "Displays the number of food fed directly on top of each Penance Healer",
+            position = 5
+    )
+    default boolean showFoodCountOnNpc()
+    {
+        return false;
+    }
+
+    @Alpha
+    @ConfigItem(
+            keyName = "foodCountColor",
+            name = "Food Count Color",
+            description = "Color used for the food count text displayed on each Penance Healer",
+            position = 6
+    )
+    default Color foodCountColor()
+    {
+        return new Color(0, 255, 0);
+    }
 }

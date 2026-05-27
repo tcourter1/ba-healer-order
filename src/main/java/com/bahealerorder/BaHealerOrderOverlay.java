@@ -22,6 +22,7 @@ public class BaHealerOrderOverlay extends Overlay
 {
 	private static final Color TEXT_SHADOW_COLOR = Color.BLACK;
 	private static final int TEXT_Z_OFFSET = 60;
+	private static final int FOOD_COUNT_Z_OFFSET = 30;
 	private static final float HULL_STROKE_WIDTH = 2.0f;
 
 	private final BaHealerOrderPlugin plugin;
@@ -56,6 +57,12 @@ public class BaHealerOrderOverlay extends Overlay
 
 			renderHull(graphics, npc);
 			renderNumber(graphics, npc, order);
+
+			if (config.showFoodCountOnNpc())
+			{
+				int foodFed = plugin.getFoodFedByHealerOrder().getOrDefault(order, 0);
+				renderFoodCount(graphics, npc, foodFed);
+			}
 		}
 
 		return null;
@@ -101,6 +108,30 @@ public class BaHealerOrderOverlay extends Overlay
 		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.textSize()));
 
 		renderOutlinedText(graphics, textLocation, text, config.textColor());
+
+		graphics.setFont(originalFont);
+	}
+
+	private void renderFoodCount(Graphics2D graphics, NPC npc, int foodFed)
+	{
+		String text = foodFed + " fed";
+
+		Point textLocation = npc.getCanvasTextLocation(
+				graphics,
+				text,
+				npc.getLogicalHeight() + FOOD_COUNT_Z_OFFSET
+		);
+
+		if (textLocation == null)
+		{
+			return;
+		}
+
+		Font originalFont = graphics.getFont();
+
+		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.textSize()));
+
+		renderOutlinedText(graphics, textLocation, text, config.foodCountColor());
 
 		graphics.setFont(originalFont);
 	}
