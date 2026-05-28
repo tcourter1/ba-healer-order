@@ -579,18 +579,6 @@ public interface BaHealerOrderConfig extends Config
         }
 
         @ConfigItem(
-                        keyName = "waveListType",
-                        name = "Wave List Type",
-                        description = "Choose which wave list to use: Tag, Spam, or Solo",
-                        section = foodCountSection,
-                        position = 7
-        )
-        default WaveListType waveListType()
-        {
-                return WaveListType.TAG;
-        }
-
-        @ConfigItem(
                         keyName = "resetOnListChange",
                         name = "Reset On List Change",
                         description = "If enabled, switching the active list will reset healer numbering and counts.",

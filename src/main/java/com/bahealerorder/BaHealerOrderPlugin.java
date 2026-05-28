@@ -424,7 +424,6 @@ public class BaHealerOrderPlugin extends Plugin
 			default: return "";
 		}
 	}
-	}
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
