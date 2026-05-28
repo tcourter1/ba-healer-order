@@ -261,7 +261,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave1()
         {
-                return "5";
+                return "";
         }
 
         @ConfigItem(
@@ -273,7 +273,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave2()
         {
-                return "5";
+                return "";
         }
 
         @ConfigItem(
@@ -285,7 +285,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave3()
         {
-                return "5";
+                return "";
         }
 
         @ConfigItem(
@@ -297,7 +297,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave4()
         {
-                return "5";
+                return "";
         }
 
         @ConfigItem(
@@ -309,7 +309,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave5()
         {
-                return "5";
+                return "";
         }
 
         @ConfigItem(
