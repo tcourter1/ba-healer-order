@@ -17,7 +17,6 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
 
-
 public class BaHealerOrderOverlay extends Overlay
 {
 	private static final Color TEXT_SHADOW_COLOR = Color.BLACK;
@@ -57,7 +56,6 @@ public class BaHealerOrderOverlay extends Overlay
 			renderHull(graphics, npc);
 			renderNumber(graphics, npc, order);
 
-			// Optionally render food count on NPC if enabled in config
 			if (config.showFoodCountOnNpc())
 			{
 				int foodFed = plugin.getFoodFedByHealerOrder().getOrDefault(order, 0);
@@ -90,7 +88,7 @@ public class BaHealerOrderOverlay extends Overlay
 
 	private void renderNumber(Graphics2D graphics, NPC npc, int order)
 	{
-		String text = String.valueOf(order);
+		String text = plugin.getHealerLabel(order);
 
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,

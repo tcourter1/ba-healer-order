@@ -1,8 +1,8 @@
-\# BA Healer Order
+\# BA Healer Utilities
 
 
 
-BA Healer Order is a RuneLite Plugin Hub plugin for Barbarian Assault.
+BA Healer Utilities is a RuneLite Plugin Hub plugin for Barbarian Assault.
 
 
 

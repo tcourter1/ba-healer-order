@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +33,7 @@ import net.runelite.client.util.Text;
 
 @Slf4j
 @PluginDescriptor(
-		name = "BA Healer Order",
+		name = "BA Healer Utilities",
 		description = "Displays Barbarian Assault Penance Healer spawn order above each healer.",
 		tags = {"barbarian assault", "ba", "healer", "penance", "overlay"}
 )
@@ -39,6 +41,21 @@ public class BaHealerOrderPlugin extends Plugin
 {
 	private static final String PENANCE_HEALER_NAME = "Penance Healer";
 	private static final String WRONG_FOOD_MESSAGE = "that's the wrong type of poisoned food to use! penalty!";
+	private static final Pattern WAVE_START_PATTERN = Pattern.compile(".*\\bwave:\\s*(\\d+)\\b.*");
+
+	private static final String[][] TIME_BASED_HEALER_LABELS = {
+			{},
+			{"6", "12"},
+			{"6", "12", "18"},
+			{"6", "12", "R1"},
+			{"6", "12", "18", "R1"},
+			{"6", "12", "18", "24", "R1"},
+			{"6", "12", "18", "24", "R1", "R2"},
+			{"6", "12", "18", "24", "R1", "R2", "R3"},
+			{"6", "12", "18", "24", "30", "R1", "R2"},
+			{"6", "12", "18", "24", "30", "36", "R1", "R2"},
+			{"6", "12", "18", "24", "R1", "R2", "R3"}
+	};
 
 	@Inject
 	private Client client;
@@ -52,6 +69,9 @@ public class BaHealerOrderPlugin extends Plugin
 	@Inject
 	private BaHealerOrderFoodOverlay foodOverlay;
 
+	@Inject
+	private BaHealerOrderConfig config;
+
 	@Getter
 	private final Map<Integer, Integer> healerOrderByNpcIndex = new HashMap<>();
 
@@ -62,13 +82,14 @@ public class BaHealerOrderPlugin extends Plugin
 	private final Map<Integer, Integer> foodFedByHealerOrder = new HashMap<>();
 
 	private int nextHealerNumber = 1;
+	private int currentWave = -1;
 	private Integer selectedPoisonedFoodItemId;
 	private PendingFeedAttempt pendingFeedAttempt;
 
 	@Override
 	protected void startUp()
 	{
-		reset();
+		resetAllState();
 		overlayManager.add(overlay);
 		overlayManager.add(foodOverlay);
 	}
@@ -78,7 +99,7 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		overlayManager.remove(foodOverlay);
 		overlayManager.remove(overlay);
-		reset();
+		resetAllState();
 	}
 
 	@Subscribe
@@ -98,12 +119,6 @@ public class BaHealerOrderPlugin extends Plugin
 		{
 			order = nextHealerNumber++;
 			healerOrderByNpcIndex.put(npcIndex, order);
-
-			log.debug("Assigned Penance Healer index {} to spawn #{}", npcIndex, order);
-		}
-		else
-		{
-			log.debug("Re-associated Penance Healer index {} with spawn #{}", npcIndex, order);
 		}
 
 		visibleHealers.put(npc, order);
@@ -113,36 +128,12 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onNpcDespawned(NpcDespawned event)
 	{
 		NPC npc = event.getNpc();
-
-		if (visibleHealers.remove(npc) != null)
-		{
-			log.debug("Removed visible Penance Healer index {}", npc.getIndex());
-		}
-
-		/*
-		 * Do not remove from healerOrderByNpcIndex here.
-		 *
-		 * A despawn event can happen when the NPC leaves render distance.
-		 * Keeping the NPC index mapping lets us restore the same number if that
-		 * healer re-enters render distance later in the same wave.
-		 */
+		visibleHealers.remove(npc);
 	}
 
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		log.debug(
-				"BA_HEALER_ORDER_MENU_CLICK: option='{}', target='{}', action='{}', id={}, itemId={}, itemOp={}, param0={}, param1={}",
-				event.getMenuOption(),
-				event.getMenuTarget(),
-				event.getMenuAction(),
-				event.getId(),
-				event.getItemId(),
-				event.getItemOp(),
-				event.getParam0(),
-				event.getParam1()
-		);
-
 		String option = Text.removeTags(event.getMenuOption()).toLowerCase(Locale.ROOT);
 		String target = Text.removeTags(event.getMenuTarget()).toLowerCase(Locale.ROOT);
 
@@ -171,17 +162,7 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		int healerOrder = pendingFeedAttempt.healerOrder;
-
 		foodFedByHealerOrder.merge(healerOrder, 1, Integer::sum);
-
-		log.debug(
-				"Counted consumed poisoned food for healer #{}. Item {} went from {} to {}. Total now {}",
-				healerOrder,
-				pendingFeedAttempt.foodItemId,
-				pendingFeedAttempt.foodCountBeforeUse,
-				currentFoodCount,
-				foodFedByHealerOrder.get(healerOrder)
-		);
 
 		pendingFeedAttempt = null;
 	}
@@ -191,18 +172,20 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		String message = Text.removeTags(event.getMessage()).toLowerCase(Locale.ROOT);
 
+		if (handleWaveStartMessage(message))
+		{
+			return;
+		}
+
 		if (message.contains(WRONG_FOOD_MESSAGE))
 		{
-			log.debug("Wrong poisoned food detected. Cancelling pending feed attempt.");
-
 			pendingFeedAttempt = null;
 			return;
 		}
 
 		if (isWaveEndMessage(event.getType(), message))
 		{
-			log.debug("Detected BA wave end message: {}", message);
-			reset();
+			resetWaveState();
 		}
 	}
 
@@ -212,16 +195,37 @@ public class BaHealerOrderPlugin extends Plugin
 		GameState gameState = event.getGameState();
 
 		if (gameState == GameState.LOGIN_SCREEN
-				|| gameState == GameState.HOPPING
-				|| gameState == GameState.LOADING)
+				|| gameState == GameState.HOPPING)
 		{
-			reset();
+			resetAllState();
 		}
 	}
 
 	public Map<NPC, Integer> getTrackedHealers()
 	{
 		return Collections.unmodifiableMap(visibleHealers);
+	}
+
+	public String getHealerLabel(int healerOrder)
+	{
+		if (config.healerLabelStyle() == BaHealerOrderConfig.HealerLabelStyle.SPAWN_ORDER)
+		{
+			return String.valueOf(healerOrder);
+		}
+
+		if (currentWave <= 0 || currentWave >= TIME_BASED_HEALER_LABELS.length)
+		{
+			return String.valueOf(healerOrder);
+		}
+
+		String[] labelsForWave = TIME_BASED_HEALER_LABELS[currentWave];
+
+		if (healerOrder <= 0 || healerOrder > labelsForWave.length)
+		{
+			return String.valueOf(healerOrder);
+		}
+
+		return labelsForWave[healerOrder - 1];
 	}
 
 	private void handlePoisonedFoodSelection(MenuOptionClicked event, String option, String target)
@@ -242,8 +246,6 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		selectedPoisonedFoodItemId = event.getItemId();
-
-		log.debug("Selected poisoned food item id {}", selectedPoisonedFoodItemId);
 	}
 
 	private void handlePoisonedFoodUseOnHealer(MenuOptionClicked event, String option, String target)
@@ -265,7 +267,6 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (selectedPoisonedFoodItemId == null || selectedPoisonedFoodItemId <= 0)
 		{
-			log.debug("Food used on healer, but no selected poisoned food item id was stored");
 			return;
 		}
 
@@ -274,7 +275,6 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (healerOrder == null)
 		{
-			log.debug("Food used on Penance Healer index {}, but no healer order was found", npcIndex);
 			return;
 		}
 
@@ -282,14 +282,6 @@ public class BaHealerOrderPlugin extends Plugin
 
 		pendingFeedAttempt = new PendingFeedAttempt(
 				healerOrder,
-				selectedPoisonedFoodItemId,
-				foodCountBeforeUse
-		);
-
-		log.debug(
-				"Pending food feed for healer #{} from NPC index {} using item id {}. Count before use: {}",
-				healerOrder,
-				npcIndex,
 				selectedPoisonedFoodItemId,
 				foodCountBeforeUse
 		);
@@ -338,6 +330,35 @@ public class BaHealerOrderPlugin extends Plugin
 		return PENANCE_HEALER_NAME.equals(name);
 	}
 
+	private boolean handleWaveStartMessage(String message)
+	{
+		Matcher matcher = WAVE_START_PATTERN.matcher(message);
+
+		if (!matcher.matches())
+		{
+			return false;
+		}
+
+		try
+		{
+			int wave = Integer.parseInt(matcher.group(1));
+
+			if (wave < 1 || wave > 10)
+			{
+				return false;
+			}
+
+			resetWaveState();
+			currentWave = wave;
+			return true;
+		}
+		catch (NumberFormatException ex)
+		{
+			log.debug("Failed to parse BA wave start message: {}", message, ex);
+			return false;
+		}
+	}
+
 	private boolean isWaveEndMessage(ChatMessageType type, String message)
 	{
 		if (type != ChatMessageType.GAMEMESSAGE
@@ -358,7 +379,7 @@ public class BaHealerOrderPlugin extends Plugin
 		);
 	}
 
-	private void reset()
+	private void resetWaveState()
 	{
 		visibleHealers.clear();
 		healerOrderByNpcIndex.clear();
@@ -366,6 +387,12 @@ public class BaHealerOrderPlugin extends Plugin
 		pendingFeedAttempt = null;
 		selectedPoisonedFoodItemId = null;
 		nextHealerNumber = 1;
+	}
+
+	private void resetAllState()
+	{
+		resetWaveState();
+		currentWave = -1;
 	}
 
 	@Provides
