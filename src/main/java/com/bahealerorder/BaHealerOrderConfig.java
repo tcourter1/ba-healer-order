@@ -46,7 +46,7 @@ public interface BaHealerOrderConfig extends Config
 
         enum HealerRole
         {
-                NONE("None"),
+                NONE("Default"),
                 SOLO("Solo"),
                 SPAM("Spam"),
                 TAG("Tag");
