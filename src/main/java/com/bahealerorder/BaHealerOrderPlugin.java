@@ -86,6 +86,10 @@ public class BaHealerOrderPlugin extends Plugin
 	private Integer selectedPoisonedFoodItemId;
 	private PendingFeedAttempt pendingFeedAttempt;
 
+    
+
+	private static final Pattern WAVE_PATTERN = Pattern.compile(".*---- Wave: (10|[1-9]) ----.*");
+
 	@Override
 	protected void startUp()
 	{
@@ -170,6 +174,25 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		if (event.getType() != ChatMessageType.GAMEMESSAGE)
+		{
+			return;
+		}
+
+		final Matcher waveMatcher = WAVE_PATTERN.matcher(event.getMessage());
+		if (waveMatcher.matches())
+		{
+			try
+			{
+				int waveNum = Integer.parseInt(waveMatcher.group(1));
+				startNewWave(waveNum);
+			}
+			catch (NumberFormatException ex)
+			{
+				log.debug("Failed to parse wave number from message: {}", event.getMessage());
+			}
+		}
+
 		String message = Text.removeTags(event.getMessage()).toLowerCase(Locale.ROOT);
 
 		if (handleWaveStartMessage(message))
@@ -179,6 +202,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (message.contains(WRONG_FOOD_MESSAGE))
 		{
+			log.debug("Wrong poisoned food detected. Cancelling pending feed attempt.");
 			pendingFeedAttempt = null;
 			return;
 		}
@@ -186,6 +210,194 @@ public class BaHealerOrderPlugin extends Plugin
 		if (isWaveEndMessage(event.getType(), message))
 		{
 			resetWaveState();
+		}
+	}
+
+	public int getCurrentWave()
+	{
+		return currentWave;
+	}
+
+	// Config change listener removed because ConfigChanged event class is not
+	// available in this build. The plugin reads config values on-demand, so
+	// switching the `Wave List Type` in settings will immediately change which
+	// list is used for expected values. If you want automatic reset behavior
+	// on change, we can re-add a listener once the appropriate event class is
+	// available in the classpath.
+
+	private void startNewWave(int waveNumber)
+	{
+		if (waveNumber <= 0)
+		{
+			return;
+		}
+
+		this.currentWave = waveNumber;
+		// clear previous wave state and start numbering fresh
+		visibleHealers.clear();
+		healerOrderByNpcIndex.clear();
+		foodFedByHealerOrder.clear();
+		pendingFeedAttempt = null;
+		selectedPoisonedFoodItemId = null;
+		nextHealerNumber = 1;
+
+		log.debug("Starting new BA wave {}", waveNumber);
+	}
+
+	public int getExpectedFoodForOrder(int healerOrder)
+	{
+		if (healerOrder <= 0)
+		{
+			return 0;
+		}
+
+		String waveConfig = "";
+		BaHealerOrderConfig.HealerRole selectedRole = config.healerRole();
+
+		switch (selectedRole)
+		{
+			case TAG:
+				waveConfig = getTagWaveConfig(currentWave);
+				break;
+			case SPAM:
+				waveConfig = getSpamWaveConfig(currentWave);
+				break;
+			case SOLO:
+				waveConfig = getSoloWaveConfig(currentWave);
+				break;
+			default:
+				waveConfig = "";
+				break;
+		}
+
+		if (waveConfig == null || waveConfig.isEmpty())
+		{
+			return 0;
+		}
+
+		String[] parts = waveConfig.split(",");
+		if (healerOrder > parts.length)
+		{
+			return 0;
+		}
+
+		try
+		{
+			String part = parts[healerOrder - 1].trim();
+			if (part.isEmpty())
+			{
+				return 0;
+			}
+			return Integer.parseInt(part);
+		}
+		catch (Exception ex)
+		{
+			return 0;
+		}
+	}
+
+	public int getExpectedFoodForOrder(int healerOrder, BaHealerOrderConfig.HealerRole listRole)
+	{
+		if (healerOrder <= 0)
+		{
+			return 0;
+		}
+
+		String waveConfig = "";
+
+		switch (listRole)
+		{
+			case TAG:
+				waveConfig = getTagWaveConfig(currentWave);
+				break;
+			case SPAM:
+				waveConfig = getSpamWaveConfig(currentWave);
+				break;
+			case SOLO:
+				waveConfig = getSoloWaveConfig(currentWave);
+				break;
+			default:
+				waveConfig = "";
+				break;
+		}
+
+		if (waveConfig == null || waveConfig.isEmpty())
+		{
+			return 0;
+		}
+
+		String[] parts = waveConfig.split(",");
+		if (healerOrder > parts.length)
+		{
+			return 0;
+		}
+
+		try
+		{
+			String part = parts[healerOrder - 1].trim();
+			if (part.isEmpty())
+			{
+				return 0;
+			}
+			return Integer.parseInt(part);
+		}
+		catch (Exception ex)
+		{
+			return 0;
+		}
+	}
+
+	private String getTagWaveConfig(int wave)
+	{
+		switch (wave)
+		{
+			case 1: return config.tagWave1();
+			case 2: return config.tagWave2();
+			case 3: return config.tagWave3();
+			case 4: return config.tagWave4();
+			case 5: return config.tagWave5();
+			case 6: return config.tagWave6();
+			case 7: return config.tagWave7();
+			case 8: return config.tagWave8();
+			case 9: return config.tagWave9();
+			case 10: return config.tagWave10();
+			default: return "";
+		}
+	}
+
+	private String getSpamWaveConfig(int wave)
+	{
+		switch (wave)
+		{
+			case 1: return config.spamWave1();
+			case 2: return config.spamWave2();
+			case 3: return config.spamWave3();
+			case 4: return config.spamWave4();
+			case 5: return config.spamWave5();
+			case 6: return config.spamWave6();
+			case 7: return config.spamWave7();
+			case 8: return config.spamWave8();
+			case 9: return config.spamWave9();
+			case 10: return config.spamWave10();
+			default: return "";
+		}
+	}
+
+	private String getSoloWaveConfig(int wave)
+	{
+		switch (wave)
+		{
+			case 1: return config.soloWave1();
+			case 2: return config.soloWave2();
+			case 3: return config.soloWave3();
+			case 4: return config.soloWave4();
+			case 5: return config.soloWave5();
+			case 6: return config.soloWave6();
+			case 7: return config.soloWave7();
+			case 8: return config.soloWave8();
+			case 9: return config.soloWave9();
+			case 10: return config.soloWave10();
+			default: return "";
 		}
 	}
 

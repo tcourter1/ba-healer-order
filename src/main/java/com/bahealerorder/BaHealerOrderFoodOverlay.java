@@ -55,25 +55,35 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
             return null;
         }
 
+        String title = "BA Healer Order";
+        int wave = plugin.getCurrentWave();
+        if (wave > 0)
+        {
+            title += " - Wave " + wave;
+        }
+
         panelComponent.getChildren().add(
-                TitleComponent.builder()
-                        .text("BA Healer Utilities")
-                        .color(TITLE_COLOR)
-                        .build()
+            TitleComponent.builder()
+                    .text(title)
+                    .color(TITLE_COLOR)
+                    .build()
         );
 
         for (int healerOrder : healerOrders)
         {
-            int foodFed = plugin.getFoodFedByHealerOrder().getOrDefault(healerOrder, 0);
+                int foodFed = plugin.getFoodFedByHealerOrder().getOrDefault(healerOrder, 0);
+                int expected = plugin.getExpectedFoodForOrder(healerOrder);
 
-            panelComponent.getChildren().add(
+                String rightText = expected > 0 ? (foodFed + "/" + expected + " fed") : (foodFed + " fed");
+
+                panelComponent.getChildren().add(
                     LineComponent.builder()
                             .left("#" + healerOrder)
                             .leftColor(TEXT_COLOR)
-                            .right(foodFed + " fed")
+                            .right(rightText)
                             .rightColor(COUNT_COLOR)
                             .build()
-            );
+                );
         }
 
         return super.render(graphics);

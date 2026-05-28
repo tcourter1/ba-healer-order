@@ -59,7 +59,7 @@ public class BaHealerOrderOverlay extends Overlay
 			if (config.showFoodCountOnNpc())
 			{
 				int foodFed = plugin.getFoodFedByHealerOrder().getOrDefault(order, 0);
-				renderFoodCount(graphics, npc, foodFed);
+				renderFoodCount(graphics, npc, order, foodFed);
 			}
 		}
 
@@ -110,9 +110,56 @@ public class BaHealerOrderOverlay extends Overlay
 		graphics.setFont(originalFont);
 	}
 
-	private void renderFoodCount(Graphics2D graphics, NPC npc, int foodFed)
+	private void renderFoodCount(Graphics2D graphics, NPC npc, int healerOrder, int foodFed)
 	{
-		String text = foodFed + "f";
+		String text;
+		BaHealerOrderConfig.FoodCountType type = config.foodCountType();
+		BaHealerOrderConfig.HealerRole role = config.healerRole();
+		int expected = 0;
+
+		if (type == BaHealerOrderConfig.FoodCountType.COUNT_UP)
+		{
+			if (role != BaHealerOrderConfig.HealerRole.NONE)
+			{
+				expected = plugin.getExpectedFoodForOrder(healerOrder, role);
+				if (expected > 0)
+				{
+					text = foodFed + "/" + expected;
+				}
+				else
+				{
+					text = foodFed + "f";
+				}
+			}
+			else
+			{
+				text = foodFed + "f";
+			}
+		}
+		else // COUNT_DOWN
+		{
+			if (role != BaHealerOrderConfig.HealerRole.NONE)
+			{
+				expected = plugin.getExpectedFoodForOrder(healerOrder, role);
+				if (expected > 0)
+				{
+					int remaining = expected - foodFed;
+					if (remaining < 0)
+					{
+						remaining = 0;
+					}
+					text = String.valueOf(remaining);
+				}
+				else
+				{
+					text = foodFed + "f";
+				}
+			}
+			else
+			{
+				text = foodFed + "f";
+			}
+		}
 
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,
