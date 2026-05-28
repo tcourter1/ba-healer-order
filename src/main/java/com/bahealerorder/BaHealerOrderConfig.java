@@ -44,6 +44,27 @@ public interface BaHealerOrderConfig extends Config
         }
     }
 
+    enum ShowRemainingMode
+    {
+        NONE("Increment (None)"),
+        SOLO("Solo Decrement"),
+        TAG("Tag Decrement"),
+        SPAM("Spam Decrement");
+
+        private final String name;
+
+        ShowRemainingMode(String name)
+        {
+            this.name = name;
+        }
+
+        @Override
+        public String toString()
+        {
+            return name;
+        }
+    }
+
     @ConfigSection(
             name = "Solo Healer Wave Settings",
             description = "Expected poisoned-food per healer for solo healer waves 1-10 (comma-separated)",
@@ -182,15 +203,15 @@ public interface BaHealerOrderConfig extends Config
     }
 
     @ConfigItem(
-            keyName = "decrementOnFeed",
+            keyName = "showRemainingMode",
             name = "Show Remaining on NPC",
-            description = "If enabled, NPC food labels start at the expected amount and decrement as food is fed.",
+            description = "Choose how to display food on healers: Increment (count up from 0), or decrement from Solo/Tag/Spam expected values.",
             section = foodCountSection,
             position = 6
     )
-    default boolean decrementOnFeed()
+    default ShowRemainingMode showRemainingMode()
     {
-        return false;
+        return ShowRemainingMode.NONE;
     }
 
     @ConfigItem(
@@ -214,7 +235,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave1()
         {
-                return "";
+                return "5";
         }
 
         @ConfigItem(
@@ -226,7 +247,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave2()
         {
-                return "";
+                return "5";
         }
 
         @ConfigItem(
@@ -238,7 +259,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave3()
         {
-                return "";
+                return "5";
         }
 
         @ConfigItem(
@@ -250,7 +271,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave4()
         {
-                return "";
+                return "5";
         }
 
         @ConfigItem(
@@ -262,7 +283,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave5()
         {
-                return "";
+                return "5";
         }
 
         @ConfigItem(
@@ -274,7 +295,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave6()
         {
-                return "";
+                return "5";
         }
 
         @ConfigItem(
@@ -286,7 +307,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave7()
         {
-                return "";
+                return "5";
         }
 
         @ConfigItem(
@@ -298,7 +319,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave8()
         {
-                return "";
+                return "5";
         }
 
         @ConfigItem(
@@ -310,7 +331,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave9()
         {
-                return "";
+                return "5";
         }
 
         @ConfigItem(
@@ -322,7 +343,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String soloWave10()
         {
-                return "";
+                return "5";
         }
 
         @ConfigItem(
@@ -334,7 +355,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String tagWave1()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -346,7 +367,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String tagWave2()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -358,7 +379,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String tagWave3()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -370,7 +391,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String tagWave4()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -382,7 +403,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String tagWave5()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -394,7 +415,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String tagWave6()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -406,7 +427,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String tagWave7()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -418,7 +439,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String tagWave8()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -430,7 +451,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String tagWave9()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -442,7 +463,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String tagWave10()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -454,7 +475,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String spamWave1()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -466,7 +487,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String spamWave2()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -478,7 +499,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String spamWave3()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -490,7 +511,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String spamWave4()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -502,7 +523,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String spamWave5()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -514,7 +535,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String spamWave6()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -526,7 +547,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String spamWave7()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -538,7 +559,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String spamWave8()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -550,7 +571,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String spamWave9()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(
@@ -562,7 +583,7 @@ public interface BaHealerOrderConfig extends Config
         )
         default String spamWave10()
         {
-                return "";
+                return "5,5";
         }
 
         @ConfigItem(

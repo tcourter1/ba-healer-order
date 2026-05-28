@@ -59,8 +59,7 @@ public class BaHealerOrderOverlay extends Overlay
 			if (config.showFoodCountOnNpc())
 			{
 				int foodFed = plugin.getFoodFedByHealerOrder().getOrDefault(order, 0);
-				int expected = plugin.getExpectedFoodForOrder(order);
-				renderFoodCount(graphics, npc, foodFed, expected);
+				renderFoodCount(graphics, npc, order, foodFed);
 			}
 		}
 
@@ -111,26 +110,67 @@ public class BaHealerOrderOverlay extends Overlay
 		graphics.setFont(originalFont);
 	}
 
-	private void renderFoodCount(Graphics2D graphics, NPC npc, int foodFed, int expected)
+	private void renderFoodCount(Graphics2D graphics, NPC npc, int healerOrder, int foodFed)
 	{
 		String text;
+		BaHealerOrderConfig.ShowRemainingMode mode = config.showRemainingMode();
+		int expected = 0;
 
-		if (config.decrementOnFeed() && expected > 0)
+		if (mode == BaHealerOrderConfig.ShowRemainingMode.NONE)
 		{
-			int remaining = expected - foodFed;
-			if (remaining < 0)
-			{
-				remaining = 0;
-			}
-			text = String.valueOf(remaining);
-		}
-		else if (expected > 0)
-		{
-			text = "(" + foodFed + "," + expected + ")";
-		}
-		else
-		{
+			// Increment mode: just show food fed
 			text = foodFed + "f";
+		}
+		else if (mode == BaHealerOrderConfig.ShowRemainingMode.SOLO)
+		{
+			expected = plugin.getExpectedFoodForOrder(healerOrder, BaHealerOrderConfig.WaveListType.SOLO);
+			if (expected > 0)
+			{
+				int remaining = expected - foodFed;
+				if (remaining < 0)
+				{
+					remaining = 0;
+				}
+				text = String.valueOf(remaining);
+			}
+			else
+			{
+				text = foodFed + "f";
+			}
+		}
+		else if (mode == BaHealerOrderConfig.ShowRemainingMode.TAG)
+		{
+			expected = plugin.getExpectedFoodForOrder(healerOrder, BaHealerOrderConfig.WaveListType.TAG);
+			if (expected > 0)
+			{
+				int remaining = expected - foodFed;
+				if (remaining < 0)
+				{
+					remaining = 0;
+				}
+				text = String.valueOf(remaining);
+			}
+			else
+			{
+				text = foodFed + "f";
+			}
+		}
+		else // mode == SPAM
+		{
+			expected = plugin.getExpectedFoodForOrder(healerOrder, BaHealerOrderConfig.WaveListType.SPAM);
+			if (expected > 0)
+			{
+				int remaining = expected - foodFed;
+				if (remaining < 0)
+				{
+					remaining = 0;
+				}
+				text = String.valueOf(remaining);
+			}
+			else
+			{
+				text = foodFed + "f";
+			}
 		}
 
 		Point textLocation = npc.getCanvasTextLocation(

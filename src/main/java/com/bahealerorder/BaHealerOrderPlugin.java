@@ -296,6 +296,57 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 	}
 
+	public int getExpectedFoodForOrder(int healerOrder, BaHealerOrderConfig.WaveListType listType)
+	{
+		if (healerOrder <= 0)
+		{
+			return 0;
+		}
+
+		String waveConfig = "";
+
+		switch (listType)
+		{
+			case TAG:
+				waveConfig = getTagWaveConfig(currentWave);
+				break;
+			case SPAM:
+				waveConfig = getSpamWaveConfig(currentWave);
+				break;
+			case SOLO:
+				waveConfig = getSoloWaveConfig(currentWave);
+				break;
+			default:
+				waveConfig = "";
+				break;
+		}
+
+		if (waveConfig == null || waveConfig.isEmpty())
+		{
+			return 0;
+		}
+
+		String[] parts = waveConfig.split(",");
+		if (healerOrder > parts.length)
+		{
+			return 0;
+		}
+
+		try
+		{
+			String part = parts[healerOrder - 1].trim();
+			if (part.isEmpty())
+			{
+				return 0;
+			}
+			return Integer.parseInt(part);
+		}
+		catch (Exception ex)
+		{
+			return 0;
+		}
+	}
+
 	private String getTagWaveConfig(int wave)
 	{
 		switch (wave)
