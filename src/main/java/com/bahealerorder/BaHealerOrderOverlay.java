@@ -59,7 +59,8 @@ public class BaHealerOrderOverlay extends Overlay
 			if (config.showFoodCountOnNpc())
 			{
 				int foodFed = plugin.getFoodFedByHealerOrder().getOrDefault(order, 0);
-				renderFoodCount(graphics, npc, foodFed);
+				int expected = plugin.getExpectedFoodForOrder(order);
+				renderFoodCount(graphics, npc, foodFed, expected);
 			}
 		}
 
@@ -110,9 +111,27 @@ public class BaHealerOrderOverlay extends Overlay
 		graphics.setFont(originalFont);
 	}
 
-	private void renderFoodCount(Graphics2D graphics, NPC npc, int foodFed)
+	private void renderFoodCount(Graphics2D graphics, NPC npc, int foodFed, int expected)
 	{
-		String text = foodFed + "f";
+		String text;
+
+		if (config.decrementOnFeed() && expected > 0)
+		{
+			int remaining = expected - foodFed;
+			if (remaining < 0)
+			{
+				remaining = 0;
+			}
+			text = String.valueOf(remaining);
+		}
+		else if (expected > 0)
+		{
+			text = "(" + foodFed + "," + expected + ")";
+		}
+		else
+		{
+			text = foodFed + "f";
+		}
 
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,
