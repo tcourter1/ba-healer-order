@@ -25,6 +25,25 @@ public interface BaHealerOrderConfig extends Config
     )
     String foodCountSection = "foodCount";
 
+    enum HealerLabelStyle
+    {
+        SPAWN_ORDER("Spawn Order"),
+        TIME_BASED_NUMBERING("Time-Based Numbering");
+
+        private final String name;
+
+        HealerLabelStyle(String name)
+        {
+            this.name = name;
+        }
+
+        @Override
+        public String toString()
+        {
+            return name;
+        }
+    }
+
     @Alpha
     @ConfigItem(
             keyName = "hullColor",
@@ -42,7 +61,7 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "textColor",
             name = "Text Color",
-            description = "Color used for the spawn order number above each Penance Healer",
+            description = "Color used for the healer label above each Penance Healer",
             section = healerHighlightSection,
             position = 2
     )
@@ -58,13 +77,25 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "textSize",
             name = "Text Size",
-            description = "Font size used for the spawn order number above each Penance Healer",
+            description = "Font size used for the healer label above each Penance Healer",
             section = healerHighlightSection,
             position = 3
     )
     default int textSize()
     {
         return 20;
+    }
+
+    @ConfigItem(
+            keyName = "healerLabelStyle",
+            name = "Healer Label Style",
+            description = "Choose whether healers are labeled by spawn order or time-based BA numbering",
+            section = healerHighlightSection,
+            position = 4
+    )
+    default HealerLabelStyle healerLabelStyle()
+    {
+        return HealerLabelStyle.SPAWN_ORDER;
     }
 
     @ConfigItem(
@@ -82,7 +113,7 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "showFoodCountOnNpc",
             name = "Show Food Count on NPC",
-            description = "Displays the number of food fed directly on top of each Penance Healer",
+            description = "Displays the number of food fed directly on each Penance Healer",
             section = foodCountSection,
             position = 2
     )

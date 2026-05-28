@@ -57,7 +57,7 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
 
         panelComponent.getChildren().add(
                 TitleComponent.builder()
-                        .text("BA Healer Order")
+                        .text("BA Healer Utilities")
                         .color(TITLE_COLOR)
                         .build()
         );
