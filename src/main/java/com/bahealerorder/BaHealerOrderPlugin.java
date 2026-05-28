@@ -86,7 +86,7 @@ public class BaHealerOrderPlugin extends Plugin
 	private Integer selectedPoisonedFoodItemId;
 	private PendingFeedAttempt pendingFeedAttempt;
 
-	private BaHealerOrderConfig.WaveListType lastWaveListType = null;
+    
 
 	private static final Pattern WAVE_PATTERN = Pattern.compile(".*---- Wave: (10|[1-9]) ----.*");
 
@@ -252,9 +252,9 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		String waveConfig = "";
-		BaHealerOrderConfig.WaveListType selectedList = config.waveListType();
+		BaHealerOrderConfig.HealerRole selectedRole = config.healerRole();
 
-		switch (selectedList)
+		switch (selectedRole)
 		{
 			case TAG:
 				waveConfig = getTagWaveConfig(currentWave);
@@ -296,7 +296,7 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 	}
 
-	public int getExpectedFoodForOrder(int healerOrder, BaHealerOrderConfig.WaveListType listType)
+	public int getExpectedFoodForOrder(int healerOrder, BaHealerOrderConfig.HealerRole listRole)
 	{
 		if (healerOrder <= 0)
 		{
@@ -305,7 +305,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		String waveConfig = "";
 
-		switch (listType)
+		switch (listRole)
 		{
 			case TAG:
 				waveConfig = getTagWaveConfig(currentWave);

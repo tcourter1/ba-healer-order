@@ -113,59 +113,47 @@ public class BaHealerOrderOverlay extends Overlay
 	private void renderFoodCount(Graphics2D graphics, NPC npc, int healerOrder, int foodFed)
 	{
 		String text;
-		BaHealerOrderConfig.ShowRemainingMode mode = config.showRemainingMode();
+		BaHealerOrderConfig.FoodCountType type = config.foodCountType();
+		BaHealerOrderConfig.HealerRole role = config.healerRole();
 		int expected = 0;
 
-		if (mode == BaHealerOrderConfig.ShowRemainingMode.NONE)
+		if (type == BaHealerOrderConfig.FoodCountType.COUNT_UP)
 		{
-			// Increment mode: just show food fed
-			text = foodFed + "f";
-		}
-		else if (mode == BaHealerOrderConfig.ShowRemainingMode.SOLO)
-		{
-			expected = plugin.getExpectedFoodForOrder(healerOrder, BaHealerOrderConfig.WaveListType.SOLO);
-			if (expected > 0)
+			if (role != BaHealerOrderConfig.HealerRole.NONE)
 			{
-				int remaining = expected - foodFed;
-				if (remaining < 0)
+				expected = plugin.getExpectedFoodForOrder(healerOrder, role);
+				if (expected > 0)
 				{
-					remaining = 0;
+					text = foodFed + "/" + expected;
 				}
-				text = String.valueOf(remaining);
+				else
+				{
+					text = foodFed + "f";
+				}
 			}
 			else
 			{
 				text = foodFed + "f";
 			}
 		}
-		else if (mode == BaHealerOrderConfig.ShowRemainingMode.TAG)
+		else // COUNT_DOWN
 		{
-			expected = plugin.getExpectedFoodForOrder(healerOrder, BaHealerOrderConfig.WaveListType.TAG);
-			if (expected > 0)
+			if (role != BaHealerOrderConfig.HealerRole.NONE)
 			{
-				int remaining = expected - foodFed;
-				if (remaining < 0)
+				expected = plugin.getExpectedFoodForOrder(healerOrder, role);
+				if (expected > 0)
 				{
-					remaining = 0;
+					int remaining = expected - foodFed;
+					if (remaining < 0)
+					{
+						remaining = 0;
+					}
+					text = String.valueOf(remaining);
 				}
-				text = String.valueOf(remaining);
-			}
-			else
-			{
-				text = foodFed + "f";
-			}
-		}
-		else // mode == SPAM
-		{
-			expected = plugin.getExpectedFoodForOrder(healerOrder, BaHealerOrderConfig.WaveListType.SPAM);
-			if (expected > 0)
-			{
-				int remaining = expected - foodFed;
-				if (remaining < 0)
+				else
 				{
-					remaining = 0;
+					text = foodFed + "f";
 				}
-				text = String.valueOf(remaining);
 			}
 			else
 			{
