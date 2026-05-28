@@ -232,47 +232,55 @@ public class BaHealerOrderPlugin extends Plugin
 		if (lastWaveListType == null)
 		{
 			lastWaveListType = current;
-            if (current == BaHealerOrderConfig.WaveListType.TAG || current == BaHealerOrderConfig.WaveListType.SPAM)
-            {
-                loadStorageToDisplay(current);
-            }
-            return;
-        }
+			if (current == BaHealerOrderConfig.WaveListType.TAG || current == BaHealerOrderConfig.WaveListType.SPAM)
+			{
+				loadStorageToDisplay(current);
+			}
+			return;
+		}
 
-        if (current != lastWaveListType)
-        {
-            if (lastWaveListType == BaHealerOrderConfig.WaveListType.TAG || lastWaveListType == BaHealerOrderConfig.WaveListType.SPAM)
-            {
-                persistDisplayToStorage(lastWaveListType);
-            }
+		if (current != lastWaveListType)
+		{
+			if (lastWaveListType == BaHealerOrderConfig.WaveListType.TAG || lastWaveListType == BaHealerOrderConfig.WaveListType.SPAM)
+			{
+				persistDisplayToStorage(lastWaveListType);
+			}
 
-            if (current == BaHealerOrderConfig.WaveListType.TAG || current == BaHealerOrderConfig.WaveListType.SPAM)
-            {
-                loadStorageToDisplay(current);
-            }
+			if (current == BaHealerOrderConfig.WaveListType.TAG || current == BaHealerOrderConfig.WaveListType.SPAM)
+			{
+				loadStorageToDisplay(current);
+			}
+
+			lastWaveListType = current;
+		}
+	}
+
+	private void persistDisplayToStorage(BaHealerOrderConfig.WaveListType target)
 	{
-        if (target != BaHealerOrderConfig.WaveListType.TAG && target != BaHealerOrderConfig.WaveListType.SPAM)
-        {
-            return;
-        }
+		if (target != BaHealerOrderConfig.WaveListType.TAG && target != BaHealerOrderConfig.WaveListType.SPAM)
+		{
+			return;
+		}
 
-        String prefix = (target == BaHealerOrderConfig.WaveListType.TAG) ? "tagWave" : "spamWave";
+		String prefix = (target == BaHealerOrderConfig.WaveListType.TAG) ? "tagWave" : "spamWave";
 
-        for (int i = 1; i <= 10; i++)
-        {
-            String displayKey = "displayWave" + i;
-            String storageKey = prefix + i;
-            String val = configManager.getConfiguration("bahealerorder", displayKey, "");
-            configManager.setConfiguration("bahealerorder", storageKey, val == null ? "" : val);
-        }
-    }
+		for (int i = 1; i <= 10; i++)
+		{
+			String displayKey = "displayWave" + i;
+			String storageKey = prefix + i;
+			String val = configManager.getConfiguration("bahealerorder", displayKey, "");
+			configManager.setConfiguration("bahealerorder", storageKey, val == null ? "" : val);
+		}
+	}
 
-    private void loadStorageToDisplay(BaHealerOrderConfig.WaveListType source)
-    {
-        if (source != BaHealerOrderConfig.WaveListType.TAG && source != BaHealerOrderConfig.WaveListType.SPAM)
-        {
-            return;
-        }
+	private void loadStorageToDisplay(BaHealerOrderConfig.WaveListType source)
+	{
+		if (source != BaHealerOrderConfig.WaveListType.TAG && source != BaHealerOrderConfig.WaveListType.SPAM)
+		{
+			return;
+		}
+
+		String prefix = (source == BaHealerOrderConfig.WaveListType.TAG) ? "tagWave" : "spamWave";
 
 		for (int i = 1; i <= 10; i++)
 		{
@@ -282,6 +290,8 @@ public class BaHealerOrderPlugin extends Plugin
 			configManager.setConfiguration("bahealerorder", displayKey, val == null ? "" : val);
 		}
 	}
+
+
 
 	// Config change listener removed because ConfigChanged event class is not
 	// available in this build. The plugin reads config values on-demand, so
@@ -317,59 +327,30 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		String waveConfig = "";
-        BaHealerOrderConfig.WaveListType selectedList = config.waveListType();
+		BaHealerOrderConfig.WaveListType selectedList = config.waveListType();
 
-        switch (selectedList)
-        {
-            case TAG:
-                switch (currentWave)
-                {
-                    case 1: waveConfig = config.tagWave1(); break;
-                    case 2: waveConfig = config.tagWave2(); break;
-                    case 3: waveConfig = config.tagWave3(); break;
-                    case 4: waveConfig = config.tagWave4(); break;
-                    case 5: waveConfig = config.tagWave5(); break;
-                    case 6: waveConfig = config.tagWave6(); break;
-                    case 7: waveConfig = config.tagWave7(); break;
-                    case 8: waveConfig = config.tagWave8(); break;
-                    case 9: waveConfig = config.tagWave9(); break;
-                    case 10: waveConfig = config.tagWave10(); break;
-                    default: waveConfig = ""; break;
-                }
-                break;
-            case SPAM:
-                switch (currentWave)
-                {
-                    case 1: waveConfig = config.spamWave1(); break;
-                    case 2: waveConfig = config.spamWave2(); break;
-                    case 3: waveConfig = config.spamWave3(); break;
-                    case 4: waveConfig = config.spamWave4(); break;
-                    case 5: waveConfig = config.spamWave5(); break;
-                    case 6: waveConfig = config.spamWave6(); break;
-                    case 7: waveConfig = config.spamWave7(); break;
-                    case 8: waveConfig = config.spamWave8(); break;
-                    case 9: waveConfig = config.spamWave9(); break;
-                    case 10: waveConfig = config.spamWave10(); break;
-                    default: waveConfig = ""; break;
-                }
-                break;
-            case SOLO:
-                switch (currentWave)
-                {
-                    case 1: waveConfig = config.soloWave1(); break;
-                    case 2: waveConfig = config.soloWave2(); break;
-                    case 3: waveConfig = config.soloWave3(); break;
-                    case 4: waveConfig = config.soloWave4(); break;
-                    case 5: waveConfig = config.soloWave5(); break;
-                    case 6: waveConfig = config.soloWave6(); break;
-                    case 7: waveConfig = config.soloWave7(); break;
-                    case 8: waveConfig = config.soloWave8(); break;
-                    case 9: waveConfig = config.soloWave9(); break;
-                    case 10: waveConfig = config.soloWave10(); break;
-                    default: waveConfig = ""; break;
-                }
-                break;
+		switch (selectedList)
+		{
+			case TAG:
+				waveConfig = getTagWaveConfig(currentWave);
+				break;
+			case SPAM:
+				waveConfig = getSpamWaveConfig(currentWave);
+				break;
+			case SOLO:
+				waveConfig = getSoloWaveConfig(currentWave);
+				break;
+			default:
+				waveConfig = "";
+				break;
+		}
 
+		if (waveConfig == null || waveConfig.isEmpty())
+		{
+			return 0;
+		}
+
+		String[] parts = waveConfig.split(",");
 		if (healerOrder > parts.length)
 		{
 			return 0;
@@ -388,6 +369,61 @@ public class BaHealerOrderPlugin extends Plugin
 		{
 			return 0;
 		}
+	}
+
+	private String getTagWaveConfig(int wave)
+	{
+		switch (wave)
+		{
+			case 1: return config.tagWave1();
+			case 2: return config.tagWave2();
+			case 3: return config.tagWave3();
+			case 4: return config.tagWave4();
+			case 5: return config.tagWave5();
+			case 6: return config.tagWave6();
+			case 7: return config.tagWave7();
+			case 8: return config.tagWave8();
+			case 9: return config.tagWave9();
+			case 10: return config.tagWave10();
+			default: return "";
+		}
+	}
+
+	private String getSpamWaveConfig(int wave)
+	{
+		switch (wave)
+		{
+			case 1: return config.spamWave1();
+			case 2: return config.spamWave2();
+			case 3: return config.spamWave3();
+			case 4: return config.spamWave4();
+			case 5: return config.spamWave5();
+			case 6: return config.spamWave6();
+			case 7: return config.spamWave7();
+			case 8: return config.spamWave8();
+			case 9: return config.spamWave9();
+			case 10: return config.spamWave10();
+			default: return "";
+		}
+	}
+
+	private String getSoloWaveConfig(int wave)
+	{
+		switch (wave)
+		{
+			case 1: return config.soloWave1();
+			case 2: return config.soloWave2();
+			case 3: return config.soloWave3();
+			case 4: return config.soloWave4();
+			case 5: return config.soloWave5();
+			case 6: return config.soloWave6();
+			case 7: return config.soloWave7();
+			case 8: return config.soloWave8();
+			case 9: return config.soloWave9();
+			case 10: return config.soloWave10();
+			default: return "";
+		}
+	}
 	}
 
 	@Subscribe
