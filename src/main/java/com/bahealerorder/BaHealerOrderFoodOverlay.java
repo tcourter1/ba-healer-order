@@ -41,9 +41,6 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
             return null;
         }
 
-        // Ensure the config display fields reflect the currently selected list
-        plugin.syncDisplayWithSelected();
-
         panelComponent.getChildren().clear();
 
         List<Integer> healerOrders = plugin.getHealerOrderByNpcIndex()

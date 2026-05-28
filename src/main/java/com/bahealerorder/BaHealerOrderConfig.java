@@ -330,8 +330,7 @@ public interface BaHealerOrderConfig extends Config
                         name = "Tag Wave 1",
                         description = "Comma-separated expected food per healer for tag wave 1. Example: 5,5",
                         section = duoWaveSection,
-                        position = 101,
-                        hidden = true
+                        position = 1
         )
         default String tagWave1()
         {
@@ -343,8 +342,7 @@ public interface BaHealerOrderConfig extends Config
                         name = "Tag Wave 2",
                         description = "Comma-separated expected food per healer for tag wave 2",
                         section = duoWaveSection,
-                        position = 102,
-                        hidden = true
+                        position = 2
         )
         default String tagWave2()
         {
@@ -356,8 +354,7 @@ public interface BaHealerOrderConfig extends Config
                         name = "Tag Wave 3",
                         description = "Comma-separated expected food per healer for tag wave 3",
                         section = duoWaveSection,
-                        position = 103,
-                        hidden = true
+                        position = 3
         )
         default String tagWave3()
         {
@@ -369,8 +366,7 @@ public interface BaHealerOrderConfig extends Config
                         name = "Tag Wave 4",
                         description = "Comma-separated expected food per healer for tag wave 4",
                         section = duoWaveSection,
-                        position = 104,
-                        hidden = true
+                        position = 4
         )
         default String tagWave4()
         {
@@ -382,8 +378,7 @@ public interface BaHealerOrderConfig extends Config
                         name = "Tag Wave 5",
                         description = "Comma-separated expected food per healer for tag wave 5",
                         section = duoWaveSection,
-                        position = 105,
-                        hidden = true
+                        position = 5
         )
         default String tagWave5()
         {
@@ -395,8 +390,7 @@ public interface BaHealerOrderConfig extends Config
                         name = "Tag Wave 6",
                         description = "Comma-separated expected food per healer for tag wave 6",
                         section = duoWaveSection,
-                        position = 106,
-                        hidden = true
+                        position = 6
         )
         default String tagWave6()
         {
@@ -408,8 +402,7 @@ public interface BaHealerOrderConfig extends Config
                         name = "Tag Wave 7",
                         description = "Comma-separated expected food per healer for tag wave 7",
                         section = duoWaveSection,
-                        position = 107,
-                        hidden = true
+                        position = 7
         )
         default String tagWave7()
         {
@@ -421,8 +414,7 @@ public interface BaHealerOrderConfig extends Config
                         name = "Tag Wave 8",
                         description = "Comma-separated expected food per healer for tag wave 8",
                         section = duoWaveSection,
-                        position = 108,
-                        hidden = true
+                        position = 8
         )
         default String tagWave8()
         {
@@ -434,8 +426,7 @@ public interface BaHealerOrderConfig extends Config
                         name = "Tag Wave 9",
                         description = "Comma-separated expected food per healer for tag wave 9",
                         section = duoWaveSection,
-                        position = 109,
-                        hidden = true
+                        position = 9
         )
         default String tagWave9()
         {
@@ -447,133 +438,129 @@ public interface BaHealerOrderConfig extends Config
                         name = "Tag Wave 10",
                         description = "Comma-separated expected food per healer for tag wave 10",
                         section = duoWaveSection,
-                        position = 110,
-                        hidden = true
+                        position = 10
         )
         default String tagWave10()
         {
                 return "";
         }
 
-        /* Display fields (only these should be shown/edited by user). The
-         * plugin will copy values between the active storage (tag/spam)
-         * and these display fields when the selected list changes. */
         @ConfigItem(
-                        keyName = "displayWave1",
-                        name = "Wave 1",
-                        description = "Comma-separated expected food per healer for wave 1 (active list)",
+                        keyName = "spamWave1",
+                        name = "Spam Wave 1",
+                        description = "Comma-separated expected food per healer for spam wave 1",
                         section = duoWaveSection,
-                        position = 1
+                        position = 11
         )
-        default String displayWave1()
+        default String spamWave1()
         {
                 return "";
         }
 
         @ConfigItem(
-                        keyName = "displayWave2",
-                        name = "Wave 2",
-                        description = "Comma-separated expected food per healer for wave 2 (active list)",
+                        keyName = "spamWave2",
+                        name = "Spam Wave 2",
+                        description = "Comma-separated expected food per healer for spam wave 2",
                         section = duoWaveSection,
-                        position = 2
+                        position = 12
         )
-        default String displayWave2()
+        default String spamWave2()
         {
                 return "";
         }
 
         @ConfigItem(
-                        keyName = "displayWave3",
-                        name = "Wave 3",
-                        description = "Comma-separated expected food per healer for wave 3 (active list)",
+                        keyName = "spamWave3",
+                        name = "Spam Wave 3",
+                        description = "Comma-separated expected food per healer for spam wave 3",
                         section = duoWaveSection,
-                        position = 3
+                        position = 13
         )
-        default String displayWave3()
+        default String spamWave3()
         {
                 return "";
         }
 
         @ConfigItem(
-                        keyName = "displayWave4",
-                        name = "Wave 4",
-                        description = "Comma-separated expected food per healer for wave 4 (active list)",
+                        keyName = "spamWave4",
+                        name = "Spam Wave 4",
+                        description = "Comma-separated expected food per healer for spam wave 4",
                         section = duoWaveSection,
-                        position = 4
+                        position = 14
         )
-        default String displayWave4()
+        default String spamWave4()
         {
                 return "";
         }
 
         @ConfigItem(
-                        keyName = "displayWave5",
-                        name = "Wave 5",
-                        description = "Comma-separated expected food per healer for wave 5 (active list)",
+                        keyName = "spamWave5",
+                        name = "Spam Wave 5",
+                        description = "Comma-separated expected food per healer for spam wave 5",
                         section = duoWaveSection,
-                        position = 5
+                        position = 15
         )
-        default String displayWave5()
+        default String spamWave5()
         {
                 return "";
         }
 
         @ConfigItem(
-                        keyName = "displayWave6",
-                        name = "Wave 6",
-                        description = "Comma-separated expected food per healer for wave 6 (active list)",
+                        keyName = "spamWave6",
+                        name = "Spam Wave 6",
+                        description = "Comma-separated expected food per healer for spam wave 6",
                         section = duoWaveSection,
-                        position = 6
+                        position = 16
         )
-        default String displayWave6()
+        default String spamWave6()
         {
                 return "";
         }
 
         @ConfigItem(
-                        keyName = "displayWave7",
-                        name = "Wave 7",
-                        description = "Comma-separated expected food per healer for wave 7 (active list)",
+                        keyName = "spamWave7",
+                        name = "Spam Wave 7",
+                        description = "Comma-separated expected food per healer for spam wave 7",
                         section = duoWaveSection,
-                        position = 7
+                        position = 17
         )
-        default String displayWave7()
+        default String spamWave7()
         {
                 return "";
         }
 
         @ConfigItem(
-                        keyName = "displayWave8",
-                        name = "Wave 8",
-                        description = "Comma-separated expected food per healer for wave 8 (active list)",
+                        keyName = "spamWave8",
+                        name = "Spam Wave 8",
+                        description = "Comma-separated expected food per healer for spam wave 8",
                         section = duoWaveSection,
-                        position = 8
+                        position = 18
         )
-        default String displayWave8()
+        default String spamWave8()
         {
                 return "";
         }
 
         @ConfigItem(
-                        keyName = "displayWave9",
-                        name = "Wave 9",
-                        description = "Comma-separated expected food per healer for wave 9 (active list)",
+                        keyName = "spamWave9",
+                        name = "Spam Wave 9",
+                        description = "Comma-separated expected food per healer for spam wave 9",
                         section = duoWaveSection,
-                        position = 9
+                        position = 19
         )
-        default String displayWave9()
+        default String spamWave9()
         {
                 return "";
         }
 
         @ConfigItem(
-                        keyName = "displayWave10",
-                        name = "Wave 10",
-                        description = "Comma-separated expected food per healer for wave 10 (active list)",
+                        keyName = "spamWave10",
+                        name = "Spam Wave 10",
+                        description = "Comma-separated expected food per healer for spam wave 10",
                         section = duoWaveSection,
-                        position = 10
+                        position = 20
         )
-        default String displayWave10()
+        default String spamWave10()
         {
                 return "";
         }
@@ -588,136 +575,6 @@ public interface BaHealerOrderConfig extends Config
         default boolean resetOnListChange()
         {
                 return false;
-        }
-
-        @ConfigItem(
-                        keyName = "spamWave1",
-                        name = "Spam Wave 1",
-                        description = "Comma-separated expected food per healer for spam wave 1",
-                        section = duoWaveSection,
-                        position = 12,
-                        hidden = true
-        )
-        default String spamWave1()
-        {
-                return "";
-        }
-
-        @ConfigItem(
-                        keyName = "spamWave2",
-                        name = "Spam Wave 2",
-                        description = "Comma-separated expected food per healer for spam wave 2",
-                        section = duoWaveSection,
-                        position = 13,
-                        hidden = true
-        )
-        default String spamWave2()
-        {
-                return "";
-        }
-
-        @ConfigItem(
-                        keyName = "spamWave3",
-                        name = "Spam Wave 3",
-                        description = "Comma-separated expected food per healer for spam wave 3",
-                        section = duoWaveSection,
-                        position = 14,
-                        hidden = true
-        )
-        default String spamWave3()
-        {
-                return "";
-        }
-
-        @ConfigItem(
-                        keyName = "spamWave4",
-                        name = "Spam Wave 4",
-                        description = "Comma-separated expected food per healer for spam wave 4",
-                        section = duoWaveSection,
-                        position = 15,
-                        hidden = true
-        )
-        default String spamWave4()
-        {
-                return "";
-        }
-
-        @ConfigItem(
-                        keyName = "spamWave5",
-                        name = "Spam Wave 5",
-                        description = "Comma-separated expected food per healer for spam wave 5",
-                        section = duoWaveSection,
-                        position = 16,
-                        hidden = true
-        )
-        default String spamWave5()
-        {
-                return "";
-        }
-
-        @ConfigItem(
-                        keyName = "spamWave6",
-                        name = "Spam Wave 6",
-                        description = "Comma-separated expected food per healer for spam wave 6",
-                        section = duoWaveSection,
-                        position = 17,
-                        hidden = true
-        )
-        default String spamWave6()
-        {
-                return "";
-        }
-
-        @ConfigItem(
-                        keyName = "spamWave7",
-                        name = "Spam Wave 7",
-                        description = "Comma-separated expected food per healer for spam wave 7",
-                        section = duoWaveSection,
-                        position = 18,
-                        hidden = true
-        )
-        default String spamWave7()
-        {
-                return "";
-        }
-
-        @ConfigItem(
-                        keyName = "spamWave8",
-                        name = "Spam Wave 8",
-                        description = "Comma-separated expected food per healer for spam wave 8",
-                        section = duoWaveSection,
-                        position = 19,
-                        hidden = true
-        )
-        default String spamWave8()
-        {
-                return "";
-        }
-
-        @ConfigItem(
-                        keyName = "spamWave9",
-                        name = "Spam Wave 9",
-                        description = "Comma-separated expected food per healer for spam wave 9",
-                        section = duoWaveSection,
-                        position = 20,
-                        hidden = true
-        )
-        default String spamWave9()
-        {
-                return "";
-        }
-
-        @ConfigItem(
-                        keyName = "spamWave10",
-                        name = "Spam Wave 10",
-                        description = "Comma-separated expected food per healer for spam wave 10",
-                        section = duoWaveSection,
-                        position = 21,
-                        hidden = true
-        )
-        default String spamWave10()
-        {
-                return "";
         }
 
         enum WaveListType

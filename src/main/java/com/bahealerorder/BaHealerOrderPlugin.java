@@ -72,9 +72,6 @@ public class BaHealerOrderPlugin extends Plugin
 	@Inject
 	private BaHealerOrderConfig config;
 
-	@Inject
-	private ConfigManager configManager;
-
 	@Getter
 	private final Map<Integer, Integer> healerOrderByNpcIndex = new HashMap<>();
 
@@ -220,78 +217,6 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		return currentWave;
 	}
-
-	/**
-	 * Sync display (editable) wave fields with the selected storage list.
-	 * When switching lists, persist current display into previous storage,
-	 * then load the newly selected storage into the display fields.
-	 */
-	public void syncDisplayWithSelected()
-	{
-		BaHealerOrderConfig.WaveListType current = config.waveListType();
-		if (lastWaveListType == null)
-		{
-			lastWaveListType = current;
-			if (current == BaHealerOrderConfig.WaveListType.TAG || current == BaHealerOrderConfig.WaveListType.SPAM)
-			{
-				loadStorageToDisplay(current);
-			}
-			return;
-		}
-
-		if (current != lastWaveListType)
-		{
-			if (lastWaveListType == BaHealerOrderConfig.WaveListType.TAG || lastWaveListType == BaHealerOrderConfig.WaveListType.SPAM)
-			{
-				persistDisplayToStorage(lastWaveListType);
-			}
-
-			if (current == BaHealerOrderConfig.WaveListType.TAG || current == BaHealerOrderConfig.WaveListType.SPAM)
-			{
-				loadStorageToDisplay(current);
-			}
-
-			lastWaveListType = current;
-		}
-	}
-
-	private void persistDisplayToStorage(BaHealerOrderConfig.WaveListType target)
-	{
-		if (target != BaHealerOrderConfig.WaveListType.TAG && target != BaHealerOrderConfig.WaveListType.SPAM)
-		{
-			return;
-		}
-
-		String prefix = (target == BaHealerOrderConfig.WaveListType.TAG) ? "tagWave" : "spamWave";
-
-		for (int i = 1; i <= 10; i++)
-		{
-			String displayKey = "displayWave" + i;
-			String storageKey = prefix + i;
-			String val = configManager.getConfiguration("bahealerorder", displayKey, "");
-			configManager.setConfiguration("bahealerorder", storageKey, val == null ? "" : val);
-		}
-	}
-
-	private void loadStorageToDisplay(BaHealerOrderConfig.WaveListType source)
-	{
-		if (source != BaHealerOrderConfig.WaveListType.TAG && source != BaHealerOrderConfig.WaveListType.SPAM)
-		{
-			return;
-		}
-
-		String prefix = (source == BaHealerOrderConfig.WaveListType.TAG) ? "tagWave" : "spamWave";
-
-		for (int i = 1; i <= 10; i++)
-		{
-			String displayKey = "displayWave" + i;
-			String storageKey = prefix + i;
-			String val = configManager.getConfiguration("bahealerorder", storageKey, "");
-			configManager.setConfiguration("bahealerorder", displayKey, val == null ? "" : val);
-		}
-	}
-
-
 
 	// Config change listener removed because ConfigChanged event class is not
 	// available in this build. The plugin reads config values on-demand, so
