@@ -68,7 +68,7 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "textColor",
             name = "Text Color",
-            description = "Color used for the spawn order number above each Penance Healer",
+            description = "Color used for the healer label above each Penance Healer",
             section = healerHighlightSection,
             position = 2
     )
@@ -84,7 +84,7 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "textSize",
             name = "Text Size",
-            description = "Font size used for the spawn order number above each Penance Healer",
+            description = "Font size used for the healer label above each Penance Healer",
             section = healerHighlightSection,
             position = 3
     )
@@ -120,7 +120,7 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "showFoodCountOnNpc",
             name = "Show Food Count on NPC",
-            description = "Displays the number of food fed directly on top of each Penance Healer",
+            description = "Displays the number of food fed directly on each Penance Healer",
             section = foodCountSection,
             position = 2
     )

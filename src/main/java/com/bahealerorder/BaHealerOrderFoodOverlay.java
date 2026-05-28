@@ -67,9 +67,9 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
 
         panelComponent.getChildren().add(
             TitleComponent.builder()
-                .text(title)
-                .color(TITLE_COLOR)
-                .build()
+                    .text(title)
+                    .color(TITLE_COLOR)
+                    .build()
         );
 
         for (int healerOrder : healerOrders)
@@ -81,11 +81,11 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
 
                 panelComponent.getChildren().add(
                     LineComponent.builder()
-                        .left("#" + healerOrder)
-                        .leftColor(TEXT_COLOR)
-                        .right(rightText)
-                        .rightColor(COUNT_COLOR)
-                        .build()
+                            .left("#" + healerOrder)
+                            .leftColor(TEXT_COLOR)
+                            .right(rightText)
+                            .rightColor(COUNT_COLOR)
+                            .build()
                 );
         }
 
