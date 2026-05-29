@@ -221,6 +221,18 @@ public interface BaHealerOrderConfig extends Config
     }
 
     @ConfigItem(
+            keyName = "showMenuLabel",
+            name = "Show Menu Label",
+            description = "Adds the tracked healer label next to Penance Healers in the right-click menu",
+            section = healerHighlightSection,
+            position = 8
+    )
+    default boolean showMenuLabel()
+    {
+        return true;
+    }
+
+    @ConfigItem(
             keyName = "showFoodPanel",
             name = "Show Food Panel",
             description = "Shows a panel tracking how much good food has been fed to each Penance Healer",

@@ -16,11 +16,13 @@ import net.runelite.api.GameState;
 import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
+import net.runelite.api.MenuEntry;
 import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
@@ -29,6 +31,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 
 @Slf4j
@@ -144,6 +147,37 @@ public class BaHealerOrderPlugin extends Plugin
 
 		handlePoisonedFoodSelection(event, option, target);
 		handlePoisonedFoodUseOnHealer(event, option, target);
+	}
+
+	@Subscribe
+	public void onMenuEntryAdded(MenuEntryAdded event)
+	{
+		if (!config.showMenuLabel()
+				|| config.healerLabelStyle() == BaHealerOrderConfig.HealerLabelStyle.NONE)
+		{
+			return;
+		}
+
+		MenuEntry entry = event.getMenuEntry();
+		if (entry == null)
+		{
+			return;
+		}
+
+		Integer healerOrder = getHealerOrderForMenuEntry(entry);
+		if (healerOrder == null)
+		{
+			return;
+		}
+
+		String target = entry.getTarget();
+		if (target == null || Text.removeTags(target).contains(" ("))
+		{
+			return;
+		}
+
+		String label = getHealerLabel(healerOrder);
+		entry.setTarget(target + " " + ColorUtil.wrapWithColorTag("(" + label + ")", config.textColor()));
 	}
 
 	@Subscribe
@@ -541,6 +575,34 @@ public class BaHealerOrderPlugin extends Plugin
 
 		String name = Text.removeTags(npc.getName());
 		return PENANCE_HEALER_NAME.equals(name);
+	}
+
+	private Integer getHealerOrderForMenuEntry(MenuEntry entry)
+	{
+		if (!isNpcMenuAction(entry.getType()))
+		{
+			return null;
+		}
+
+		NPC npc = entry.getNpc();
+		if (npc != null)
+		{
+			return visibleHealers.get(npc);
+		}
+
+		return healerOrderByNpcIndex.get(entry.getIdentifier());
+	}
+
+	private boolean isNpcMenuAction(MenuAction action)
+	{
+		return action == MenuAction.NPC_FIRST_OPTION
+				|| action == MenuAction.NPC_SECOND_OPTION
+				|| action == MenuAction.NPC_THIRD_OPTION
+				|| action == MenuAction.NPC_FOURTH_OPTION
+				|| action == MenuAction.NPC_FIFTH_OPTION
+				|| action == MenuAction.WIDGET_TARGET_ON_NPC
+				|| action == MenuAction.ITEM_USE_ON_NPC
+				|| action == MenuAction.EXAMINE_NPC;
 	}
 
 	private boolean handleWaveStartMessage(String message)
