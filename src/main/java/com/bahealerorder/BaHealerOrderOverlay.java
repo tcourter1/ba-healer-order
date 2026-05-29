@@ -227,7 +227,7 @@ public class BaHealerOrderOverlay extends Overlay
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,
 				text,
-				npc.getLogicalHeight() + TEXT_Z_OFFSET + 18
+				npc.getLogicalHeight() + TEXT_Z_OFFSET + 50
 		);
 
 		if (textLocation == null)
