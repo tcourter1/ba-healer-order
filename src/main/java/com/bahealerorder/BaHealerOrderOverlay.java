@@ -17,6 +17,7 @@ import javax.inject.Inject;
 import net.runelite.api.NPC;
 import net.runelite.api.Perspective;
 import net.runelite.api.Point;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -146,6 +147,12 @@ public class BaHealerOrderOverlay extends Overlay
 		if (config.highlightStyle() == BaHealerOrderConfig.HighlightStyle.TILE)
 		{
 			renderTile(graphics, npc);
+			return;
+		}
+
+		if (config.highlightStyle() == BaHealerOrderConfig.HighlightStyle.TRUE_TILE)
+		{
+			renderTrueTile(graphics, npc);
 		}
 	}
 
@@ -178,6 +185,30 @@ public class BaHealerOrderOverlay extends Overlay
 			return;
 		}
 
+		renderTilePolygon(graphics, tile);
+	}
+
+	private void renderTrueTile(Graphics2D graphics, NPC npc)
+	{
+		LocalPoint trueTileLocation = LocalPoint.fromWorld(plugin.getClient(), npc.getWorldLocation());
+
+		if (trueTileLocation == null)
+		{
+			return;
+		}
+
+		Polygon tile = Perspective.getCanvasTilePoly(plugin.getClient(), trueTileLocation);
+
+		if (tile == null)
+		{
+			return;
+		}
+
+		renderTilePolygon(graphics, tile);
+	}
+
+	private void renderTilePolygon(Graphics2D graphics, Polygon tile)
+	{
 		Stroke originalStroke = graphics.getStroke();
 		Color originalColor = graphics.getColor();
 
