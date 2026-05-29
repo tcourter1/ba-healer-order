@@ -50,6 +50,7 @@ public interface BaHealerOrderConfig extends Config
     {
         NONE("None"),
         TILE("Tile"),
+        TRUE_TILE("True Tile"),
         HULL("Hull");
 
         private final String name;
