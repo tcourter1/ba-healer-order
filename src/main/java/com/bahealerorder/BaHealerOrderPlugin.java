@@ -19,10 +19,12 @@ import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
+import net.runelite.api.MenuEntry;
 import net.runelite.api.NPC;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
@@ -31,6 +33,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 
 @Slf4j
@@ -44,6 +47,10 @@ public class BaHealerOrderPlugin extends Plugin
 	private static final String PENANCE_HEALER_NAME = "Penance Healer";
 	private static final String WRONG_FOOD_MESSAGE = "that's the wrong type of poisoned food to use! penalty!";
 	private static final Pattern WAVE_START_PATTERN = Pattern.compile(".*\\bwave:\\s*(\\d+)\\b.*");
+	private static final Pattern WAVE_PATTERN = Pattern.compile(".*---- Wave: (10|[1-9]) ----.*");
+	private static final Pattern FOOD_PART_PATTERN = Pattern.compile("^\\s*(\\d+)(?:\\(([^)]*)\\))?");
+
+	private static final int WAVE_INCREMENT_INTERVAL_SECONDS = 30;
 
 	private static final String[][] TIME_BASED_HEALER_LABELS = {
 			{},
@@ -84,18 +91,11 @@ public class BaHealerOrderPlugin extends Plugin
 	@Getter
 	private final Map<Integer, Integer> foodFedByHealerOrder = new HashMap<>();
 
-	private static final int WAVE_INCREMENT_INTERVAL_SECONDS = 30;
-
 	private int nextHealerNumber = 1;
 	private int currentWave = -1;
 	private long waveStartTimeMs = -1;
 	private Integer selectedPoisonedFoodItemId;
 	private PendingFeedAttempt pendingFeedAttempt;
-
-    
-
-	private static final Pattern WAVE_PATTERN = Pattern.compile(".*---- Wave: (10|[1-9]) ----.*");
-	private static final Pattern FOOD_PART_PATTERN = Pattern.compile("^\\s*(\\d+)(?:\\(([^)]*)\\))?");
 
 	@Override
 	protected void startUp()
@@ -153,6 +153,40 @@ public class BaHealerOrderPlugin extends Plugin
 	}
 
 	@Subscribe
+	public void onMenuEntryAdded(MenuEntryAdded event)
+	{
+		if (!config.showMenuLabel()
+				|| config.healerLabelStyle() == BaHealerOrderConfig.HealerLabelStyle.NONE)
+		{
+			return;
+		}
+
+		MenuEntry entry = event.getMenuEntry();
+
+		if (entry == null)
+		{
+			return;
+		}
+
+		Integer healerOrder = getHealerOrderForMenuEntry(entry);
+
+		if (healerOrder == null)
+		{
+			return;
+		}
+
+		String target = entry.getTarget();
+
+		if (target == null || Text.removeTags(target).contains(" ("))
+		{
+			return;
+		}
+
+		String label = getHealerLabel(healerOrder);
+		entry.setTarget(target + " " + ColorUtil.wrapWithColorTag("(" + label + ")", config.textColor()));
+	}
+
+	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
 		if (event.getContainerId() != InventoryID.INVENTORY.getId())
@@ -187,6 +221,7 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		final Matcher waveMatcher = WAVE_PATTERN.matcher(event.getMessage());
+
 		if (waveMatcher.matches())
 		{
 			try
@@ -220,6 +255,18 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 	}
 
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		GameState gameState = event.getGameState();
+
+		if (gameState == GameState.LOGIN_SCREEN
+				|| gameState == GameState.HOPPING)
+		{
+			resetAllState();
+		}
+	}
+
 	public int getCurrentWave()
 	{
 		return currentWave;
@@ -238,33 +285,6 @@ public class BaHealerOrderPlugin extends Plugin
 	public float getCurrentWaveElapsedSeconds()
 	{
 		return getCurrentWaveElapsedMillis() / 1000f;
-	}
-
-	// Config change listener removed because ConfigChanged event class is not
-	// available in this build. The plugin reads config values on-demand, so
-	// switching the `Wave List Type` in settings will immediately change which
-	// list is used for expected values. If you want automatic reset behavior
-	// on change, we can re-add a listener once the appropriate event class is
-	// available in the classpath.
-
-	private void startNewWave(int waveNumber)
-	{
-		if (waveNumber <= 0)
-		{
-			return;
-		}
-
-		this.currentWave = waveNumber;
-		this.waveStartTimeMs = System.currentTimeMillis();
-		// clear previous wave state and start numbering fresh
-		visibleHealers.clear();
-		healerOrderByNpcIndex.clear();
-		foodFedByHealerOrder.clear();
-		pendingFeedAttempt = null;
-		selectedPoisonedFoodItemId = null;
-		nextHealerNumber = 1;
-
-		log.debug("Starting new BA wave {}", waveNumber);
 	}
 
 	public int getExpectedFoodForOrder(int healerOrder)
@@ -324,31 +344,6 @@ public class BaHealerOrderPlugin extends Plugin
 		return getExpectedFoodForOrder(healerOrder, waveConfig);
 	}
 
-	private int getExpectedFoodForOrder(int healerOrder, String waveConfig)
-	{
-		if (healerOrder <= 0 || waveConfig == null || waveConfig.isEmpty())
-		{
-			return 0;
-		}
-
-		List<WaveProgressionStep> progression = parseWaveFoodConfig(waveConfig);
-		if (progression.isEmpty())
-		{
-			return 0;
-		}
-
-		int orderIndex = healerOrder - 1;
-		int expectedFood = getValueAtLine(progression.get(0).amounts, orderIndex);
-		int stepIndex = (int) (getCurrentWaveElapsedSeconds() / WAVE_INCREMENT_INTERVAL_SECONDS);
-
-		for (int i = 1; i < progression.size() && i <= stepIndex; i++)
-		{
-			expectedFood += getValueAtLine(progression.get(i).amounts, orderIndex);
-		}
-
-		return expectedFood;
-	}
-
 	public String getHealerTarget(int healerOrder)
 	{
 		if (healerOrder <= 0)
@@ -406,6 +401,78 @@ public class BaHealerOrderPlugin extends Plugin
 		return getHealerTarget(healerOrder, waveConfig);
 	}
 
+	public Map<NPC, Integer> getTrackedHealers()
+	{
+		return Collections.unmodifiableMap(visibleHealers);
+	}
+
+	public String getHealerLabel(int healerOrder)
+	{
+		if (config.healerLabelStyle() == BaHealerOrderConfig.HealerLabelStyle.SPAWN_ORDER)
+		{
+			return String.valueOf(healerOrder);
+		}
+
+		if (currentWave <= 0 || currentWave >= TIME_BASED_HEALER_LABELS.length)
+		{
+			return String.valueOf(healerOrder);
+		}
+
+		String[] labelsForWave = TIME_BASED_HEALER_LABELS[currentWave];
+
+		if (healerOrder <= 0 || healerOrder > labelsForWave.length)
+		{
+			return String.valueOf(healerOrder);
+		}
+
+		return labelsForWave[healerOrder - 1];
+	}
+
+	private void startNewWave(int waveNumber)
+	{
+		if (waveNumber <= 0)
+		{
+			return;
+		}
+
+		this.currentWave = waveNumber;
+		this.waveStartTimeMs = System.currentTimeMillis();
+		visibleHealers.clear();
+		healerOrderByNpcIndex.clear();
+		foodFedByHealerOrder.clear();
+		pendingFeedAttempt = null;
+		selectedPoisonedFoodItemId = null;
+		nextHealerNumber = 1;
+
+		log.debug("Starting new BA wave {}", waveNumber);
+	}
+
+	private int getExpectedFoodForOrder(int healerOrder, String waveConfig)
+	{
+		if (healerOrder <= 0 || waveConfig == null || waveConfig.isEmpty())
+		{
+			return 0;
+		}
+
+		List<WaveProgressionStep> progression = parseWaveFoodConfig(waveConfig);
+
+		if (progression.isEmpty())
+		{
+			return 0;
+		}
+
+		int orderIndex = healerOrder - 1;
+		int expectedFood = getValueAtLine(progression.get(0).amounts, orderIndex);
+		int stepIndex = (int) (getCurrentWaveElapsedSeconds() / WAVE_INCREMENT_INTERVAL_SECONDS);
+
+		for (int i = 1; i < progression.size() && i <= stepIndex; i++)
+		{
+			expectedFood += getValueAtLine(progression.get(i).amounts, orderIndex);
+		}
+
+		return expectedFood;
+	}
+
 	private String getHealerTarget(int healerOrder, String waveConfig)
 	{
 		if (healerOrder <= 0 || waveConfig == null || waveConfig.isEmpty())
@@ -414,6 +481,7 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		List<WaveProgressionStep> progression = parseWaveFoodConfig(waveConfig);
+
 		if (progression.isEmpty())
 		{
 			return null;
@@ -426,6 +494,7 @@ public class BaHealerOrderPlugin extends Plugin
 		for (int i = 0; i < progression.size() && i <= stepIndex; i++)
 		{
 			String lineTarget = getTargetAtLine(progression.get(i), orderIndex);
+
 			if (lineTarget != null)
 			{
 				target = lineTarget;
@@ -457,6 +526,7 @@ public class BaHealerOrderPlugin extends Plugin
 			}
 
 			String line = rawLine.trim();
+
 			if (line.isEmpty())
 			{
 				continue;
@@ -467,9 +537,10 @@ public class BaHealerOrderPlugin extends Plugin
 			String[] targets = new String[parts.length];
 			int parsedCount = 0;
 
-			for (int i = 0; i < parts.length; i++)
+			for (String rawPart : parts)
 			{
-				String part = parts[i].trim();
+				String part = rawPart.trim();
+
 				if (part.isEmpty())
 				{
 					continue;
@@ -477,6 +548,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 				part = part.replaceAll("\\[[^]]*\\]", "");
 				Matcher matcher = FOOD_PART_PATTERN.matcher(part);
+
 				if (!matcher.find())
 				{
 					continue;
@@ -529,18 +601,6 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		return step.targets[orderIndex];
-	}
-
-	private static class WaveProgressionStep
-	{
-		private final int[] amounts;
-		private final String[] targets;
-
-		private WaveProgressionStep(int[] amounts, String[] targets)
-		{
-			this.amounts = amounts;
-			this.targets = targets;
-		}
 	}
 
 	private int getValueAtLine(int[] values, int orderIndex)
@@ -605,45 +665,6 @@ public class BaHealerOrderPlugin extends Plugin
 			case 10: return config.soloWave10();
 			default: return "";
 		}
-	}
-
-	@Subscribe
-	public void onGameStateChanged(GameStateChanged event)
-	{
-		GameState gameState = event.getGameState();
-
-		if (gameState == GameState.LOGIN_SCREEN
-				|| gameState == GameState.HOPPING)
-		{
-			resetAllState();
-		}
-	}
-
-	public Map<NPC, Integer> getTrackedHealers()
-	{
-		return Collections.unmodifiableMap(visibleHealers);
-	}
-
-	public String getHealerLabel(int healerOrder)
-	{
-		if (config.healerLabelStyle() == BaHealerOrderConfig.HealerLabelStyle.SPAWN_ORDER)
-		{
-			return String.valueOf(healerOrder);
-		}
-
-		if (currentWave <= 0 || currentWave >= TIME_BASED_HEALER_LABELS.length)
-		{
-			return String.valueOf(healerOrder);
-		}
-
-		String[] labelsForWave = TIME_BASED_HEALER_LABELS[currentWave];
-
-		if (healerOrder <= 0 || healerOrder > labelsForWave.length)
-		{
-			return String.valueOf(healerOrder);
-		}
-
-		return labelsForWave[healerOrder - 1];
 	}
 
 	private void handlePoisonedFoodSelection(MenuOptionClicked event, String option, String target)
@@ -748,6 +769,35 @@ public class BaHealerOrderPlugin extends Plugin
 		return PENANCE_HEALER_NAME.equals(name);
 	}
 
+	private Integer getHealerOrderForMenuEntry(MenuEntry entry)
+	{
+		if (!isNpcMenuAction(entry.getType()))
+		{
+			return null;
+		}
+
+		NPC npc = entry.getNpc();
+
+		if (npc != null)
+		{
+			return visibleHealers.get(npc);
+		}
+
+		return healerOrderByNpcIndex.get(entry.getIdentifier());
+	}
+
+	private boolean isNpcMenuAction(MenuAction action)
+	{
+		return action == MenuAction.NPC_FIRST_OPTION
+				|| action == MenuAction.NPC_SECOND_OPTION
+				|| action == MenuAction.NPC_THIRD_OPTION
+				|| action == MenuAction.NPC_FOURTH_OPTION
+				|| action == MenuAction.NPC_FIFTH_OPTION
+				|| action == MenuAction.WIDGET_TARGET_ON_NPC
+				|| action == MenuAction.ITEM_USE_ON_NPC
+				|| action == MenuAction.EXAMINE_NPC;
+	}
+
 	private boolean handleWaveStartMessage(String message)
 	{
 		Matcher matcher = WAVE_START_PATTERN.matcher(message);
@@ -817,6 +867,18 @@ public class BaHealerOrderPlugin extends Plugin
 	BaHealerOrderConfig provideConfig(ConfigManager configManager)
 	{
 		return configManager.getConfig(BaHealerOrderConfig.class);
+	}
+
+	private static class WaveProgressionStep
+	{
+		private final int[] amounts;
+		private final String[] targets;
+
+		private WaveProgressionStep(int[] amounts, String[] targets)
+		{
+			this.amounts = amounts;
+			this.targets = targets;
+		}
 	}
 
 	private static class PendingFeedAttempt
