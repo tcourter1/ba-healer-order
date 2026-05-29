@@ -1,8 +1,10 @@
 package com.bahealerorder;
 
 import com.google.inject.Provides;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -82,8 +84,11 @@ public class BaHealerOrderPlugin extends Plugin
 	@Getter
 	private final Map<Integer, Integer> foodFedByHealerOrder = new HashMap<>();
 
+	private static final int WAVE_INCREMENT_INTERVAL_SECONDS = 30;
+
 	private int nextHealerNumber = 1;
 	private int currentWave = -1;
+	private long waveStartTimeMs = -1;
 	private Integer selectedPoisonedFoodItemId;
 	private PendingFeedAttempt pendingFeedAttempt;
 
@@ -219,6 +224,21 @@ public class BaHealerOrderPlugin extends Plugin
 		return currentWave;
 	}
 
+	public long getCurrentWaveElapsedMillis()
+	{
+		if (waveStartTimeMs <= 0 || currentWave <= 0)
+		{
+			return 0;
+		}
+
+		return System.currentTimeMillis() - waveStartTimeMs;
+	}
+
+	public float getCurrentWaveElapsedSeconds()
+	{
+		return getCurrentWaveElapsedMillis() / 1000f;
+	}
+
 	// Config change listener removed because ConfigChanged event class is not
 	// available in this build. The plugin reads config values on-demand, so
 	// switching the `Wave List Type` in settings will immediately change which
@@ -234,6 +254,7 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		this.currentWave = waveNumber;
+		this.waveStartTimeMs = System.currentTimeMillis();
 		// clear previous wave state and start numbering fresh
 		visibleHealers.clear();
 		healerOrderByNpcIndex.clear();
@@ -271,30 +292,7 @@ public class BaHealerOrderPlugin extends Plugin
 				break;
 		}
 
-		if (waveConfig == null || waveConfig.isEmpty())
-		{
-			return 0;
-		}
-
-		String[] parts = waveConfig.split(",");
-		if (healerOrder > parts.length)
-		{
-			return 0;
-		}
-
-		try
-		{
-			String part = parts[healerOrder - 1].trim();
-			if (part.isEmpty())
-			{
-				return 0;
-			}
-			return Integer.parseInt(part);
-		}
-		catch (Exception ex)
-		{
-			return 0;
-		}
+		return getExpectedFoodForOrder(healerOrder, waveConfig);
 	}
 
 	public int getExpectedFoodForOrder(int healerOrder, BaHealerOrderConfig.HealerRole listRole)
@@ -322,30 +320,87 @@ public class BaHealerOrderPlugin extends Plugin
 				break;
 		}
 
-		if (waveConfig == null || waveConfig.isEmpty())
+		return getExpectedFoodForOrder(healerOrder, waveConfig);
+	}
+
+	private int getExpectedFoodForOrder(int healerOrder, String waveConfig)
+	{
+		if (healerOrder <= 0 || waveConfig == null || waveConfig.isEmpty())
 		{
 			return 0;
 		}
 
-		String[] parts = waveConfig.split(",");
-		if (healerOrder > parts.length)
+		List<int[]> progression = parseWaveFoodConfig(waveConfig);
+		if (progression.isEmpty())
 		{
 			return 0;
 		}
 
-		try
+		int orderIndex = healerOrder - 1;
+		int expectedFood = getValueAtLine(progression.get(0), orderIndex);
+		int stepIndex = (int) (getCurrentWaveElapsedSeconds() / WAVE_INCREMENT_INTERVAL_SECONDS);
+
+		for (int i = 1; i < progression.size() && i <= stepIndex; i++)
 		{
-			String part = parts[healerOrder - 1].trim();
-			if (part.isEmpty())
+			expectedFood += getValueAtLine(progression.get(i), orderIndex);
+		}
+
+		return expectedFood;
+	}
+
+	private List<int[]> parseWaveFoodConfig(String waveConfig)
+	{
+		List<int[]> progression = new ArrayList<>();
+
+		for (String rawLine : waveConfig.split("\\r?\\n"))
+		{
+			if (rawLine == null)
 			{
-				return 0;
+				continue;
 			}
-			return Integer.parseInt(part);
+
+			String line = rawLine.trim();
+			if (line.isEmpty())
+			{
+				continue;
+			}
+
+			String[] parts = line.split("\\s*[-,]\\s*");
+			int[] values = new int[parts.length];
+
+			for (int i = 0; i < parts.length; i++)
+			{
+				String part = parts[i].trim();
+				if (part.isEmpty())
+				{
+					values[i] = 0;
+					continue;
+				}
+
+				try
+				{
+					values[i] = Integer.parseInt(part);
+				}
+				catch (NumberFormatException ex)
+				{
+					values[i] = 0;
+				}
+			}
+
+			progression.add(values);
 		}
-		catch (Exception ex)
+
+		return progression;
+	}
+
+	private int getValueAtLine(int[] values, int orderIndex)
+	{
+		if (values == null || orderIndex < 0 || orderIndex >= values.length)
 		{
 			return 0;
 		}
+
+		return values[orderIndex];
 	}
 
 	private String getTagWaveConfig(int wave)
@@ -561,8 +616,7 @@ public class BaHealerOrderPlugin extends Plugin
 				return false;
 			}
 
-			resetWaveState();
-			currentWave = wave;
+			startNewWave(wave);
 			return true;
 		}
 		catch (NumberFormatException ex)
@@ -599,6 +653,7 @@ public class BaHealerOrderPlugin extends Plugin
 		foodFedByHealerOrder.clear();
 		pendingFeedAttempt = null;
 		selectedPoisonedFoodItemId = null;
+		waveStartTimeMs = -1;
 		nextHealerNumber = 1;
 	}
 

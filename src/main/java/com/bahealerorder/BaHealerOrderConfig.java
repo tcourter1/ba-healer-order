@@ -27,21 +27,21 @@ public interface BaHealerOrderConfig extends Config
 
     @ConfigSection(
             name = "Solo Role Wave Settings",
-            description = "Expected poisoned-food per healer for solo role waves 1-10",
+            description = "Time-based expected food progression per healer for solo role waves 1-10",
             position = 3
     )
     String soloRoleSection = "soloRoleSection";
 
     @ConfigSection(
             name = "Spam Role Wave Settings",
-            description = "Expected poisoned-food per healer for spam role waves 1-10",
+            description = "Time-based expected food progression per healer for spam role waves 1-10",
             position = 4
     )
     String spamRoleSection = "spamRoleSection";
 
     @ConfigSection(
             name = "Tag Role Wave Settings",
-            description = "Expected poisoned-food per healer for tag role waves 1-10",
+            description = "Time-based expected food progression per healer for tag wave waves 1-10",
             position = 5
     )
     String tagRoleSection = "tagRoleSection";
@@ -328,7 +328,7 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "soloWave1",
             name = "Solo Wave 1",
-            description = "Comma-separated expected food per healer for solo wave 1",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and add more lines for +30s increments.",
             section = soloRoleSection,
             position = 1
     )
@@ -448,7 +448,7 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "spamWave1",
             name = "Spam Wave 1",
-            description = "Comma-separated expected food per healer for spam wave 1",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and add more lines for +30s increments.",
             section = spamRoleSection,
             position = 1
     )
@@ -568,7 +568,7 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "tagWave1",
             name = "Tag Wave 1",
-            description = "Comma-separated expected food per healer for tag wave 1",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and add more lines for +30s increments.",
             section = tagRoleSection,
             position = 1
     )
