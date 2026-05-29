@@ -57,6 +57,7 @@ public class BaHealerOrderPlugin extends Plugin
 			{"6", "12", "18", "24", "R1", "R2", "R3"}
 	};
 
+	@Getter
 	@Inject
 	private Client client;
 

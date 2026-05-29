@@ -6,7 +6,7 @@ BA Healer Utilities is a RuneLite Plugin Hub plugin for Barbarian Assault.
 
 
 
-It displays the observed spawn order of Penance Healers, highlights them in the game scene, and tracks how many poisoned food items have been successfully used on each healer.
+It provides visual tracking for Penance Healers, including spawn-order labeling, time-based labeling, configurable highlighting, healer food-count tracking, and healer-code support.
 
 
 
@@ -14,21 +14,29 @@ It displays the observed spawn order of Penance Healers, highlights them in the 
 
 
 
-\- Assigns each Penance Healer a spawn-order number.
+\* Assigns each Penance Healer a spawn-order number.
 
-\- Displays the assigned number above each tracked healer.
+\* Displays optional labels above each tracked healer.
 
-\- Draws a configurable hull outline around each tracked healer.
+\* Supports spawn-order labels or time-based BA healer labels.
 
-\- Preserves assigned healer numbers when healers leave and re-enter render distance.
+\* Supports configurable highlight styles: none, tile, or hull.
 
-\- Tracks successful poisoned-food usage by healer number.
+\* Preserves assigned healer numbers when healers leave and re-enter render distance.
 
-\- Displays an optional semi-transparent food-count panel.
+\* Tracks successful poisoned-food usage by healer number.
 
-\- Optionally displays each healer’s food count directly on the NPC.
+\* Displays an optional semi-transparent food-count panel.
 
-\- Supports configurable hull color, number color, number size, food-count color, food-count size, and food-count height.
+\* Optionally displays each healer’s food count directly on the NPC.
+
+\* Supports count-up and count-down food display modes.
+
+\* Supports configurable healer roles and healer-code lists.
+
+\* Supports stack handling by spreading labels when multiple healers occupy the same tile.
+
+\* Supports configurable highlight color, label color, label size, food-count color, food-count size, food-count height, and stacked-label spacing.
 
 
 
@@ -44,6 +52,58 @@ The plugin does not count every menu click as a successful feed. Instead, it tra
 
 
 
+\## Labeling
+
+
+
+The plugin can label healers using either simple spawn-order numbering or time-based BA healer labels.
+
+
+
+Spawn-order labels display healers as:
+
+
+
+```text
+
+1, 2, 3, 4...
+
+```
+
+
+
+Time-based labels display healers using common BA timing labels, such as:
+
+
+
+```text
+
+6, 12, 18, 24, R1, R2...
+
+```
+
+
+
+Labels can also be disabled entirely.
+
+
+
+\## Highlighting
+
+
+
+Tracked healers can be highlighted using one of three styles:
+
+
+
+\* \*\*None\*\*: No healer highlight is drawn.
+
+\* \*\*Tile\*\*: Highlights the healer’s tile.
+
+\* \*\*Hull\*\*: Draws an outline around the healer’s model.
+
+
+
 \## Food Count Panel
 
 
@@ -52,11 +112,31 @@ The food-count panel lists each tracked healer by spawn order and shows how many
 
 
 
+\## Healer Codes and Roles
+
+
+
+BA Healer Utilities supports configurable healer roles and wave-based healer-code lists. These settings can be used to display expected food counts for each healer based on the selected role and wave configuration.
+
+
+
+\## Stack Handling
+
+
+
+When multiple Penance Healers occupy the same tile, BA Healer Utilities can horizontally spread their labels so the healer numbers are easier to read.
+
+
+
+This helps prevent stacked healers from hiding each other’s labels.
+
+
+
 \## Credits
 
 
 
-Thanks to slayermusiq for contributing improvements to the food-count overlay and helping with the project.
+Thanks to Brehski/vibecodeandy for contributing improvements and helping a ton with the project.
 
 
 
@@ -64,5 +144,23 @@ Thanks to slayermusiq for contributing improvements to the food-count overlay an
 
 
 
-BA Healer Order does not automate gameplay. It provides visual tracking for Penance Healer spawn order and poisoned-food usage.
+BA Healer Utilities does not automate gameplay. It provides visual tracking for Penance Healer spawn order, labels, highlighting, and poisoned-food usage.
+
+
+
+\## Version History
+
+
+
+\* \*\*1.0.0\*\* - Added basic healer highlighting, numbering, and food-fed tracking.
+
+\* \*\*1.0.2\*\* - Added food-fed counts directly on Healer NPCs and text configuration options.
+
+\* \*\*1.0.3\*\* - Added time-based numbering option for healer labels.
+
+\* \*\*1.0.4\*\* - Added healer-code configuration and healer roles.
+
+\* \*\*1.0.5\*\* - Added stack handling logic, highlight style options, label display options, and config cleanup.
+
+
 
