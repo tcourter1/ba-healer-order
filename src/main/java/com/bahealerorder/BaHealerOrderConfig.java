@@ -364,85 +364,85 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "soloWave4",
             name = "Solo Wave 4",
-            description = "Comma-separated expected food per healer for solo wave 4",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and add more lines for +30s increments.",
             section = soloRoleSection,
             position = 4
     )
     default String soloWave4()
     {
-        return "5";
+        return "2-5-4\n0-0-0-7";
     }
 
     @ConfigItem(
             keyName = "soloWave5",
             name = "Solo Wave 5",
-            description = "Comma-separated expected food per healer for solo wave 5",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and add more lines for +30s increments.",
             section = soloRoleSection,
             position = 5
     )
     default String soloWave5()
     {
-        return "5";
+        return "2-7-2-1\n0-0-0-2-5";
     }
 
     @ConfigItem(
             keyName = "soloWave6",
             name = "Solo Wave 6",
-            description = "Comma-separated expected food per healer for solo wave 6",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and add more lines for +30s increments.",
             section = soloRoleSection,
             position = 6
     )
     default String soloWave6()
     {
-        return "";
+        return "3-5-2-2\n0-0-0-1-10-12";
     }
 
     @ConfigItem(
             keyName = "soloWave7",
             name = "Solo Wave 7",
-            description = "Comma-separated expected food per healer for solo wave 7",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and add more lines for +30s increments.",
             section = soloRoleSection,
             position = 7
     )
     default String soloWave7()
     {
-        return "";
+        return "3-7-1-1\n2-0-1-1-2-1\n0-0-0-0-0-1";
     }
 
     @ConfigItem(
             keyName = "soloWave8",
             name = "Solo Wave 8",
-            description = "Comma-separated expected food per healer for solo wave 8",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and add more lines for +30s increments.",
             section = soloRoleSection,
             position = 8
     )
     default String soloWave8()
     {
-        return "";
+        return "1-9-1-1\n1-0-1-1-2-2\n0-0-0-0-0-2";
     }
 
     @ConfigItem(
             keyName = "soloWave9",
             name = "Solo Wave 9",
-            description = "Comma-separated expected food per healer for solo wave 9",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and add more lines for +30s increments.",
             section = soloRoleSection,
             position = 9
     )
     default String soloWave9()
     {
-        return "";
+        return "2-8-1-1\n1-0-1-1-2-1-1\n0-0-0-0-1-4-6";
     }
 
     @ConfigItem(
             keyName = "soloWave10",
             name = "Solo Wave 10",
-            description = "Comma-separated expected food per healer for solo wave 10",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and add more lines for +30s increments.",
             section = soloRoleSection,
             position = 10
     )
     default String soloWave10()
     {
-        return "";
+        return "3-7-1-1\n1-0-1-1-2-2\n0-0-0-0-0-4";
     }
 
     @ConfigItem(
