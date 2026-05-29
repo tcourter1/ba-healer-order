@@ -64,6 +64,12 @@ public class BaHealerOrderOverlay extends Overlay
 
 			renderHighlight(graphics, npc);
 
+			String targetText = plugin.getHealerTarget(order);
+			if (targetText != null)
+			{
+				renderTargetText(graphics, npc, targetText, xOffset);
+			}
+
 			if (config.healerLabelStyle() != BaHealerOrderConfig.HealerLabelStyle.NONE)
 			{
 				renderNumber(graphics, npc, order, xOffset);
@@ -202,6 +208,26 @@ public class BaHealerOrderOverlay extends Overlay
 				graphics,
 				text,
 				npc.getLogicalHeight() + TEXT_Z_OFFSET
+		);
+
+		if (textLocation == null)
+		{
+			return;
+		}
+
+		Font originalFont = graphics.getFont();
+
+		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.textSize()));
+		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, config.textColor());
+		graphics.setFont(originalFont);
+	}
+
+	private void renderTargetText(Graphics2D graphics, NPC npc, String text, int xOffset)
+	{
+		Point textLocation = npc.getCanvasTextLocation(
+				graphics,
+				text,
+				npc.getLogicalHeight() + TEXT_Z_OFFSET + 18
 		);
 
 		if (textLocation == null)

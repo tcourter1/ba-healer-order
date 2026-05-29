@@ -95,6 +95,7 @@ public class BaHealerOrderPlugin extends Plugin
     
 
 	private static final Pattern WAVE_PATTERN = Pattern.compile(".*---- Wave: (10|[1-9]) ----.*");
+	private static final Pattern FOOD_PART_PATTERN = Pattern.compile("^\\s*(\\d+)(?:\\(([^)]*)\\))?");
 
 	@Override
 	protected void startUp()
@@ -330,29 +331,125 @@ public class BaHealerOrderPlugin extends Plugin
 			return 0;
 		}
 
-		List<int[]> progression = parseWaveFoodConfig(waveConfig);
+		List<WaveProgressionStep> progression = parseWaveFoodConfig(waveConfig);
 		if (progression.isEmpty())
 		{
 			return 0;
 		}
 
 		int orderIndex = healerOrder - 1;
-		int expectedFood = getValueAtLine(progression.get(0), orderIndex);
+		int expectedFood = getValueAtLine(progression.get(0).amounts, orderIndex);
 		int stepIndex = (int) (getCurrentWaveElapsedSeconds() / WAVE_INCREMENT_INTERVAL_SECONDS);
 
 		for (int i = 1; i < progression.size() && i <= stepIndex; i++)
 		{
-			expectedFood += getValueAtLine(progression.get(i), orderIndex);
+			expectedFood += getValueAtLine(progression.get(i).amounts, orderIndex);
 		}
 
 		return expectedFood;
 	}
 
-	private List<int[]> parseWaveFoodConfig(String waveConfig)
+	public String getHealerTarget(int healerOrder)
 	{
-		List<int[]> progression = new ArrayList<>();
+		if (healerOrder <= 0)
+		{
+			return null;
+		}
 
-		for (String rawLine : waveConfig.split("\\r?\\n"))
+		String waveConfig = "";
+		BaHealerOrderConfig.HealerRole selectedRole = config.healerRole();
+
+		switch (selectedRole)
+		{
+			case TAG:
+				waveConfig = getTagWaveConfig(currentWave);
+				break;
+			case SPAM:
+				waveConfig = getSpamWaveConfig(currentWave);
+				break;
+			case SOLO:
+				waveConfig = getSoloWaveConfig(currentWave);
+				break;
+			default:
+				waveConfig = "";
+				break;
+		}
+
+		return getHealerTarget(healerOrder, waveConfig);
+	}
+
+	public String getHealerTarget(int healerOrder, BaHealerOrderConfig.HealerRole listRole)
+	{
+		if (healerOrder <= 0)
+		{
+			return null;
+		}
+
+		String waveConfig = "";
+
+		switch (listRole)
+		{
+			case TAG:
+				waveConfig = getTagWaveConfig(currentWave);
+				break;
+			case SPAM:
+				waveConfig = getSpamWaveConfig(currentWave);
+				break;
+			case SOLO:
+				waveConfig = getSoloWaveConfig(currentWave);
+				break;
+			default:
+				waveConfig = "";
+				break;
+		}
+
+		return getHealerTarget(healerOrder, waveConfig);
+	}
+
+	private String getHealerTarget(int healerOrder, String waveConfig)
+	{
+		if (healerOrder <= 0 || waveConfig == null || waveConfig.isEmpty())
+		{
+			return null;
+		}
+
+		List<WaveProgressionStep> progression = parseWaveFoodConfig(waveConfig);
+		if (progression.isEmpty())
+		{
+			return null;
+		}
+
+		int orderIndex = healerOrder - 1;
+		int stepIndex = (int) (getCurrentWaveElapsedSeconds() / WAVE_INCREMENT_INTERVAL_SECONDS);
+		String target = null;
+
+		for (int i = 0; i < progression.size() && i <= stepIndex; i++)
+		{
+			String lineTarget = getTargetAtLine(progression.get(i), orderIndex);
+			if (lineTarget != null)
+			{
+				target = lineTarget;
+			}
+		}
+
+		if (target == null)
+		{
+			return null;
+		}
+
+		return "(" + target + ")";
+	}
+
+	private List<WaveProgressionStep> parseWaveFoodConfig(String waveConfig)
+	{
+		List<WaveProgressionStep> progression = new ArrayList<>();
+
+		if (waveConfig == null || waveConfig.isEmpty())
+		{
+			return progression;
+		}
+
+		for (String rawLine : waveConfig.split("\\\\|\\r?\\n"))
 		{
 			if (rawLine == null)
 			{
@@ -367,30 +464,83 @@ public class BaHealerOrderPlugin extends Plugin
 
 			String[] parts = line.split("\\s*[-,]\\s*");
 			int[] values = new int[parts.length];
+			String[] targets = new String[parts.length];
+			int parsedCount = 0;
 
 			for (int i = 0; i < parts.length; i++)
 			{
 				String part = parts[i].trim();
 				if (part.isEmpty())
 				{
-					values[i] = 0;
+					continue;
+				}
+
+				part = part.replaceAll("\\[[^]]*\\]", "");
+				Matcher matcher = FOOD_PART_PATTERN.matcher(part);
+				if (!matcher.find())
+				{
 					continue;
 				}
 
 				try
 				{
-					values[i] = Integer.parseInt(part);
+					values[parsedCount] = Integer.parseInt(matcher.group(1));
 				}
 				catch (NumberFormatException ex)
 				{
-					values[i] = 0;
+					values[parsedCount] = 0;
 				}
+
+				if (matcher.group(2) != null && !matcher.group(2).trim().isEmpty())
+				{
+					targets[parsedCount] = matcher.group(2).trim();
+				}
+
+				parsedCount++;
 			}
 
-			progression.add(values);
+			if (parsedCount == 0)
+			{
+				continue;
+			}
+
+			if (parsedCount < values.length)
+			{
+				int[] trimmedValues = new int[parsedCount];
+				String[] trimmedTargets = new String[parsedCount];
+				System.arraycopy(values, 0, trimmedValues, 0, parsedCount);
+				System.arraycopy(targets, 0, trimmedTargets, 0, parsedCount);
+				progression.add(new WaveProgressionStep(trimmedValues, trimmedTargets));
+			}
+			else
+			{
+				progression.add(new WaveProgressionStep(values, targets));
+			}
 		}
 
 		return progression;
+	}
+
+	private String getTargetAtLine(WaveProgressionStep step, int orderIndex)
+	{
+		if (step == null || step.targets == null || orderIndex < 0 || orderIndex >= step.targets.length)
+		{
+			return null;
+		}
+
+		return step.targets[orderIndex];
+	}
+
+	private static class WaveProgressionStep
+	{
+		private final int[] amounts;
+		private final String[] targets;
+
+		private WaveProgressionStep(int[] amounts, String[] targets)
+		{
+			this.amounts = amounts;
+			this.targets = targets;
+		}
 	}
 
 	private int getValueAtLine(int[] values, int orderIndex)

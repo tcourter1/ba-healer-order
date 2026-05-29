@@ -328,7 +328,7 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "soloWave1",
             name = "Solo Wave 1",
-            description = "Initial and timed-increment values per healer. Use '-' to separate values and add more lines for +30s increments.",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and use newlines or backslashes for +30s increments.",
             section = soloRoleSection,
             position = 1
     )
@@ -340,7 +340,7 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "soloWave2",
             name = "Solo Wave 2",
-            description = "Comma-separated expected food per healer for solo wave 2",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and use newlines or backslashes for +30s increments.",
             section = soloRoleSection,
             position = 2
     )
@@ -352,7 +352,7 @@ public interface BaHealerOrderConfig extends Config
     @ConfigItem(
             keyName = "soloWave3",
             name = "Solo Wave 3",
-            description = "Comma-separated expected food per healer for solo wave 3",
+            description = "Initial and timed-increment values per healer. Use '-' to separate values and use newlines or backslashes for +30s increments.",
             section = soloRoleSection,
             position = 3
     )
@@ -406,7 +406,7 @@ public interface BaHealerOrderConfig extends Config
     )
     default String soloWave7()
     {
-        return "3-7-1-1\n2-0-1-1-2-1\n0-0-0-0-0-1";
+        return "2(21)-4(24)-1-1\n1(33)-1-1-1-3(48)-1\n0-0-0-0-1-3-6";
     }
 
     @ConfigItem(
@@ -418,7 +418,7 @@ public interface BaHealerOrderConfig extends Config
     )
     default String soloWave8()
     {
-        return "1-9-1-1\n1-0-1-1-2-2\n0-0-0-0-0-2";
+        return "2-4(24)-1-1\n1-1-1-1-2-1\n0-0-0-0-0-4-7";
     }
 
     @ConfigItem(
@@ -430,7 +430,7 @@ public interface BaHealerOrderConfig extends Config
     )
     default String soloWave9()
     {
-        return "2-8-1-1\n1-0-1-1-2-1-1\n0-0-0-0-1-4-6";
+        return "2(18)-4(24)-1-1\n1(33)-2-1-1-1-1-1\n0-0-0-0-1-2-4-6";
     }
 
     @ConfigItem(
@@ -442,7 +442,7 @@ public interface BaHealerOrderConfig extends Config
     )
     default String soloWave10()
     {
-        return "3-7-1-1\n1-0-1-1-2-2\n0-0-0-0-0-4";
+        return "2(21)-4(24)-1-1\n1(33)-1-1-1-3(48)-1\n0-0-0-0-1-3-6";
     }
 
     @ConfigItem(
