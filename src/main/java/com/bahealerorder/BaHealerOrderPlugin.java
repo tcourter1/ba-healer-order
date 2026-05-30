@@ -1,6 +1,16 @@
 package com.bahealerorder;
 
+import com.bahealerorder.codes.CodeDisplayState;
+import com.bahealerorder.codes.FeedEvent;
+import com.bahealerorder.codes.HealerCodeStatus;
+import com.bahealerorder.codes.WaveCode;
 import com.google.inject.Provides;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -22,16 +33,20 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.NPC;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
@@ -46,12 +61,11 @@ public class BaHealerOrderPlugin extends Plugin
 {
 	private static final String PENANCE_HEALER_NAME = "Penance Healer";
 	private static final String WRONG_FOOD_MESSAGE = "that's the wrong type of poisoned food to use! penalty!";
+	private static final String PANEL_ICON_RESOURCE = "/com/bahealerorder/penance_healer.png";
+	private static final int BA_HEALER_GROUP_ID = 488;
+	private static final int BA_HEALER_CALL_CHILD_ID = 9;
 	private static final Pattern WAVE_START_PATTERN = Pattern.compile(".*\\bwave:\\s*(\\d+)\\b.*");
 	private static final Pattern WAVE_PATTERN = Pattern.compile(".*---- Wave: (10|[1-9]) ----.*");
-	private static final Pattern FOOD_PART_PATTERN = Pattern.compile("^\\s*(\\d+)(?:\\(([^)]*)\\))?");
-
-	private static final int WAVE_INCREMENT_INTERVAL_SECONDS = 30;
-
 	private static final String[][] TIME_BASED_HEALER_LABELS = {
 			{},
 			{"6", "12"},
@@ -74,10 +88,19 @@ public class BaHealerOrderPlugin extends Plugin
 	private OverlayManager overlayManager;
 
 	@Inject
+	private ClientToolbar clientToolbar;
+
+	@Inject
 	private BaHealerOrderOverlay overlay;
 
 	@Inject
 	private BaHealerOrderFoodOverlay foodOverlay;
+
+	@Inject
+	private BaHealerOrderPanel panel;
+
+	@Inject
+	private BaHealerCodeManager codeManager;
 
 	@Inject
 	private BaHealerOrderConfig config;
@@ -91,23 +114,45 @@ public class BaHealerOrderPlugin extends Plugin
 	@Getter
 	private final Map<Integer, Integer> foodFedByHealerOrder = new HashMap<>();
 
+	@Getter
+	private final List<FeedEvent> feedEvents = new ArrayList<>();
+
 	private int nextHealerNumber = 1;
 	private int currentWave = -1;
+	private int currentCallIndex = 0;
 	private long waveStartTimeMs = -1;
+	private String lastCallText;
+	private String currentCallText;
+	private String currentCallSource;
+	private boolean callTrackingArmed;
 	private Integer selectedPoisonedFoodItemId;
 	private PendingFeedAttempt pendingFeedAttempt;
+	private NavigationButton navigationButton;
 
 	@Override
 	protected void startUp()
 	{
+		codeManager.load();
+		panel.refreshAll();
 		resetAllState();
 		overlayManager.add(overlay);
 		overlayManager.add(foodOverlay);
+		navigationButton = NavigationButton.builder()
+				.tooltip("BA Healer Utilities")
+				.icon(createPanelIcon())
+				.panel(panel)
+				.build();
+		clientToolbar.addNavigation(navigationButton);
 	}
 
 	@Override
 	protected void shutDown()
 	{
+		if (navigationButton != null)
+		{
+			clientToolbar.removeNavigation(navigationButton);
+			navigationButton = null;
+		}
 		overlayManager.remove(foodOverlay);
 		overlayManager.remove(overlay);
 		resetAllState();
@@ -208,8 +253,15 @@ public class BaHealerOrderPlugin extends Plugin
 
 		int healerOrder = pendingFeedAttempt.healerOrder;
 		foodFedByHealerOrder.merge(healerOrder, 1, Integer::sum);
+		feedEvents.add(new FeedEvent(healerOrder, Math.round(getCurrentWaveElapsedSeconds()), currentCallIndex));
 
 		pendingFeedAttempt = null;
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick event)
+	{
+		updateCallIndexFromHealerWidget();
 	}
 
 	@Subscribe
@@ -287,6 +339,32 @@ public class BaHealerOrderPlugin extends Plugin
 		return getCurrentWaveElapsedMillis() / 1000f;
 	}
 
+	public int getCurrentCallIndex()
+	{
+		return currentCallIndex;
+	}
+
+	public String getLastCallText()
+	{
+		return lastCallText;
+	}
+
+	public String getCurrentCallText()
+	{
+		return currentCallText;
+	}
+
+	public String getCurrentCallSource()
+	{
+		return currentCallSource;
+	}
+
+	public String getCurrentWaveCodeSource()
+	{
+		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
+		return waveCode == null ? null : waveCode.getSourceText();
+	}
+
 	public int getExpectedFoodForOrder(int healerOrder)
 	{
 		if (healerOrder <= 0)
@@ -294,54 +372,7 @@ public class BaHealerOrderPlugin extends Plugin
 			return 0;
 		}
 
-		String waveConfig = "";
-		BaHealerOrderConfig.HealerRole selectedRole = config.healerRole();
-
-		switch (selectedRole)
-		{
-			case TAG:
-				waveConfig = getTagWaveConfig(currentWave);
-				break;
-			case SPAM:
-				waveConfig = getSpamWaveConfig(currentWave);
-				break;
-			case SOLO:
-				waveConfig = getSoloWaveConfig(currentWave);
-				break;
-			default:
-				waveConfig = "";
-				break;
-		}
-
-		return getExpectedFoodForOrder(healerOrder, waveConfig);
-	}
-
-	public int getExpectedFoodForOrder(int healerOrder, BaHealerOrderConfig.HealerRole listRole)
-	{
-		if (healerOrder <= 0)
-		{
-			return 0;
-		}
-
-		String waveConfig = "";
-
-		switch (listRole)
-		{
-			case TAG:
-				waveConfig = getTagWaveConfig(currentWave);
-				break;
-			case SPAM:
-				waveConfig = getSpamWaveConfig(currentWave);
-				break;
-			case SOLO:
-				waveConfig = getSoloWaveConfig(currentWave);
-				break;
-			default:
-				waveConfig = "";
-				break;
-		}
-
-		return getExpectedFoodForOrder(healerOrder, waveConfig);
+		return codeManager.getExpectedFoodForOrder(currentWave, healerOrder, currentCallIndex);
 	}
 
 	public String getHealerTarget(int healerOrder)
@@ -351,59 +382,71 @@ public class BaHealerOrderPlugin extends Plugin
 			return null;
 		}
 
-		String waveConfig = "";
-		BaHealerOrderConfig.HealerRole selectedRole = config.healerRole();
-
-		switch (selectedRole)
-		{
-			case TAG:
-				waveConfig = getTagWaveConfig(currentWave);
-				break;
-			case SPAM:
-				waveConfig = getSpamWaveConfig(currentWave);
-				break;
-			case SOLO:
-				waveConfig = getSoloWaveConfig(currentWave);
-				break;
-			default:
-				waveConfig = "";
-				break;
-		}
-
-		return getHealerTarget(healerOrder, waveConfig);
-	}
-
-	public String getHealerTarget(int healerOrder, BaHealerOrderConfig.HealerRole listRole)
-	{
-		if (healerOrder <= 0)
-		{
-			return null;
-		}
-
-		String waveConfig = "";
-
-		switch (listRole)
-		{
-			case TAG:
-				waveConfig = getTagWaveConfig(currentWave);
-				break;
-			case SPAM:
-				waveConfig = getSpamWaveConfig(currentWave);
-				break;
-			case SOLO:
-				waveConfig = getSoloWaveConfig(currentWave);
-				break;
-			default:
-				waveConfig = "";
-				break;
-		}
-
-		return getHealerTarget(healerOrder, waveConfig);
+		HealerCodeStatus status = getCurrentCodeStatus(healerOrder);
+		return status == null ? null : formatCodeStatus(status);
 	}
 
 	public Map<NPC, Integer> getTrackedHealers()
 	{
 		return Collections.unmodifiableMap(visibleHealers);
+	}
+
+	public HealerCodeStatus getCurrentCodeStatus(int healerOrder)
+	{
+		return codeManager.getCurrentStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
+	}
+
+	public HealerCodeStatus getPreviousCodeStatus(int healerOrder)
+	{
+		return codeManager.getPreviousStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
+	}
+
+	public HealerCodeStatus getDisplayCodeStatus(int healerOrder)
+	{
+		return codeManager.getDisplayStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
+	}
+
+	public String formatCodeStatus(HealerCodeStatus status)
+	{
+		if (status == null || status.getInstruction() == null || !status.getInstruction().hasTarget())
+		{
+			return null;
+		}
+
+		StringBuilder builder = new StringBuilder();
+		builder.append(status.getFoodFed()).append('/').append(status.getInstruction().getTargetFoodCount());
+
+		if (status.getInstruction().getAfterSeconds() != null)
+		{
+			builder.append(" (").append(status.getInstruction().getAfterSeconds()).append(')');
+		}
+
+		if (status.getInstruction().getBeforeSeconds() != null)
+		{
+			builder.append(" [").append(status.getInstruction().getBeforeSeconds()).append(']');
+		}
+
+		return builder.toString();
+	}
+
+	public Color getCodeStatusColor(CodeDisplayState state)
+	{
+		if (state == CodeDisplayState.COMPLETE)
+		{
+			return new Color(0, 220, 0);
+		}
+
+		if (state == CodeDisplayState.PREVIOUS)
+		{
+			return new Color(150, 150, 150);
+		}
+
+		if (state == CodeDisplayState.IN_PROGRESS)
+		{
+			return new Color(255, 150, 0);
+		}
+
+		return new Color(255, 60, 60);
 	}
 
 	public String getHealerLabel(int healerOrder)
@@ -436,10 +479,16 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		this.currentWave = waveNumber;
+		this.currentCallIndex = 0;
 		this.waveStartTimeMs = System.currentTimeMillis();
+		this.lastCallText = null;
+		this.currentCallText = null;
+		this.currentCallSource = null;
+		this.callTrackingArmed = false;
 		visibleHealers.clear();
 		healerOrderByNpcIndex.clear();
 		foodFedByHealerOrder.clear();
+		feedEvents.clear();
 		pendingFeedAttempt = null;
 		selectedPoisonedFoodItemId = null;
 		nextHealerNumber = 1;
@@ -447,224 +496,73 @@ public class BaHealerOrderPlugin extends Plugin
 		log.debug("Starting new BA wave {}", waveNumber);
 	}
 
-	private int getExpectedFoodForOrder(int healerOrder, String waveConfig)
+	private void updateCallIndexFromHealerWidget()
 	{
-		if (healerOrder <= 0 || waveConfig == null || waveConfig.isEmpty())
+		if (currentWave <= 0)
 		{
-			return 0;
+			return;
 		}
 
-		List<WaveProgressionStep> progression = parseWaveFoodConfig(waveConfig);
+		String callText = getHealerCallText();
 
-		if (progression.isEmpty())
+		if (callText == null || callText.isEmpty())
 		{
-			return 0;
+			return;
 		}
 
-		int orderIndex = healerOrder - 1;
-		int expectedFood = getValueAtLine(progression.get(0).amounts, orderIndex);
-		int stepIndex = (int) (getCurrentWaveElapsedSeconds() / WAVE_INCREMENT_INTERVAL_SECONDS);
-
-		for (int i = 1; i < progression.size() && i <= stepIndex; i++)
+		if (lastCallText == null)
 		{
-			expectedFood += getValueAtLine(progression.get(i).amounts, orderIndex);
+			lastCallText = callText;
+			return;
 		}
 
-		return expectedFood;
+		if (!callTrackingArmed)
+		{
+			lastCallText = callText;
+			callTrackingArmed = true;
+			return;
+		}
+
+		if (!lastCallText.equals(callText))
+		{
+			currentCallIndex++;
+			lastCallText = callText;
+			log.debug("BA healer call changed to {} at wave {} call {}", callText, currentWave, currentCallIndex);
+		}
 	}
 
-	private String getHealerTarget(int healerOrder, String waveConfig)
+	private String getHealerCallText()
 	{
-		if (healerOrder <= 0 || waveConfig == null || waveConfig.isEmpty())
+		WidgetText callText = getWidgetText(BA_HEALER_GROUP_ID, BA_HEALER_CALL_CHILD_ID, "healer call");
+
+		if (callText == null)
+		{
+			currentCallSource = null;
+			currentCallText = null;
+			return null;
+		}
+
+		currentCallSource = callText.source;
+		currentCallText = normalizeCallText(callText.text);
+		return currentCallText;
+	}
+
+	private WidgetText getWidgetText(int groupId, int childId, String source)
+	{
+		Widget widget = client.getWidget(groupId, childId);
+
+		if (widget == null || widget.getText() == null)
 		{
 			return null;
 		}
 
-		List<WaveProgressionStep> progression = parseWaveFoodConfig(waveConfig);
-
-		if (progression.isEmpty())
-		{
-			return null;
-		}
-
-		int orderIndex = healerOrder - 1;
-		int stepIndex = (int) (getCurrentWaveElapsedSeconds() / WAVE_INCREMENT_INTERVAL_SECONDS);
-		String target = null;
-
-		for (int i = 0; i < progression.size() && i <= stepIndex; i++)
-		{
-			String lineTarget = getTargetAtLine(progression.get(i), orderIndex);
-
-			if (lineTarget != null)
-			{
-				target = lineTarget;
-			}
-		}
-
-		if (target == null)
-		{
-			return null;
-		}
-
-		return "(" + target + ")";
+		String text = Text.removeTags(widget.getText()).trim();
+		return text.isEmpty() ? null : new WidgetText(text, source + " " + groupId + ":" + childId);
 	}
 
-	private List<WaveProgressionStep> parseWaveFoodConfig(String waveConfig)
+	private String normalizeCallText(String text)
 	{
-		List<WaveProgressionStep> progression = new ArrayList<>();
-
-		if (waveConfig == null || waveConfig.isEmpty())
-		{
-			return progression;
-		}
-
-		for (String rawLine : waveConfig.split("\\\\|\\r?\\n"))
-		{
-			if (rawLine == null)
-			{
-				continue;
-			}
-
-			String line = rawLine.trim();
-
-			if (line.isEmpty())
-			{
-				continue;
-			}
-
-			String[] parts = line.split("\\s*[-,]\\s*");
-			int[] values = new int[parts.length];
-			String[] targets = new String[parts.length];
-			int parsedCount = 0;
-
-			for (String rawPart : parts)
-			{
-				String part = rawPart.trim();
-
-				if (part.isEmpty())
-				{
-					continue;
-				}
-
-				part = part.replaceAll("\\[[^]]*\\]", "");
-				Matcher matcher = FOOD_PART_PATTERN.matcher(part);
-
-				if (!matcher.find())
-				{
-					continue;
-				}
-
-				try
-				{
-					values[parsedCount] = Integer.parseInt(matcher.group(1));
-				}
-				catch (NumberFormatException ex)
-				{
-					values[parsedCount] = 0;
-				}
-
-				if (matcher.group(2) != null && !matcher.group(2).trim().isEmpty())
-				{
-					targets[parsedCount] = matcher.group(2).trim();
-				}
-
-				parsedCount++;
-			}
-
-			if (parsedCount == 0)
-			{
-				continue;
-			}
-
-			if (parsedCount < values.length)
-			{
-				int[] trimmedValues = new int[parsedCount];
-				String[] trimmedTargets = new String[parsedCount];
-				System.arraycopy(values, 0, trimmedValues, 0, parsedCount);
-				System.arraycopy(targets, 0, trimmedTargets, 0, parsedCount);
-				progression.add(new WaveProgressionStep(trimmedValues, trimmedTargets));
-			}
-			else
-			{
-				progression.add(new WaveProgressionStep(values, targets));
-			}
-		}
-
-		return progression;
-	}
-
-	private String getTargetAtLine(WaveProgressionStep step, int orderIndex)
-	{
-		if (step == null || step.targets == null || orderIndex < 0 || orderIndex >= step.targets.length)
-		{
-			return null;
-		}
-
-		return step.targets[orderIndex];
-	}
-
-	private int getValueAtLine(int[] values, int orderIndex)
-	{
-		if (values == null || orderIndex < 0 || orderIndex >= values.length)
-		{
-			return 0;
-		}
-
-		return values[orderIndex];
-	}
-
-	private String getTagWaveConfig(int wave)
-	{
-		switch (wave)
-		{
-			case 1: return config.tagWave1();
-			case 2: return config.tagWave2();
-			case 3: return config.tagWave3();
-			case 4: return config.tagWave4();
-			case 5: return config.tagWave5();
-			case 6: return config.tagWave6();
-			case 7: return config.tagWave7();
-			case 8: return config.tagWave8();
-			case 9: return config.tagWave9();
-			case 10: return config.tagWave10();
-			default: return "";
-		}
-	}
-
-	private String getSpamWaveConfig(int wave)
-	{
-		switch (wave)
-		{
-			case 1: return config.spamWave1();
-			case 2: return config.spamWave2();
-			case 3: return config.spamWave3();
-			case 4: return config.spamWave4();
-			case 5: return config.spamWave5();
-			case 6: return config.spamWave6();
-			case 7: return config.spamWave7();
-			case 8: return config.spamWave8();
-			case 9: return config.spamWave9();
-			case 10: return config.spamWave10();
-			default: return "";
-		}
-	}
-
-	private String getSoloWaveConfig(int wave)
-	{
-		switch (wave)
-		{
-			case 1: return config.soloWave1();
-			case 2: return config.soloWave2();
-			case 3: return config.soloWave3();
-			case 4: return config.soloWave4();
-			case 5: return config.soloWave5();
-			case 6: return config.soloWave6();
-			case 7: return config.soloWave7();
-			case 8: return config.soloWave8();
-			case 9: return config.soloWave9();
-			case 10: return config.soloWave10();
-			default: return "";
-		}
+		return text.toLowerCase(Locale.ROOT);
 	}
 
 	private void handlePoisonedFoodSelection(MenuOptionClicked event, String option, String target)
@@ -851,8 +749,14 @@ public class BaHealerOrderPlugin extends Plugin
 		visibleHealers.clear();
 		healerOrderByNpcIndex.clear();
 		foodFedByHealerOrder.clear();
+		feedEvents.clear();
 		pendingFeedAttempt = null;
 		selectedPoisonedFoodItemId = null;
+		currentCallIndex = 0;
+		lastCallText = null;
+		currentCallText = null;
+		currentCallSource = null;
+		callTrackingArmed = false;
 		waveStartTimeMs = -1;
 		nextHealerNumber = 1;
 	}
@@ -869,16 +773,33 @@ public class BaHealerOrderPlugin extends Plugin
 		return configManager.getConfig(BaHealerOrderConfig.class);
 	}
 
-	private static class WaveProgressionStep
+	private BufferedImage createPanelIcon()
 	{
-		private final int[] amounts;
-		private final String[] targets;
-
-		private WaveProgressionStep(int[] amounts, String[] targets)
+		try (InputStream inputStream = getClass().getResourceAsStream(PANEL_ICON_RESOURCE))
 		{
-			this.amounts = amounts;
-			this.targets = targets;
+			if (inputStream != null)
+			{
+				BufferedImage source = ImageIO.read(inputStream);
+				BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+				Graphics2D graphics = image.createGraphics();
+				graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+				graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+				graphics.drawImage(source, 0, 0, 16, 16, null);
+				graphics.dispose();
+				return image;
+			}
 		}
+		catch (IOException ex)
+		{
+			log.debug("Unable to load BA healer panel icon", ex);
+		}
+
+		BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setColor(new Color(0, 125, 70));
+		graphics.fillOval(1, 1, 14, 14);
+		graphics.dispose();
+		return image;
 	}
 
 	private static class PendingFeedAttempt
@@ -892,6 +813,18 @@ public class BaHealerOrderPlugin extends Plugin
 			this.healerOrder = healerOrder;
 			this.foodItemId = foodItemId;
 			this.foodCountBeforeUse = foodCountBeforeUse;
+		}
+	}
+
+	private static class WidgetText
+	{
+		private final String text;
+		private final String source;
+
+		private WidgetText(String text, String source)
+		{
+			this.text = text;
+			this.source = source;
 		}
 	}
 }

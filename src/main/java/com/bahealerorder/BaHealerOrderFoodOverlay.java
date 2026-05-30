@@ -29,14 +29,14 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
         this.config = config;
 
         setPosition(OverlayPosition.TOP_LEFT);
-        panelComponent.setPreferredSize(new Dimension(140, 0));
+        panelComponent.setPreferredSize(new Dimension(220, 0));
         panelComponent.setBackgroundColor(PANEL_BACKGROUND);
     }
 
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (!config.showFoodPanel())
+        if (!config.showFoodPanel() || plugin.getCurrentWave() <= 0)
         {
             return null;
         }
@@ -49,11 +49,6 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
                 .distinct()
                 .sorted(Comparator.naturalOrder())
                 .collect(Collectors.toList());
-
-        if (healerOrders.isEmpty())
-        {
-            return null;
-        }
 
         String title = "BA Healer Order";
         int wave = plugin.getCurrentWave();
@@ -86,6 +81,42 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
                 );
         }
 
+        addCurrentWaveCode();
+
         return super.render(graphics);
     }
+
+    private void addCurrentWaveCode()
+    {
+        String sourceText = plugin.getCurrentWaveCodeSource();
+
+        if (sourceText == null || sourceText.isEmpty())
+        {
+            return;
+        }
+
+        panelComponent.getChildren().add(
+            LineComponent.builder()
+                    .left("")
+                    .build()
+        );
+
+        panelComponent.getChildren().add(
+            TitleComponent.builder()
+                    .text("Current Code")
+                    .color(TITLE_COLOR)
+                    .build()
+        );
+
+        for (String line : sourceText.split("\\r?\\n", -1))
+        {
+            panelComponent.getChildren().add(
+                LineComponent.builder()
+                        .left(line.isEmpty() ? " " : line)
+                        .leftColor(TEXT_COLOR)
+                        .build()
+            );
+        }
+    }
+
 }

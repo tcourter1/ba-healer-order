@@ -1,5 +1,6 @@
 package com.bahealerorder;
 
+import com.bahealerorder.codes.HealerCodeStatus;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -64,12 +65,6 @@ public class BaHealerOrderOverlay extends Overlay
 			int xOffset = xOffsets.getOrDefault(npc, 0);
 
 			renderHighlight(graphics, npc);
-
-			String targetText = plugin.getHealerTarget(order);
-			if (targetText != null)
-			{
-				renderTargetText(graphics, npc, targetText, xOffset);
-			}
 
 			if (config.healerLabelStyle() != BaHealerOrderConfig.HealerLabelStyle.NONE)
 			{
@@ -253,26 +248,6 @@ public class BaHealerOrderOverlay extends Overlay
 		graphics.setFont(originalFont);
 	}
 
-	private void renderTargetText(Graphics2D graphics, NPC npc, String text, int xOffset)
-	{
-		Point textLocation = npc.getCanvasTextLocation(
-				graphics,
-				text,
-				npc.getLogicalHeight() + TEXT_Z_OFFSET + 50
-		);
-
-		if (textLocation == null)
-		{
-			return;
-		}
-
-		Font originalFont = graphics.getFont();
-
-		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.textSize()));
-		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, config.textColor());
-		graphics.setFont(originalFont);
-	}
-
 	private void renderFoodCount(Graphics2D graphics, NPC npc, int healerOrder, int foodFed, int xOffset)
 	{
 		String text = getFoodCountText(healerOrder, foodFed);
@@ -291,21 +266,23 @@ public class BaHealerOrderOverlay extends Overlay
 		Font originalFont = graphics.getFont();
 
 		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.foodCountTextSize()));
-		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, config.foodCountColor());
+		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, getFoodCountColor(healerOrder));
 		graphics.setFont(originalFont);
 	}
 
 	private String getFoodCountText(int healerOrder, int foodFed)
 	{
-		BaHealerOrderConfig.FoodCountType type = config.foodCountType();
-		BaHealerOrderConfig.HealerRole role = config.healerRole();
+		HealerCodeStatus status = plugin.getDisplayCodeStatus(healerOrder);
+		String codeText = plugin.formatCodeStatus(status);
 
-		if (role == BaHealerOrderConfig.HealerRole.NONE)
+		if (codeText != null)
 		{
-			return foodFed + "f";
+			return codeText;
 		}
 
-		int expected = plugin.getExpectedFoodForOrder(healerOrder, role);
+		BaHealerOrderConfig.FoodCountType type = config.foodCountType();
+
+		int expected = plugin.getExpectedFoodForOrder(healerOrder);
 
 		if (expected <= 0)
 		{
@@ -318,6 +295,18 @@ public class BaHealerOrderOverlay extends Overlay
 		}
 
 		return String.valueOf(Math.max(expected - foodFed, 0));
+	}
+
+	private Color getFoodCountColor(int healerOrder)
+	{
+		HealerCodeStatus status = plugin.getDisplayCodeStatus(healerOrder);
+
+		if (status != null)
+		{
+			return plugin.getCodeStatusColor(status.getState());
+		}
+
+		return config.foodCountColor();
 	}
 
 	private Point offsetPoint(Point point, int xOffset)
