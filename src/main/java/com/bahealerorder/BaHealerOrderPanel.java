@@ -6,8 +6,13 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Toolkit;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import javax.inject.Inject;
@@ -127,6 +132,11 @@ public class BaHealerOrderPanel extends PluginPanel
 			refreshAll();
 		}));
 		section.add(presetActionRow);
+		section.add(Box.createVerticalStrut(5));
+		JPanel jsonActionRow = horizontalActionRow();
+		jsonActionRow.add(action("Import JSON", this::importPresetMenuFromClipboard));
+		jsonActionRow.add(action("Export JSON", this::exportPresetMenuToClipboard));
+		section.add(jsonActionRow);
 		return section;
 	}
 
@@ -339,6 +349,51 @@ public class BaHealerOrderPanel extends PluginPanel
 
 		codeManager.deleteUserPreset(item.id);
 		refreshAll();
+	}
+
+	private void exportPresetMenuToClipboard()
+	{
+		StringSelection contents = new StringSelection(codeManager.exportUserStoreJson());
+		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(contents, null);
+		JOptionPane.showMessageDialog(this, "Preset menu JSON copied to clipboard.", "Export Presets", JOptionPane.INFORMATION_MESSAGE);
+	}
+
+	private void importPresetMenuFromClipboard()
+	{
+		String json;
+
+		try
+		{
+			json = (String) Toolkit.getDefaultToolkit()
+					.getSystemClipboard()
+					.getData(DataFlavor.stringFlavor);
+		}
+		catch (UnsupportedFlavorException | IOException ex)
+		{
+			JOptionPane.showMessageDialog(this, "Clipboard does not contain valid text.", "Import Presets", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		int result = JOptionPane.showConfirmDialog(
+				this,
+				"Replace your current preset menu with JSON from the clipboard?",
+				"Import Presets",
+				JOptionPane.OK_CANCEL_OPTION
+		);
+
+		if (result != JOptionPane.OK_OPTION)
+		{
+			return;
+		}
+
+		if (!codeManager.importUserStoreJson(json))
+		{
+			JOptionPane.showMessageDialog(this, "Clipboard JSON could not be imported.", "Import Presets", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		refreshAll();
+		JOptionPane.showMessageDialog(this, "Preset menu imported from clipboard.", "Import Presets", JOptionPane.INFORMATION_MESSAGE);
 	}
 
 	private void saveImportedWaveCode()

@@ -71,6 +71,37 @@ public class BaHealerCodeManager
 		configManager.setConfiguration(CONFIG_GROUP, STRATEGY_STORE_KEY, gson.toJson(userStore));
 	}
 
+	public String exportUserStoreJson()
+	{
+		return gson.toJson(userStore);
+	}
+
+	public boolean importUserStoreJson(String json)
+	{
+		if (json == null || json.trim().isEmpty())
+		{
+			return false;
+		}
+
+		try
+		{
+			StrategyStore importedStore = gson.fromJson(json, StrategyStore.class);
+
+			if (importedStore == null)
+			{
+				return false;
+			}
+
+			userStore = importedStore;
+			save();
+			return true;
+		}
+		catch (RuntimeException ex)
+		{
+			return false;
+		}
+	}
+
 	public List<RunPreset> getRunPresets()
 	{
 		List<RunPreset> presets = new ArrayList<>();
