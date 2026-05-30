@@ -5,6 +5,7 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -55,35 +56,38 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
             return null;
         }
 
+        Map<Integer, Integer> foodFedByHealerOrder = plugin.getFoodFedByHealerOrder();
+
         String title = "BA Healer Order";
         int wave = plugin.getCurrentWave();
+
         if (wave > 0)
         {
             title += " - Wave " + wave;
         }
 
         panelComponent.getChildren().add(
-            TitleComponent.builder()
-                    .text(title)
-                    .color(TITLE_COLOR)
-                    .build()
+                TitleComponent.builder()
+                        .text(title)
+                        .color(TITLE_COLOR)
+                        .build()
         );
 
         for (int healerOrder : healerOrders)
         {
-                int foodFed = plugin.getFoodFedByHealerOrder().getOrDefault(healerOrder, 0);
-                int expected = plugin.getExpectedFoodForOrder(healerOrder);
+            int foodFed = foodFedByHealerOrder.getOrDefault(healerOrder, 0);
+            int expected = plugin.getExpectedFoodForOrder(healerOrder);
 
-                String rightText = expected > 0 ? (foodFed + "/" + expected + " fed") : (foodFed + " fed");
+            String rightText = expected > 0 ? (foodFed + "/" + expected + " fed") : (foodFed + " fed");
 
-                panelComponent.getChildren().add(
+            panelComponent.getChildren().add(
                     LineComponent.builder()
                             .left("#" + healerOrder)
                             .leftColor(TEXT_COLOR)
                             .right(rightText)
                             .rightColor(COUNT_COLOR)
                             .build()
-                );
+            );
         }
 
         return super.render(graphics);
