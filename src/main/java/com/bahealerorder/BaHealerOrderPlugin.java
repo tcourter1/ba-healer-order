@@ -405,21 +405,6 @@ public class BaHealerOrderPlugin extends Plugin
 		return currentCallIndex;
 	}
 
-	public String getLastCallText()
-	{
-		return lastCallText;
-	}
-
-	public String getCurrentCallText()
-	{
-		return currentCallText;
-	}
-
-	public String getCurrentCallSource()
-	{
-		return currentCallSource;
-	}
-
 	public String getCurrentWaveCodeSource()
 	{
 		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
@@ -442,17 +427,6 @@ public class BaHealerOrderPlugin extends Plugin
 		return codeManager.getExpectedFoodForOrder(currentWave, healerOrder, currentCallIndex);
 	}
 
-	public String getHealerTarget(int healerOrder)
-	{
-		if (healerOrder <= 0)
-		{
-			return null;
-		}
-
-		HealerCodeStatus status = getCurrentCodeStatus(healerOrder);
-		return status == null ? null : formatCodeStatus(status);
-	}
-
 	public Map<NPC, Integer> getTrackedHealers()
 	{
 		return Collections.unmodifiableMap(visibleHealers);
@@ -461,11 +435,6 @@ public class BaHealerOrderPlugin extends Plugin
 	public HealerCodeStatus getCurrentCodeStatus(int healerOrder)
 	{
 		return codeManager.getCurrentStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
-	}
-
-	public HealerCodeStatus getPreviousCodeStatus(int healerOrder)
-	{
-		return codeManager.getPreviousStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
 	}
 
 	public HealerCodeStatus getDisplayCodeStatus(int healerOrder)
