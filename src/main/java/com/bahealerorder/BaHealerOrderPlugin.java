@@ -148,6 +148,7 @@ public class BaHealerOrderPlugin extends Plugin
 		navigationButton = NavigationButton.builder()
 				.tooltip("BA Healer Utilities")
 				.icon(createPanelIcon())
+				.priority(10)
 				.panel(panel)
 				.build();
 		clientToolbar.addNavigation(navigationButton);
