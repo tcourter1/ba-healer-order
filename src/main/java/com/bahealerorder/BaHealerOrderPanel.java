@@ -134,8 +134,8 @@ public class BaHealerOrderPanel extends PluginPanel
 		section.add(presetActionRow);
 		section.add(Box.createVerticalStrut(5));
 		JPanel jsonActionRow = horizontalActionRow();
-		jsonActionRow.add(action("Import JSON", this::importPresetMenuFromClipboard));
-		jsonActionRow.add(action("Export JSON", this::exportPresetMenuToClipboard));
+		jsonActionRow.add(action("Import JSON", this::importRunPresetFromClipboard));
+		jsonActionRow.add(action("Export JSON", this::exportSelectedRunPresetToClipboard));
 		section.add(jsonActionRow);
 		return section;
 	}
@@ -351,14 +351,42 @@ public class BaHealerOrderPanel extends PluginPanel
 		refreshAll();
 	}
 
-	private void exportPresetMenuToClipboard()
+	private void exportSelectedRunPresetToClipboard()
 	{
-		StringSelection contents = new StringSelection(codeManager.exportUserStoreJson());
+		ComboItem item = (ComboItem) presetCombo.getSelectedItem();
+
+		if (item == null || item.id == null)
+		{
+			JOptionPane.showMessageDialog(this, "Select a run preset to export.", "Export Preset", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		String json = codeManager.exportRunPresetJson(item.id);
+
+		if (json == null)
+		{
+			JOptionPane.showMessageDialog(this, "Selected run preset could not be exported.", "Export Preset", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		int result = JOptionPane.showConfirmDialog(
+				this,
+				"Copy the selected run preset to the clipboard as JSON?\n\nOnly this preset and its referenced wave codes will be exported.",
+				"Export Preset",
+				JOptionPane.OK_CANCEL_OPTION
+		);
+
+		if (result != JOptionPane.OK_OPTION)
+		{
+			return;
+		}
+
+		StringSelection contents = new StringSelection(json);
 		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(contents, null);
-		JOptionPane.showMessageDialog(this, "Preset menu JSON copied to clipboard.", "Export Presets", JOptionPane.INFORMATION_MESSAGE);
+		JOptionPane.showMessageDialog(this, "Run preset JSON copied to clipboard.", "Export Preset", JOptionPane.INFORMATION_MESSAGE);
 	}
 
-	private void importPresetMenuFromClipboard()
+	private void importRunPresetFromClipboard()
 	{
 		String json;
 
@@ -370,14 +398,14 @@ public class BaHealerOrderPanel extends PluginPanel
 		}
 		catch (UnsupportedFlavorException | IOException ex)
 		{
-			JOptionPane.showMessageDialog(this, "Clipboard does not contain valid text.", "Import Presets", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Clipboard does not contain valid text.", "Import Preset", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 
 		int result = JOptionPane.showConfirmDialog(
 				this,
-				"Replace your current preset menu with JSON from the clipboard?",
-				"Import Presets",
+				"Import one run preset from clipboard JSON?\n\nOnly the preset and any missing referenced wave codes will be imported. Existing wave codes with the same id will not be overwritten.",
+				"Import Preset",
 				JOptionPane.OK_CANCEL_OPTION
 		);
 
@@ -386,14 +414,14 @@ public class BaHealerOrderPanel extends PluginPanel
 			return;
 		}
 
-		if (!codeManager.importUserStoreJson(json))
+		if (!codeManager.importRunPresetJson(json))
 		{
-			JOptionPane.showMessageDialog(this, "Clipboard JSON could not be imported.", "Import Presets", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Clipboard JSON could not be imported as a run preset.", "Import Preset", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 
 		refreshAll();
-		JOptionPane.showMessageDialog(this, "Preset menu imported from clipboard.", "Import Presets", JOptionPane.INFORMATION_MESSAGE);
+		JOptionPane.showMessageDialog(this, "Run preset imported from clipboard.", "Import Preset", JOptionPane.INFORMATION_MESSAGE);
 	}
 
 	private void saveImportedWaveCode()

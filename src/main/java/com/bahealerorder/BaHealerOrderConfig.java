@@ -229,15 +229,54 @@ public interface BaHealerOrderConfig extends Config
 
 	@Alpha
 	@ConfigItem(
-			keyName = "foodCountColor",
-			name = "Food Count Color",
-			description = "Color used for the food count text displayed on each Penance Healer",
+			keyName = "notStartedCodeColor",
+			name = "Not Started Code Color",
+			description = "Color used when a selected healer code has not received any food yet",
 			section = foodCountSection,
 			position = 4
 	)
-	default Color foodCountColor()
+	default Color notStartedCodeColor()
 	{
-		return new Color(0, 255, 0);
+		return new Color(255, 60, 60);
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "inProgressCodeColor",
+			name = "In Progress Code Color",
+			description = "Color used when a selected healer code has started but is not complete",
+			section = foodCountSection,
+			position = 5
+	)
+	default Color inProgressCodeColor()
+	{
+		return new Color(255, 150, 0);
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "completeCodeColor",
+			name = "Complete Code Color",
+			description = "Color used when a selected healer code is complete, including any timing requirement",
+			section = foodCountSection,
+			position = 6
+	)
+	default Color completeCodeColor()
+	{
+		return new Color(0, 220, 0);
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "previousCodeColor",
+			name = "Previous Call Code Color",
+			description = "Color used for completed code text from a previous call when that healer has no active incomplete code",
+			section = foodCountSection,
+			position = 7
+	)
+	default Color previousCodeColor()
+	{
+		return new Color(150, 150, 150);
 	}
 
 	@Range(
@@ -249,7 +288,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Food Count Text Size",
 			description = "Font size used for the food count displayed on each Penance Healer",
 			section = foodCountSection,
-			position = 5
+			position = 8
 	)
 	default int foodCountTextSize()
 	{
@@ -265,7 +304,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Food Count Height",
 			description = "Adjusts the vertical position of the food count on each Penance Healer. Higher values move it upward.",
 			section = foodCountSection,
-			position = 6
+			position = 9
 	)
 	default int foodCountZOffset()
 	{
@@ -277,10 +316,23 @@ public interface BaHealerOrderConfig extends Config
 			name = "Food Count Type",
 			description = "Choose whether NPC food displays count up or count down when a selected code has an expected count",
 			section = foodCountSection,
-			position = 7
+			position = 10
 	)
 	default FoodCountType foodCountType()
 	{
 		return FoodCountType.COUNT_DOWN;
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "foodCountColor",
+			name = "Food Count Color",
+			description = "Fallback color used only when no selected code status applies and the NPC is showing the plain food count",
+			section = foodCountSection,
+			position = 11
+	)
+	default Color foodCountColor()
+	{
+		return new Color(0, 255, 0);
 	}
 }

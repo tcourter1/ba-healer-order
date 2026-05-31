@@ -448,7 +448,16 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		StringBuilder builder = new StringBuilder();
-		builder.append(status.getFoodFed()).append('/').append(status.getInstruction().getTargetFoodCount());
+		int targetFoodCount = status.getInstruction().getTargetFoodCount();
+
+		if (config.foodCountType() == BaHealerOrderConfig.FoodCountType.COUNT_DOWN)
+		{
+			builder.append(Math.max(targetFoodCount - status.getFoodFed(), 0));
+		}
+		else
+		{
+			builder.append(status.getFoodFed()).append('/').append(targetFoodCount);
+		}
 
 		if (status.getInstruction().getAfterSeconds() != null)
 		{
@@ -467,20 +476,20 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		if (state == CodeDisplayState.COMPLETE)
 		{
-			return new Color(0, 220, 0);
+			return config.completeCodeColor();
 		}
 
 		if (state == CodeDisplayState.PREVIOUS)
 		{
-			return new Color(150, 150, 150);
+			return config.previousCodeColor();
 		}
 
 		if (state == CodeDisplayState.IN_PROGRESS)
 		{
-			return new Color(255, 150, 0);
+			return config.inProgressCodeColor();
 		}
 
-		return new Color(255, 60, 60);
+		return config.notStartedCodeColor();
 	}
 
 	public Map<Integer, Integer> getFoodFedByHealerOrder()

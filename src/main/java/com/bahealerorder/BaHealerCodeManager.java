@@ -8,6 +8,7 @@ import com.bahealerorder.codes.HealerCodeParser;
 import com.bahealerorder.codes.HealerCodeStatus;
 import com.bahealerorder.codes.HealerInstruction;
 import com.bahealerorder.codes.RunPreset;
+import com.bahealerorder.codes.RunPresetExport;
 import com.bahealerorder.codes.StrategyStore;
 import com.bahealerorder.codes.WaveCode;
 import com.google.gson.Gson;
@@ -93,6 +94,59 @@ public class BaHealerCodeManager
 			}
 
 			userStore = importedStore;
+			save();
+			return true;
+		}
+		catch (RuntimeException ex)
+		{
+			return false;
+		}
+	}
+
+	public String exportRunPresetJson(String presetId)
+	{
+		RunPreset preset = findRunPreset(presetId);
+
+		if (preset == null)
+		{
+			return null;
+		}
+
+		List<WaveCode> waveCodes = new ArrayList<>();
+
+		for (String waveCodeId : preset.getWaveCodeIds().values())
+		{
+			WaveCode waveCode = findWaveCode(waveCodeId);
+
+			if (waveCode != null)
+			{
+				waveCodes.add(waveCode);
+			}
+		}
+
+		return gson.toJson(new RunPresetExport(preset, waveCodes));
+	}
+
+	public boolean importRunPresetJson(String json)
+	{
+		if (json == null || json.trim().isEmpty())
+		{
+			return false;
+		}
+
+		try
+		{
+			RunPresetExport imported = gson.fromJson(json, RunPresetExport.class);
+
+			if (imported == null || imported.getPreset() == null || imported.getPreset().getId() == null)
+			{
+				return false;
+			}
+
+			importMissingWaveCodes(imported.getWaveCodes());
+			upsertRunPreset(imported.getPreset());
+			userStore.setActiveRunPresetId(imported.getPreset().getId());
+			userStore.setActiveWaveCodeIds(imported.getPreset().getWaveCodeIds());
 			save();
 			return true;
 		}
@@ -809,6 +863,41 @@ public class BaHealerCodeManager
 	private List<FeedEvent> safeEvents(List<FeedEvent> feedEvents)
 	{
 		return feedEvents == null ? new ArrayList<>() : feedEvents;
+	}
+
+	private void importMissingWaveCodes(List<WaveCode> waveCodes)
+	{
+		List<WaveCode> storedWaveCodes = new ArrayList<>(userStore.getWaveCodes());
+
+		for (WaveCode waveCode : waveCodes)
+		{
+			if (waveCode == null || waveCode.getId() == null || findWaveCode(waveCode.getId()) != null)
+			{
+				continue;
+			}
+
+			storedWaveCodes.add(waveCode);
+		}
+
+		userStore.setWaveCodes(storedWaveCodes);
+	}
+
+	private void upsertRunPreset(RunPreset importedPreset)
+	{
+		List<RunPreset> presets = new ArrayList<>(userStore.getRunPresets());
+
+		for (int i = 0; i < presets.size(); i++)
+		{
+			if (importedPreset.getId().equals(presets.get(i).getId()))
+			{
+				presets.set(i, importedPreset);
+				userStore.setRunPresets(presets);
+				return;
+			}
+		}
+
+		presets.add(importedPreset);
+		userStore.setRunPresets(presets);
 	}
 
 	private static class InstructionProgress

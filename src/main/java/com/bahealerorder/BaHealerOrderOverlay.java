@@ -1,6 +1,7 @@
 package com.bahealerorder;
 
 import com.bahealerorder.codes.HealerCodeStatus;
+import com.bahealerorder.codes.CodeDisplayState;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -307,7 +308,30 @@ public class BaHealerOrderOverlay extends Overlay
 			return plugin.getCodeStatusColor(status.getState());
 		}
 
+		int expected = plugin.getExpectedFoodForOrder(healerOrder);
+
+		if (expected > 0)
+		{
+			int foodFed = plugin.getFoodFedByHealerOrder().getOrDefault(healerOrder, 0);
+			return plugin.getCodeStatusColor(getFallbackState(foodFed, expected));
+		}
+
 		return config.foodCountColor();
+	}
+
+	private CodeDisplayState getFallbackState(int foodFed, int expected)
+	{
+		if (foodFed <= 0)
+		{
+			return CodeDisplayState.NOT_STARTED;
+		}
+
+		if (foodFed < expected)
+		{
+			return CodeDisplayState.IN_PROGRESS;
+		}
+
+		return CodeDisplayState.COMPLETE;
 	}
 
 	private Point offsetPoint(Point point, int xOffset)

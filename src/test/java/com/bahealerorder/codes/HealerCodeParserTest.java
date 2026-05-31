@@ -48,4 +48,25 @@ public class HealerCodeParserTest
 		assertEquals(8, firstCall.get(1).getTargetFoodCount());
 		assertEquals(Integer.valueOf(21), firstCall.get(1).getAfterSeconds());
 	}
+
+	@Test
+	public void treatsC5VariantAsComment()
+	{
+		StrategyStore store = BuiltInStrategyLibrary.create();
+		WaveCode waveCode = null;
+
+		for (WaveCode code : store.getWaveCodes())
+		{
+			if ("builtin:w5:c5".equals(code.getId()))
+			{
+				waveCode = code;
+				break;
+			}
+		}
+
+		assertNotNull(waveCode);
+		assertNotNull(waveCode.getCall(0));
+		assertEquals(1, waveCode.getCalls().size());
+		assertEquals("Alch horn, 6x os\n3(22)[43]-7-4(21)-6-8\n// If 12s not on Coll:\n// 8-2(21)-4(21)-6-8", waveCode.getSourceText());
+	}
 }
