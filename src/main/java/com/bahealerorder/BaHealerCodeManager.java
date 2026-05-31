@@ -114,6 +114,8 @@ public class BaHealerCodeManager
 
 		List<WaveCode> waveCodes = new ArrayList<>();
 
+		// Preset clipboard exports are intentionally scoped to one run preset and only the
+		// wave codes it references, so sharing a preset does not overwrite a user's menu.
 		for (String waveCodeId : preset.getWaveCodeIds().values())
 		{
 			WaveCode waveCode = findWaveCode(waveCodeId);
@@ -184,6 +186,8 @@ public class BaHealerCodeManager
 	{
 		List<WaveCode> waveCodes = new ArrayList<>();
 
+		// Built-in edits are stored as same-id user wave codes. They shadow the shipped
+		// definition without losing the original, which makes "Reset" a simple delete.
 		for (WaveCode builtIn : builtIns.getWaveCodes())
 		{
 			WaveCode override = findStoredUserWaveCode(builtIn.getId());
@@ -533,6 +537,8 @@ public class BaHealerCodeManager
 		{
 			for (InstructionProgress progress : progresses)
 			{
+				// Feeds after a call change should continue satisfying the earliest
+				// incomplete prior instruction before they apply to the new call.
 				if (event.getCallIndex() >= progress.callIndex
 						&& progress.acceptsMoreFood())
 				{
@@ -559,6 +565,8 @@ public class BaHealerCodeManager
 
 			if (progress.callIndex < currentCallIndex && state != CodeDisplayState.COMPLETE)
 			{
+				// Keep an unfinished prior-call code visible and active instead of hiding it
+				// behind the current call's instruction.
 				return progress.status(CodeDisplayState.IN_PROGRESS);
 			}
 		}
@@ -871,6 +879,8 @@ public class BaHealerCodeManager
 
 		for (WaveCode waveCode : waveCodes)
 		{
+			// Imports should fill gaps for the selected preset, not replace same-id custom
+			// or locally edited built-in wave codes that the user already has.
 			if (waveCode == null || waveCode.getId() == null || findWaveCode(waveCode.getId()) != null)
 			{
 				continue;

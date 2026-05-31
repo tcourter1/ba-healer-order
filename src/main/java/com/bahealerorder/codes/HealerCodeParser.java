@@ -27,6 +27,8 @@ public final class HealerCodeParser
 			{
 				String line = stripComment(rawLine).trim();
 
+				// Descriptive lines and commented alternates stay in the source text for
+				// display, but only code-looking lines become sequential BA call entries.
 				if (!looksLikeCodeLine(line))
 				{
 					continue;
@@ -74,6 +76,8 @@ public final class HealerCodeParser
 
 		if (part.isEmpty() || "x".equalsIgnoreCase(part) || part.toLowerCase().contains("yolo"))
 		{
+			// "X"/spam/YOLO instructions deliberately have no target count; the overlay
+			// should fall back to showing raw food used instead of progress to a goal.
 			return new HealerInstruction(0, null, null, part);
 		}
 

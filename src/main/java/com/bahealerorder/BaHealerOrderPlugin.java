@@ -65,6 +65,8 @@ public class BaHealerOrderPlugin extends Plugin
 	private static final String WRONG_FOOD_MESSAGE = "that's the wrong type of poisoned food to use! penalty!";
 	private static final String PANEL_ICON_RESOURCE = "/com/bahealerorder/penance_healer.png";
 	private static final int BA_HEALER_GROUP_ID = 488;
+	// This is the healer-side "to call" widget, not the defender's actual horn call.
+	// It changes with the real BA call cycle even if the defender calls late or not at all.
 	private static final int BA_HEALER_CALL_CHILD_ID = 9;
 	private static final Pattern WAVE_START_PATTERN = Pattern.compile(".*\\bwave:\\s*(\\d+)\\b.*");
 	private static final Pattern WAVE_PATTERN = Pattern.compile(".*---- Wave: (10|[1-9]) ----.*");
@@ -114,6 +116,8 @@ public class BaHealerOrderPlugin extends Plugin
 	private final Map<NPC, Integer> visibleHealers = new HashMap<>();
 
 	private final Set<Integer> healerIndexesSeenThisWave = new HashSet<>();
+	// Food has to be counted by NPC index first. Healer order can be corrected as later
+	// NPC indexes appear, but the index itself remains stable for the spawned healer.
 	private final Map<Integer, Integer> foodFedByNpcIndex = new HashMap<>();
 
 	@Getter
@@ -269,6 +273,8 @@ public class BaHealerOrderPlugin extends Plugin
 			return;
 		}
 
+		// The menu click only tells us an attempt was made. The inventory delta confirms
+		// that a poisoned food item was actually consumed and should count.
 		foodFedByNpcIndex.merge(pendingFeedAttempt.npcIndex, 1, Integer::sum);
 
 		Integer currentOrder = healerOrderByNpcIndex.get(pendingFeedAttempt.npcIndex);
@@ -556,6 +562,8 @@ public class BaHealerOrderPlugin extends Plugin
 
 		healerOrderByNpcIndex.clear();
 
+		// BA healer NPC indexes sort in spawn order for the wave. Rebuilding the whole map
+		// lets earlier visible healers be corrected when a lower/higher index arrives later.
 		for (int i = 0; i < sortedIndexes.size(); i++)
 		{
 			healerOrderByNpcIndex.put(sortedIndexes.get(i), i + 1);
@@ -624,6 +632,8 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (!callTrackingArmed)
 		{
+			// The widget can settle during wave startup; require one stable tick before a
+			// changed value is treated as a real call advance.
 			lastCallText = callText;
 			callTrackingArmed = true;
 			return;
