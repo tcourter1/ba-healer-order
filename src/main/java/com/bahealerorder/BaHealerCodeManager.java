@@ -72,37 +72,6 @@ public class BaHealerCodeManager
 		configManager.setConfiguration(CONFIG_GROUP, STRATEGY_STORE_KEY, gson.toJson(userStore));
 	}
 
-	public String exportUserStoreJson()
-	{
-		return gson.toJson(userStore);
-	}
-
-	public boolean importUserStoreJson(String json)
-	{
-		if (json == null || json.trim().isEmpty())
-		{
-			return false;
-		}
-
-		try
-		{
-			StrategyStore importedStore = gson.fromJson(json, StrategyStore.class);
-
-			if (importedStore == null)
-			{
-				return false;
-			}
-
-			userStore = importedStore;
-			save();
-			return true;
-		}
-		catch (RuntimeException ex)
-		{
-			return false;
-		}
-	}
-
 	public String exportRunPresetJson(String presetId)
 	{
 		RunPreset preset = findRunPreset(presetId);
@@ -457,39 +426,6 @@ public class BaHealerCodeManager
 		return new HealerCodeStatus(instruction, CodeDisplayState.PREVIOUS, foodThisCall, lastFoodElapsed);
 	}
 
-	public HealerCodeStatus getMostRecentPreviousStatus(int wave, int healerOrder, int currentCallIndex, List<FeedEvent> feedEvents)
-	{
-		WaveCode waveCode = getActiveWaveCode(wave);
-
-		if (waveCode == null)
-		{
-			return null;
-		}
-
-		for (int callIndex = currentCallIndex - 1; callIndex >= 0; callIndex--)
-		{
-			CallCode call = waveCode.getCall(callIndex);
-
-			if (call == null)
-			{
-				continue;
-			}
-
-			HealerInstruction instruction = call.getInstruction(healerOrder);
-
-			if (instruction == null || !instruction.hasTarget())
-			{
-				continue;
-			}
-
-			int foodThisCall = countFoodForCall(healerOrder, callIndex, feedEvents);
-			int lastFoodElapsed = lastFoodElapsed(healerOrder, callIndex, feedEvents);
-			return new HealerCodeStatus(instruction, CodeDisplayState.PREVIOUS, foodThisCall, lastFoodElapsed);
-		}
-
-		return null;
-	}
-
 	public HealerCodeStatus getDisplayStatus(int wave, int healerOrder, int currentCallIndex, List<FeedEvent> feedEvents)
 	{
 		WaveCode waveCode = getActiveWaveCode(wave);
@@ -663,22 +599,6 @@ public class BaHealerCodeManager
 		userStore.setWaveCodes(waveCodes);
 		save();
 		return code;
-	}
-
-	public List<WaveCode> getUserWaveCodesForWave(int wave)
-	{
-		List<WaveCode> waveCodes = new ArrayList<>();
-
-		for (WaveCode code : userStore.getWaveCodes())
-		{
-			if (code.getWave() == wave)
-			{
-				waveCodes.add(code);
-			}
-		}
-
-		waveCodes.sort(Comparator.comparing(WaveCode::getName, String.CASE_INSENSITIVE_ORDER));
-		return waveCodes;
 	}
 
 	public boolean updateUserWaveCode(String id, int wave, String name, String sourceText)
