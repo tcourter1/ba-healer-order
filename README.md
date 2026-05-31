@@ -28,6 +28,15 @@ Food counts are based on inventory consumption after using poisoned food on a tr
 
 The plugin does not count every menu click as a successful feed. Instead, it tracks when a poisoned food item is actually consumed from the inventory after being used on a tracked healer. Wrong-food attempts are ignored when the Barbarian Assault wrong-food penalty message appears.
 
+Food counts can also sync with the selected healer-code entries. When expected food values are available, BA Healer Utilities can color-code food counts based on each healer’s progress:
+
+* **Not Started**: No successful food has been fed yet.
+* **In Progress**: Some food has been fed, but the expected amount has not been reached.
+* **Complete**: The expected food count has been reached or exceeded.
+
+This makes it easier to quickly see which healers still need food and which ones are already complete.
+
+
 ## Labeling
 
 The plugin can label healers using either simple spawn-order numbering or time-based BA healer labels.
@@ -50,17 +59,21 @@ Labels can also be disabled entirely.
 
 Tracked healers can be highlighted common highlight styles.
 
-## Food Count Panel
-
-The food-count panel lists each tracked healer by spawn order and shows how many poisoned food items have been successfully consumed for that healer.
 
 ## Healer Codes and Roles
 
-BA Healer Utilities supports configurable healer roles and wave-based healer-code lists. These settings can be used to display expected food counts for each healer based on the selected role and wave configuration.
+BA Healer Utilities includes a healer-code system for managing expected food counts and healer targets across Barbarian Assault waves.
 
-Healer-code entries can also include time-based progression. Additional lines represent later wave timing increments, allowing the plugin to update expected food counts as the wave progresses.
+Healer codes now live in a dedicated side panel instead of being managed only through plugin configuration. From this panel, users can select wave-specific codes, save custom presets, clear current selections, and manage their active healer-code setup more easily.
+
+The plugin also supports importing and exporting healer-code presets as JSON. This makes it easier to share code setups with teammates or back up custom configurations.
+
+Pre-loaded presets are available for waves 4 through 10, giving users a ready-to-use starting point for common healer-code setups.
+
+Healer-code entries can include time-based progression. Additional lines represent later wave timing increments, allowing the plugin to update expected food counts as the wave progresses.
 
 Target labels can be included in healer-code entries using parentheses. When present, the plugin can display the active target label above the healer.
+
 
 ## Stack Handling
 
@@ -90,3 +103,4 @@ BA Healer Utilities does not automate gameplay. It provides visual tracking for 
 * **1.0.4** - Added healer-code configuration and healer roles.
 * **1.0.5** - Added stack handling logic, highlight style options, label display options, and config cleanup.
 * **1.0.6** - Added more copy/paste friendly meta healer code support, healer target labels, and optional right-click menu labels. Added true-tile option to Healer highlighting config.
+* **1.0.7** - Lyelt added a fully redesigned healer code system complete with import/export/saving functions. Food count tracking updated with color-coding to track healer code progress. Updated the labeling logic to label all healers by Index ID sequentially, rather than by render order. Labels also self correct when labeled incorrectly on render. 
