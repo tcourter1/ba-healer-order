@@ -405,6 +405,12 @@ public class BaHealerOrderPlugin extends Plugin
 		return waveCode == null ? null : waveCode.getSourceText();
 	}
 
+	public String getCurrentWaveCodeName()
+	{
+		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
+		return waveCode == null ? null : waveCode.getName();
+	}
+
 	public int getExpectedFoodForOrder(int healerOrder)
 	{
 		if (healerOrder <= 0)

@@ -106,7 +106,7 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
 
         panelComponent.getChildren().add(
             TitleComponent.builder()
-                    .text("Current Code")
+                    .text(getCurrentCodeTitle())
                     .color(TITLE_COLOR)
                     .build()
         );
@@ -120,6 +120,18 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
                         .build()
             );
         }
+    }
+
+    private String getCurrentCodeTitle()
+    {
+        String codeName = plugin.getCurrentWaveCodeName();
+
+        if (codeName == null || codeName.trim().isEmpty())
+        {
+            return "Current Code";
+        }
+
+        return "Current Code (" + codeName + ")";
     }
 
 }
