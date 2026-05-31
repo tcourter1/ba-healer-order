@@ -37,7 +37,7 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (!config.showFoodPanel() || plugin.getCurrentWave() <= 0)
+        if (!config.showFoodPanel() || !plugin.isWaveActive())
         {
             return null;
         }

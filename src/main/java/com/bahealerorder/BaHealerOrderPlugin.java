@@ -42,6 +42,8 @@ import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -125,6 +127,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private int currentWave = -1;
 	private int currentCallIndex = 0;
+	private int inGameBit;
 	private long waveStartTimeMs = -1;
 	private String lastCallText;
 	private String currentCallText;
@@ -338,10 +341,22 @@ public class BaHealerOrderPlugin extends Plugin
 		{
 			log.debug("Wrong poisoned food detected. Cancelling pending feed attempt.");
 			pendingFeedAttempt = null;
+		}
+	}
+
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged event)
+	{
+		int currentInGameBit = client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING);
+
+		if (inGameBit == currentInGameBit)
+		{
 			return;
 		}
 
-		if (isWaveEndMessage(event.getType(), message))
+		inGameBit = currentInGameBit;
+
+		if (currentInGameBit == 0)
 		{
 			resetWaveState();
 		}
@@ -364,9 +379,14 @@ public class BaHealerOrderPlugin extends Plugin
 		return currentWave;
 	}
 
+	public boolean isWaveActive()
+	{
+		return waveStartTimeMs > 0 && currentWave > 0;
+	}
+
 	public long getCurrentWaveElapsedMillis()
 	{
-		if (waveStartTimeMs <= 0 || currentWave <= 0)
+		if (!isWaveActive())
 		{
 			return 0;
 		}
@@ -854,26 +874,6 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 	}
 
-	private boolean isWaveEndMessage(ChatMessageType type, String message)
-	{
-		if (type != ChatMessageType.GAMEMESSAGE
-				&& type != ChatMessageType.SPAM
-				&& type != ChatMessageType.WELCOME
-				&& type != ChatMessageType.CONSOLE)
-		{
-			return false;
-		}
-
-		return message.contains("wave")
-				&& (
-				message.contains("complete")
-						|| message.contains("completed")
-						|| message.contains("duration")
-						|| message.contains("congratulations")
-						|| message.contains("queen")
-		);
-	}
-
 	private void resetWaveState()
 	{
 		resetWaveTrackedState();
@@ -900,6 +900,7 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		resetWaveState();
 		currentWave = -1;
+		inGameBit = 0;
 	}
 
 	@Provides
