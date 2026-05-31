@@ -14,9 +14,11 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
@@ -111,13 +113,12 @@ public class BaHealerOrderPlugin extends Plugin
 	@Getter
 	private final Map<NPC, Integer> visibleHealers = new HashMap<>();
 
-	@Getter
-	private final Map<Integer, Integer> foodFedByHealerOrder = new HashMap<>();
+	private final Set<Integer> healerIndexesSeenThisWave = new HashSet<>();
+	private final Map<Integer, Integer> foodFedByNpcIndex = new HashMap<>();
 
 	@Getter
 	private final List<FeedEvent> feedEvents = new ArrayList<>();
 
-	private int nextHealerNumber = 1;
 	private int currentWave = -1;
 	private int currentCallIndex = 0;
 	private long waveStartTimeMs = -1;
@@ -169,22 +170,39 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		int npcIndex = npc.getIndex();
+		boolean addedNewIndex = healerIndexesSeenThisWave.add(npcIndex);
+
+		rebuildHealerOrderByNpcIndex();
+		rebuildVisibleHealerOrders();
+
 		Integer order = healerOrderByNpcIndex.get(npcIndex);
 
 		if (order == null)
 		{
-			order = nextHealerNumber++;
-			healerOrderByNpcIndex.put(npcIndex, order);
+			return;
 		}
 
 		visibleHealers.put(npc, order);
+
+		if (addedNewIndex)
+		{
+			log.debug("Registered Penance Healer index {} as corrected healer #{}", npcIndex, order);
+		}
+		else
+		{
+			log.debug("Re-associated Penance Healer index {} with corrected healer #{}", npcIndex, order);
+		}
 	}
 
 	@Subscribe
 	public void onNpcDespawned(NpcDespawned event)
 	{
 		NPC npc = event.getNpc();
-		visibleHealers.remove(npc);
+
+		if (visibleHealers.remove(npc) != null)
+		{
+			log.debug("Removed visible Penance Healer index {}", npc.getIndex());
+		}
 	}
 
 	@Subscribe
@@ -251,9 +269,25 @@ public class BaHealerOrderPlugin extends Plugin
 			return;
 		}
 
-		int healerOrder = pendingFeedAttempt.healerOrder;
-		foodFedByHealerOrder.merge(healerOrder, 1, Integer::sum);
-		feedEvents.add(new FeedEvent(healerOrder, Math.round(getCurrentWaveElapsedSeconds()), currentCallIndex));
+		foodFedByNpcIndex.merge(pendingFeedAttempt.npcIndex, 1, Integer::sum);
+
+		Integer currentOrder = healerOrderByNpcIndex.get(pendingFeedAttempt.npcIndex);
+		int totalFoodFed = foodFedByNpcIndex.getOrDefault(pendingFeedAttempt.npcIndex, 0);
+
+		if (currentOrder != null)
+		{
+			feedEvents.add(new FeedEvent(currentOrder, Math.round(getCurrentWaveElapsedSeconds()), currentCallIndex));
+		}
+
+		log.debug(
+				"Counted consumed poisoned food for healer #{} from NPC index {}. Item {} went from {} to {}. Total now {}",
+				currentOrder,
+				pendingFeedAttempt.npcIndex,
+				pendingFeedAttempt.foodItemId,
+				pendingFeedAttempt.foodCountBeforeUse,
+				currentFoodCount,
+				totalFoodFed
+		);
 
 		pendingFeedAttempt = null;
 	}
@@ -449,6 +483,27 @@ public class BaHealerOrderPlugin extends Plugin
 		return new Color(255, 60, 60);
 	}
 
+	public Map<Integer, Integer> getFoodFedByHealerOrder()
+	{
+		Map<Integer, Integer> foodFedByHealerOrder = new HashMap<>();
+
+		for (Map.Entry<Integer, Integer> entry : foodFedByNpcIndex.entrySet())
+		{
+			Integer npcIndex = entry.getKey();
+			Integer foodFed = entry.getValue();
+			Integer healerOrder = healerOrderByNpcIndex.get(npcIndex);
+
+			if (healerOrder == null)
+			{
+				continue;
+			}
+
+			foodFedByHealerOrder.merge(healerOrder, foodFed, Integer::sum);
+		}
+
+		return Collections.unmodifiableMap(foodFedByHealerOrder);
+	}
+
 	public String getHealerLabel(int healerOrder)
 	{
 		if (config.healerLabelStyle() == BaHealerOrderConfig.HealerLabelStyle.SPAWN_ORDER)
@@ -479,21 +534,63 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		this.currentWave = waveNumber;
-		this.currentCallIndex = 0;
 		this.waveStartTimeMs = System.currentTimeMillis();
-		this.lastCallText = null;
-		this.currentCallText = null;
-		this.currentCallSource = null;
-		this.callTrackingArmed = false;
-		visibleHealers.clear();
-		healerOrderByNpcIndex.clear();
-		foodFedByHealerOrder.clear();
-		feedEvents.clear();
-		pendingFeedAttempt = null;
-		selectedPoisonedFoodItemId = null;
-		nextHealerNumber = 1;
+		resetWaveTrackedState();
 
 		log.debug("Starting new BA wave {}", waveNumber);
+	}
+
+	private void rebuildHealerOrderByNpcIndex()
+	{
+		List<Integer> sortedIndexes = new ArrayList<>(healerIndexesSeenThisWave);
+		Collections.sort(sortedIndexes);
+
+		healerOrderByNpcIndex.clear();
+
+		for (int i = 0; i < sortedIndexes.size(); i++)
+		{
+			healerOrderByNpcIndex.put(sortedIndexes.get(i), i + 1);
+		}
+	}
+
+	private void rebuildVisibleHealerOrders()
+	{
+		if (visibleHealers.isEmpty())
+		{
+			return;
+		}
+
+		for (Map.Entry<NPC, Integer> entry : new ArrayList<>(visibleHealers.entrySet()))
+		{
+			NPC npc = entry.getKey();
+
+			if (npc == null)
+			{
+				visibleHealers.remove(npc);
+				continue;
+			}
+
+			Integer correctedOrder = healerOrderByNpcIndex.get(npc.getIndex());
+
+			if (correctedOrder == null)
+			{
+				continue;
+			}
+
+			Integer previousOrder = entry.getValue();
+
+			if (!correctedOrder.equals(previousOrder))
+			{
+				log.debug(
+						"Corrected Penance Healer index {} from healer #{} to healer #{}",
+						npc.getIndex(),
+						previousOrder,
+						correctedOrder
+				);
+			}
+
+			visibleHealers.put(npc, correctedOrder);
+		}
 	}
 
 	private void updateCallIndexFromHealerWidget()
@@ -618,7 +715,15 @@ public class BaHealerOrderPlugin extends Plugin
 		int foodCountBeforeUse = getInventoryItemCount(selectedPoisonedFoodItemId);
 
 		pendingFeedAttempt = new PendingFeedAttempt(
+				npcIndex,
+				selectedPoisonedFoodItemId,
+				foodCountBeforeUse
+		);
+
+		log.debug(
+				"Pending food feed for healer #{} from NPC index {} using item id {}. Count before use: {}",
 				healerOrder,
+				npcIndex,
 				selectedPoisonedFoodItemId,
 				foodCountBeforeUse
 		);
@@ -678,7 +783,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (npc != null)
 		{
-			return visibleHealers.get(npc);
+			return healerOrderByNpcIndex.get(npc.getIndex());
 		}
 
 		return healerOrderByNpcIndex.get(entry.getIdentifier());
@@ -746,9 +851,16 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private void resetWaveState()
 	{
+		resetWaveTrackedState();
+		waveStartTimeMs = -1;
+	}
+
+	private void resetWaveTrackedState()
+	{
 		visibleHealers.clear();
+		healerIndexesSeenThisWave.clear();
 		healerOrderByNpcIndex.clear();
-		foodFedByHealerOrder.clear();
+		foodFedByNpcIndex.clear();
 		feedEvents.clear();
 		pendingFeedAttempt = null;
 		selectedPoisonedFoodItemId = null;
@@ -757,8 +869,6 @@ public class BaHealerOrderPlugin extends Plugin
 		currentCallText = null;
 		currentCallSource = null;
 		callTrackingArmed = false;
-		waveStartTimeMs = -1;
-		nextHealerNumber = 1;
 	}
 
 	private void resetAllState()
@@ -804,13 +914,13 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private static class PendingFeedAttempt
 	{
-		private final int healerOrder;
+		private final int npcIndex;
 		private final int foodItemId;
 		private final int foodCountBeforeUse;
 
-		private PendingFeedAttempt(int healerOrder, int foodItemId, int foodCountBeforeUse)
+		private PendingFeedAttempt(int npcIndex, int foodItemId, int foodCountBeforeUse)
 		{
-			this.healerOrder = healerOrder;
+			this.npcIndex = npcIndex;
 			this.foodItemId = foodItemId;
 			this.foodCountBeforeUse = foodCountBeforeUse;
 		}

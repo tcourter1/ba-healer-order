@@ -51,6 +51,7 @@ public class BaHealerOrderOverlay extends Overlay
 	{
 		List<Map.Entry<NPC, Integer>> healers = new ArrayList<>(plugin.getTrackedHealers().entrySet());
 		Map<NPC, Integer> xOffsets = getStackedLabelXOffsets(healers);
+		Map<Integer, Integer> foodFedByHealerOrder = plugin.getFoodFedByHealerOrder();
 
 		for (Map.Entry<NPC, Integer> entry : healers)
 		{
@@ -73,7 +74,7 @@ public class BaHealerOrderOverlay extends Overlay
 
 			if (config.showFoodCountOnNpc())
 			{
-				int foodFed = plugin.getFoodFedByHealerOrder().getOrDefault(order, 0);
+				int foodFed = foodFedByHealerOrder.getOrDefault(order, 0);
 				renderFoodCount(graphics, npc, order, foodFed, xOffset);
 			}
 		}
