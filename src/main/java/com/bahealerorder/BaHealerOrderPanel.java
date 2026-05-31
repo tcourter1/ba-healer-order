@@ -134,8 +134,8 @@ public class BaHealerOrderPanel extends PluginPanel
 		section.add(presetActionRow);
 		section.add(Box.createVerticalStrut(5));
 		JPanel jsonActionRow = horizontalActionRow();
-		jsonActionRow.add(action("Import JSON", this::importRunPresetFromClipboard));
-		jsonActionRow.add(action("Export JSON", this::exportSelectedRunPresetToClipboard));
+		jsonActionRow.add(action("Import Preset", this::importRunPresetFromClipboard));
+		jsonActionRow.add(action("Export Preset", this::exportSelectedRunPresetToClipboard));
 		section.add(jsonActionRow);
 		return section;
 	}
@@ -371,7 +371,7 @@ public class BaHealerOrderPanel extends PluginPanel
 
 		int result = JOptionPane.showConfirmDialog(
 				this,
-				"Copy the selected run preset to the clipboard as JSON?\n\nOnly this preset and its referenced wave codes will be exported.",
+				"Copy the selected run preset to the clipboard?\n\nOnly this preset and its referenced wave codes will be exported.",
 				"Export Preset",
 				JOptionPane.OK_CANCEL_OPTION
 		);
@@ -383,7 +383,7 @@ public class BaHealerOrderPanel extends PluginPanel
 
 		StringSelection contents = new StringSelection(json);
 		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(contents, null);
-		JOptionPane.showMessageDialog(this, "Run preset JSON copied to clipboard.", "Export Preset", JOptionPane.INFORMATION_MESSAGE);
+		JOptionPane.showMessageDialog(this, "Run preset copied to clipboard.", "Export Preset", JOptionPane.INFORMATION_MESSAGE);
 	}
 
 	private void importRunPresetFromClipboard()
@@ -404,7 +404,7 @@ public class BaHealerOrderPanel extends PluginPanel
 
 		int result = JOptionPane.showConfirmDialog(
 				this,
-				"Import one run preset from clipboard JSON?\n\nOnly the preset and any missing referenced wave codes will be imported. Existing wave codes with the same id will not be overwritten.",
+				"Import one run preset from the clipboard?\n\nOnly the preset and any missing referenced wave codes will be imported. Existing wave codes with the same id will not be overwritten.",
 				"Import Preset",
 				JOptionPane.OK_CANCEL_OPTION
 		);
@@ -416,7 +416,7 @@ public class BaHealerOrderPanel extends PluginPanel
 
 		if (!codeManager.importRunPresetJson(json))
 		{
-			JOptionPane.showMessageDialog(this, "Clipboard JSON could not be imported as a run preset.", "Import Preset", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Clipboard text could not be imported as a run preset.", "Import Preset", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 
