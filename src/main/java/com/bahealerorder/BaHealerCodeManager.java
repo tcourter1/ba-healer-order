@@ -12,7 +12,6 @@ import com.bahealerorder.codes.RunPresetExport;
 import com.bahealerorder.codes.StrategyStore;
 import com.bahealerorder.codes.WaveCode;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -29,15 +28,16 @@ public class BaHealerCodeManager
 	private static final String STRATEGY_STORE_KEY = "strategyStore";
 
 	private final ConfigManager configManager;
-	private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+	private final Gson gson;
 	private final StrategyStore builtIns = BuiltInStrategyLibrary.create();
 
 	private StrategyStore userStore = new StrategyStore();
 
 	@Inject
-	public BaHealerCodeManager(ConfigManager configManager)
+	public BaHealerCodeManager(ConfigManager configManager, Gson gson)
 	{
 		this.configManager = configManager;
+		this.gson = gson.newBuilder().setPrettyPrinting().create();
 	}
 
 	public void load()
