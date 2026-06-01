@@ -299,6 +299,8 @@ public class BaHealerOrderPlugin extends Plugin
 
 		for (MenuEntry entry : menuEntries)
 		{
+			// The highlight workaround rewrites option text into the target, so undo it
+			// before applying this pass again to avoid stacking duplicate text.
 			if (restoreHighlightedDispenserEntry(entry))
 			{
 				changed = true;
@@ -851,6 +853,8 @@ public class BaHealerOrderPlugin extends Plugin
 
 			if (calledFoodOption.equals(optionText) && isHealerItemMachineTarget(targetText))
 			{
+				// Object menu options do not reliably render color tags in the option column.
+				// Moving the option text into the target side makes the selected row visibly green.
 				entry.setOption("");
 				entry.setTarget(ColorUtil.prependColorTag(Text.removeTags(option), CALLED_FOOD_MENU_COLOR) + " " + target);
 				changed = true;
@@ -862,6 +866,8 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private boolean restoreHighlightedDispenserEntry(MenuEntry entry)
 	{
+		// See highlightCalledDispenserFood: highlighted dispenser entries have an empty
+		// option and a target that starts with the original Take-* option.
 		String option = entry.getOption();
 		String target = entry.getTarget();
 
@@ -986,6 +992,8 @@ public class BaHealerOrderPlugin extends Plugin
 			wormsIndex--;
 		}
 
+		// RuneLite stores menu entries in the opposite order from how the right-click
+		// menu is drawn, so inserting Meat before Worms in the array displays it below Worms.
 		movedEntries.add(wormsIndex, meatEntry);
 		return movedEntries.toArray(new MenuEntry[0]);
 	}
