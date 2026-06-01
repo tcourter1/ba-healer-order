@@ -119,8 +119,6 @@ The Dispenser Options section includes optional helpers for the Healer item mach
 * **Remove Take-Vial** removes the Take-Vial option from the menu.
 * **Move Take-Meat up** keeps Take-Meat with the other food options, above Walk here and Examine.
 
-![Highlighted Take-Worms dispenser option](docs/dispenser-highlighted-food.png)
-
 
 
 ## Credits
