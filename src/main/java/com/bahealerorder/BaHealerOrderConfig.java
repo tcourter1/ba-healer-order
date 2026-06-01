@@ -196,7 +196,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Healer Food Only",
 			description = "When poisoned food is selected, only Penance Healer Use entries remain clickable",
 			section = healerHighlightSection,
-			position = 9
+			position = 10
 	)
 	default boolean healerFoodOnly()
 	{
