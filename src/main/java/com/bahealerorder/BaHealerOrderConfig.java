@@ -192,6 +192,18 @@ public interface BaHealerOrderConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "healerFoodOnly",
+			name = "Healer Food Only",
+			description = "When poisoned food is selected, only Penance Healer Use entries remain clickable",
+			section = healerHighlightSection,
+			position = 10
+	)
+	default boolean healerFoodOnly()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 			keyName = "showFoodPanel",
 			name = "Show Food Panel",
 			description = "Shows a panel tracking how much good food has been fed to each Penance Healer",
