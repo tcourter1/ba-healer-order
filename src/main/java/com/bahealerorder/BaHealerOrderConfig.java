@@ -25,6 +25,13 @@ public interface BaHealerOrderConfig extends Config
 	)
 	String foodCountSection = "foodCount";
 
+	@ConfigSection(
+			name = "Dispenser Options",
+			description = "Utility helpers for the BA healer role",
+			position = 3
+	)
+	String dispenserOptionsSection = "dispenserOptions";
+
 	enum HighlightStyle
 	{
 		NONE("None"),
@@ -189,6 +196,42 @@ public interface BaHealerOrderConfig extends Config
 	default boolean showMenuLabel()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+			keyName = "highlightCalledDispenserFood",
+			name = "Highlight Called Food",
+			description = "Highlights the correct Take option on the healer dispenser for the current food call",
+			section = dispenserOptionsSection,
+			position = 1
+	)
+	default boolean highlightCalledDispenserFood()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "removeTakeVial",
+			name = "Remove Take-Vial",
+			description = "Removes the Take-Vial option from the healer dispenser menu",
+			section = dispenserOptionsSection,
+			position = 2
+	)
+	default boolean removeTakeVial()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "moveTakeMeatUp",
+			name = "Move Take-Meat up",
+			description = "Moves Take-Meat closer to the other healer dispenser food options",
+			section = dispenserOptionsSection,
+			position = 3
+	)
+	default boolean moveTakeMeatUp()
+	{
+		return false;
 	}
 
 	@ConfigItem(
