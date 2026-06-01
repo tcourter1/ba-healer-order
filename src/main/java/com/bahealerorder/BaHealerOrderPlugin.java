@@ -271,12 +271,6 @@ public class BaHealerOrderPlugin extends Plugin
 		filterPoisonedFoodUseEntries();
 	}
 
-	@Subscribe(priority = -1)
-	public void onPostMenuSort(PostMenuSort event)
-	{
-		filterPoisonedFoodUseEntries();
-	}
-
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
@@ -488,7 +482,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (status.getInstruction().getBeforeSeconds() != null)
 		{
-			builder.append(" [").append(status.getInstruction().getBeforeSeconds()).append(')');
+			builder.append(" [").append(status.getInstruction().getBeforeSeconds()).append(']');
 		}
 
 		return builder.toString();
