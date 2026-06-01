@@ -30,6 +30,7 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
+import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
@@ -42,6 +43,7 @@ import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
+import net.runelite.api.events.PostMenuSort;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
@@ -261,6 +263,12 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		entry.setTarget(target + " " + suffix);
+	}
+
+	@Subscribe(priority = -1)
+	public void onPostMenuSort(PostMenuSort event)
+	{
+		filterPoisonedFoodUseEntries();
 	}
 
 	@Subscribe
@@ -505,7 +513,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (status.getInstruction().getBeforeSeconds() != null)
 		{
-			builder.append(" [").append(status.getInstruction().getBeforeSeconds()).append(']');
+			builder.append(" [").append(status.getInstruction().getBeforeSeconds()).append(')');
 		}
 
 		return builder.toString();
@@ -827,6 +835,45 @@ public class BaHealerOrderPlugin extends Plugin
 		selectedPoisonedFoodItemId = event.getItemId();
 	}
 
+	private void filterPoisonedFoodUseEntries()
+	{
+		if (!config.healerFoodOnly()
+				|| client.getGameState() != GameState.LOGGED_IN
+				|| client.isMenuOpen()
+				|| !isPoisonedFoodSelected())
+		{
+			return;
+		}
+
+		MenuEntry[] menuEntries = client.getMenu().getMenuEntries();
+		List<MenuEntry> filteredEntries = new ArrayList<>(menuEntries.length);
+		boolean changed = false;
+
+		for (MenuEntry entry : menuEntries)
+		{
+			if (!isSelectedPoisonedFoodUseEntry(entry))
+			{
+				filteredEntries.add(entry);
+				continue;
+			}
+
+			if (isPenanceHealerUseEntry(entry))
+			{
+				filteredEntries.add(entry);
+				continue;
+			}
+
+			changed = true;
+		}
+
+		if (!changed)
+		{
+			return;
+		}
+
+		client.getMenu().setMenuEntries(filteredEntries.toArray(new MenuEntry[0]));
+	}
+
 	private void handlePoisonedFoodUseOnHealer(MenuOptionClicked event, String option, String target)
 	{
 		if (event.getMenuAction() != MenuAction.WIDGET_TARGET_ON_NPC)
@@ -872,6 +919,110 @@ public class BaHealerOrderPlugin extends Plugin
 				selectedPoisonedFoodItemId,
 				foodCountBeforeUse
 		);
+	}
+
+	private boolean isPoisonedFoodSelected()
+	{
+		if (!client.isWidgetSelected())
+		{
+			selectedPoisonedFoodItemId = null;
+			return false;
+		}
+
+		Widget selectedWidget = client.getSelectedWidget();
+
+		if (selectedWidget == null)
+		{
+			return selectedPoisonedFoodItemId != null && selectedPoisonedFoodItemId > 0;
+		}
+
+		int itemId = selectedWidget.getItemId();
+
+		if (itemId > 0)
+		{
+			if (isPoisonedFoodItem(itemId))
+			{
+				selectedPoisonedFoodItemId = itemId;
+				return true;
+			}
+
+			selectedPoisonedFoodItemId = null;
+			return false;
+		}
+
+		String widgetName = normalizeMenuText(selectedWidget.getName());
+
+		if (widgetName.contains("poisoned"))
+		{
+			return true;
+		}
+
+		return selectedPoisonedFoodItemId != null && selectedPoisonedFoodItemId > 0;
+	}
+
+	private boolean isPoisonedFoodItem(int itemId)
+	{
+		ItemComposition itemComposition = client.getItemDefinition(itemId);
+
+		if (itemComposition == null)
+		{
+			return false;
+		}
+
+		return normalizeMenuText(itemComposition.getName()).contains("poisoned");
+	}
+
+	private boolean isSelectedPoisonedFoodUseEntry(MenuEntry entry)
+	{
+		if (entry == null || !isPoisonedFoodUseMenuAction(entry.getType()))
+		{
+			return false;
+		}
+
+		return "use".equals(normalizeMenuText(entry.getOption()));
+	}
+
+	private boolean isPenanceHealerUseEntry(MenuEntry entry)
+	{
+		if (entry.getType() != MenuAction.WIDGET_TARGET_ON_NPC
+				&& entry.getType() != MenuAction.ITEM_USE_ON_NPC)
+		{
+			return false;
+		}
+
+		NPC npc = entry.getNpc();
+
+		if (isPenanceHealer(npc))
+		{
+			return true;
+		}
+
+		return normalizeMenuText(entry.getTarget()).contains("penance healer");
+	}
+
+	private boolean isPoisonedFoodUseMenuAction(MenuAction action)
+	{
+		return action == MenuAction.WIDGET_TARGET_ON_NPC
+				|| action == MenuAction.ITEM_USE_ON_NPC
+				|| action == MenuAction.WIDGET_TARGET_ON_PLAYER
+				|| action == MenuAction.ITEM_USE_ON_PLAYER
+				|| action == MenuAction.WIDGET_TARGET_ON_GAME_OBJECT
+				|| action == MenuAction.ITEM_USE_ON_GAME_OBJECT
+				|| action == MenuAction.WIDGET_TARGET_ON_GROUND_ITEM
+				|| action == MenuAction.ITEM_USE_ON_GROUND_ITEM
+				|| action == MenuAction.WIDGET_TARGET_ON_WIDGET
+				|| action == MenuAction.WIDGET_USE_ON_ITEM
+				|| action == MenuAction.ITEM_USE_ON_ITEM;
+	}
+
+	private String normalizeMenuText(String text)
+	{
+		if (text == null)
+		{
+			return "";
+		}
+
+		return Text.removeTags(text).toLowerCase(Locale.ROOT);
 	}
 
 	private int getInventoryItemCount(int itemId)
