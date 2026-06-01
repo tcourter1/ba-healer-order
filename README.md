@@ -19,8 +19,10 @@ It provides visual tracking for Penance Healers, including spawn-order labeling,
 * Supports time-based healer-code progression for expected food values.
 * Supports optional healer target labels from healer-code entries.
 * Supports stack handling by spreading labels when multiple healers occupy the same tile.
-* Optionally adds healer labels to the right-click menu.
+* Optionally adds healer labels and codes to the right-click menu.
 * Supports configurable highlight color, label color, label size, food-count color, food-count size, food-count height, stacked-label spacing, and menu label visibility.
+* Supports option to prevent using poisoned food on anything but a Penance Healer.
+* Includes optional healer dispenser menu helpers for highlighting the called food, hiding Take-Vial, and moving Take-Meat above Walk here and Examine.
 
 ## Food Count Tracking
 
@@ -79,6 +81,10 @@ Target labels can be included in healer-code entries using parentheses. When pre
 
 <img width="234" height="1030" alt="image" src="https://github.com/user-attachments/assets/82f1159b-4f2d-4e43-8459-4d9f0cf6bee6" />
 
+The active code can also be displayed in the Penance Healers' right-click menu.
+
+<img width="413" height="249" alt="image" src="https://github.com/user-attachments/assets/4f12e807-1992-4530-b050-381c0448e283" />
+
 
 # Demonstrations
 
@@ -88,7 +94,7 @@ https://github.com/user-attachments/assets/959d4924-c2b3-41bb-8b4c-5b3a66208a2f
 
 _A player uses the correct amount of food, but too early:_
 
-https://github.com/user-attachments/assets/7fbd5b1c-01fb-4af4-bf6a-1212d6708fba
+https://github.com/user-attachments/assets/2a67d1fe-7bb6-4b26-ae4a-116e5f12f73b
 
 
 
@@ -101,9 +107,17 @@ This helps prevent stacked healers from hiding each other’s labels.
 
 ## Right-Click Menu Labels
 
-BA Healer Utilities can optionally add the tracked healer label to Penance Healers in the right-click menu.
+BA Healer Utilities can optionally add the tracked healer label and/or code to Penance Healers in the right-click menu.
 
 This makes it easier to identify the correct healer when multiple healers are close together or stacked.
+
+## Dispenser Options
+
+The Dispenser Options section includes optional helpers for the Healer item machine menu:
+
+* **Highlight Called Food** highlights the correct Take option based on the current defender call.
+* **Remove Take-Vial** removes the Take-Vial option from the menu.
+* **Move Take-Meat up** keeps Take-Meat with the other food options, above Walk here and Examine.
 
 
 
