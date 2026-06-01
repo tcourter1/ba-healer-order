@@ -52,6 +52,9 @@ Time-based labels display healers using common BA timing labels, such as:
 ```text
 6, 12, 18, 24, R1, R2...
 ```
+Healer labels can be displayed in their right-click menu as well.
+
+<img width="517" height="271" alt="image" src="https://github.com/user-attachments/assets/8663be8f-923b-408e-a0db-32232083a0ad" />
 
 Labels can also be disabled entirely.
 
@@ -74,6 +77,21 @@ Healer-code entries can include time-based progression. Additional lines represe
 
 Target labels can be included in healer-code entries using parentheses. When present, the plugin can display the active target label above the healer.
 
+<img width="234" height="1030" alt="image" src="https://github.com/user-attachments/assets/82f1159b-4f2d-4e43-8459-4d9f0cf6bee6" />
+
+
+# Demonstrations
+
+_A player satisfies the requirement of a code at or after the correct time:_
+
+https://github.com/user-attachments/assets/959d4924-c2b3-41bb-8b4c-5b3a66208a2f
+
+_A player uses the correct amount of food, but too early:_
+
+https://github.com/user-attachments/assets/7fbd5b1c-01fb-4af4-bf6a-1212d6708fba
+
+
+
 
 ## Stack Handling
 
@@ -86,6 +104,8 @@ This helps prevent stacked healers from hiding each other’s labels.
 BA Healer Utilities can optionally add the tracked healer label to Penance Healers in the right-click menu.
 
 This makes it easier to identify the correct healer when multiple healers are close together or stacked.
+
+
 
 ## Credits
 
