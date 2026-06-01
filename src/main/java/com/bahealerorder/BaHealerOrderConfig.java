@@ -192,6 +192,18 @@ public interface BaHealerOrderConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "showMenuCode",
+			name = "Show Menu Code",
+			description = "Adds the current healer code next to Penance Healers in the right-click menu",
+			section = healerHighlightSection,
+			position = 9
+	)
+	default boolean showMenuCode()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 			keyName = "healerFoodOnly",
 			name = "Healer Food Only",
 			description = "When poisoned food is selected, only Penance Healer Use entries remain clickable",
