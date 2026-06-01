@@ -1,7 +1,5 @@
 package com.bahealerorder;
 
-import com.bahealerorder.codes.HealerCodeStatus;
-import com.bahealerorder.codes.CodeDisplayState;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -268,70 +266,13 @@ public class BaHealerOrderOverlay extends Overlay
 		Font originalFont = graphics.getFont();
 
 		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.foodCountTextSize()));
-		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, getFoodCountColor(healerOrder));
+		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, plugin.getFoodCountColor(healerOrder, foodFed));
 		graphics.setFont(originalFont);
 	}
 
 	private String getFoodCountText(int healerOrder, int foodFed)
 	{
-		HealerCodeStatus status = plugin.getDisplayCodeStatus(healerOrder);
-		String codeText = plugin.formatCodeStatus(status);
-
-		if (codeText != null)
-		{
-			return codeText;
-		}
-
-		BaHealerOrderConfig.FoodCountType type = config.foodCountType();
-
-		int expected = plugin.getExpectedFoodForOrder(healerOrder);
-
-		if (expected <= 0)
-		{
-			return foodFed + "f";
-		}
-
-		if (type == BaHealerOrderConfig.FoodCountType.COUNT_UP)
-		{
-			return foodFed + "/" + expected;
-		}
-
-		return String.valueOf(Math.max(expected - foodFed, 0));
-	}
-
-	private Color getFoodCountColor(int healerOrder)
-	{
-		HealerCodeStatus status = plugin.getDisplayCodeStatus(healerOrder);
-
-		if (status != null)
-		{
-			return plugin.getCodeStatusColor(status.getState());
-		}
-
-		int expected = plugin.getExpectedFoodForOrder(healerOrder);
-
-		if (expected > 0)
-		{
-			int foodFed = plugin.getFoodFedByHealerOrder().getOrDefault(healerOrder, 0);
-			return plugin.getCodeStatusColor(getFallbackState(foodFed, expected));
-		}
-
-		return config.foodCountColor();
-	}
-
-	private CodeDisplayState getFallbackState(int foodFed, int expected)
-	{
-		if (foodFed <= 0)
-		{
-			return CodeDisplayState.NOT_STARTED;
-		}
-
-		if (foodFed < expected)
-		{
-			return CodeDisplayState.IN_PROGRESS;
-		}
-
-		return CodeDisplayState.COMPLETE;
+		return plugin.getFoodCountText(healerOrder, foodFed);
 	}
 
 	private Point offsetPoint(Point point, int xOffset)

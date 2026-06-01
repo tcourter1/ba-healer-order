@@ -192,6 +192,18 @@ public interface BaHealerOrderConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "showMenuCode",
+			name = "Show Menu Code",
+			description = "Adds the current healer code next to Penance Healers in the right-click menu",
+			section = healerHighlightSection,
+			position = 9
+	)
+	default boolean showMenuCode()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 			keyName = "showFoodPanel",
 			name = "Show Food Panel",
 			description = "Shows a panel tracking how much good food has been fed to each Penance Healer",

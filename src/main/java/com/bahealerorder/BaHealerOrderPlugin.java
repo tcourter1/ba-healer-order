@@ -227,7 +227,7 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onMenuEntryAdded(MenuEntryAdded event)
 	{
 		if (!config.showMenuLabel()
-				|| config.healerLabelStyle() == BaHealerOrderConfig.HealerLabelStyle.NONE)
+				&& !config.showMenuCode())
 		{
 			return;
 		}
@@ -248,13 +248,19 @@ public class BaHealerOrderPlugin extends Plugin
 
 		String target = entry.getTarget();
 
-		if (target == null || Text.removeTags(target).contains(" ("))
+		if (target == null || hasHealerMenuSuffix(target))
 		{
 			return;
 		}
 
-		String label = getHealerLabel(healerOrder);
-		entry.setTarget(target + " " + ColorUtil.wrapWithColorTag("(" + label + ")", config.textColor()));
+		String suffix = getHealerMenuSuffix(healerOrder);
+
+		if (suffix == null)
+		{
+			return;
+		}
+
+		entry.setTarget(target + " " + suffix);
 	}
 
 	@Subscribe
@@ -505,6 +511,50 @@ public class BaHealerOrderPlugin extends Plugin
 		return builder.toString();
 	}
 
+	public String getFoodCountText(int healerOrder, int foodFed)
+	{
+		HealerCodeStatus status = getDisplayCodeStatus(healerOrder);
+		String codeText = formatCodeStatus(status);
+
+		if (codeText != null)
+		{
+			return codeText;
+		}
+
+		int expected = getExpectedFoodForOrder(healerOrder);
+
+		if (expected <= 0)
+		{
+			return foodFed + "f";
+		}
+
+		if (config.foodCountType() == BaHealerOrderConfig.FoodCountType.COUNT_UP)
+		{
+			return foodFed + "/" + expected;
+		}
+
+		return String.valueOf(Math.max(expected - foodFed, 0));
+	}
+
+	public Color getFoodCountColor(int healerOrder, int foodFed)
+	{
+		HealerCodeStatus status = getDisplayCodeStatus(healerOrder);
+
+		if (status != null)
+		{
+			return getCodeStatusColor(status.getState());
+		}
+
+		int expected = getExpectedFoodForOrder(healerOrder);
+
+		if (expected > 0)
+		{
+			return getCodeStatusColor(getFallbackCodeState(foodFed, expected));
+		}
+
+		return config.foodCountColor();
+	}
+
 	public Color getCodeStatusColor(CodeDisplayState state)
 	{
 		if (state == CodeDisplayState.COMPLETE)
@@ -523,6 +573,21 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		return config.notStartedCodeColor();
+	}
+
+	private CodeDisplayState getFallbackCodeState(int foodFed, int expected)
+	{
+		if (foodFed <= 0)
+		{
+			return CodeDisplayState.NOT_STARTED;
+		}
+
+		if (foodFed < expected)
+		{
+			return CodeDisplayState.IN_PROGRESS;
+		}
+
+		return CodeDisplayState.COMPLETE;
 	}
 
 	public Map<Integer, Integer> getFoodFedByHealerOrder()
@@ -566,6 +631,40 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		return labelsForWave[healerOrder - 1];
+	}
+
+	private String getHealerMenuSuffix(int healerOrder)
+	{
+		List<String> parts = new ArrayList<>();
+
+		if (config.showMenuLabel()
+				&& config.healerLabelStyle() != BaHealerOrderConfig.HealerLabelStyle.NONE)
+		{
+			parts.add(ColorUtil.wrapWithColorTag("(" + getHealerLabel(healerOrder) + ")", config.textColor()));
+		}
+
+		if (config.showMenuCode())
+		{
+			int foodFed = getFoodFedByHealerOrder().getOrDefault(healerOrder, 0);
+			String codeText = getFoodCountText(healerOrder, foodFed);
+
+			if (codeText != null)
+			{
+				parts.add(ColorUtil.wrapWithColorTag("(" + codeText + ")", getFoodCountColor(healerOrder, foodFed)));
+			}
+		}
+
+		if (parts.isEmpty())
+		{
+			return null;
+		}
+
+		return String.join(" ", parts);
+	}
+
+	private boolean hasHealerMenuSuffix(String target)
+	{
+		return Text.removeTags(target).contains(" (");
 	}
 
 	private void startNewWave(int waveNumber)
