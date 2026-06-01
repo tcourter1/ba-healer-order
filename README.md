@@ -22,6 +22,7 @@ It provides visual tracking for Penance Healers, including spawn-order labeling,
 * Optionally adds healer labels and codes to the right-click menu.
 * Supports configurable highlight color, label color, label size, food-count color, food-count size, food-count height, stacked-label spacing, and menu label visibility.
 * Supports option to prevent using poisoned food on anything but a Penance Healer.
+* Includes optional healer dispenser menu helpers for highlighting the called food, hiding Take-Vial, and moving Take-Meat above Walk here and Examine.
 
 ## Food Count Tracking
 
@@ -109,6 +110,16 @@ This helps prevent stacked healers from hiding each other’s labels.
 BA Healer Utilities can optionally add the tracked healer label and/or code to Penance Healers in the right-click menu.
 
 This makes it easier to identify the correct healer when multiple healers are close together or stacked.
+
+## Dispenser Options
+
+The Dispenser Options section includes optional helpers for the Healer item machine menu:
+
+* **Highlight Called Food** highlights the correct Take option based on the current defender call.
+* **Remove Take-Vial** removes the Take-Vial option from the menu.
+* **Move Take-Meat up** keeps Take-Meat with the other food options, above Walk here and Examine.
+
+![Highlighted Take-Worms dispenser option](docs/dispenser-highlighted-food.png)
 
 
 
