@@ -940,7 +940,8 @@ public class BaHealerOrderPlugin extends Plugin
 			return false;
 		}
 
-		return normalizeMenuText(itemComposition.getName()).contains("poisoned");
+		String itemName = normalizeMenuText(itemComposition.getName());
+		return itemName.contains("poisoned") && (itemName.contains("tofu") || itemName.contains("worms") || itemName.contains("meat"));
 	}
 
 	private boolean isSelectedPoisonedFoodUseEntry(MenuEntry entry)
