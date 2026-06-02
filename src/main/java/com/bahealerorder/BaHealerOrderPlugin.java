@@ -46,6 +46,8 @@ import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.PostMenuSort;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.config.ConfigManager;
@@ -68,6 +70,9 @@ public class BaHealerOrderPlugin extends Plugin
 {
 	private static final String PENANCE_HEALER_NAME = "Penance Healer";
 	private static final String HEALER_ITEM_MACHINE_NAME = "Healer item machine";
+	private static final String ATTACKER_ITEM_MACHINE_NAME = "Attacker item machine";
+	private static final String DEFENDER_ITEM_MACHINE_NAME = "Defender item machine";
+	private static final String COLLECTOR_CONVERTER_NAME = "Collector Converter";
 	private static final String TAKE_TOFU_OPTION = "take-tofu";
 	private static final String TAKE_WORMS_OPTION = "take-worms";
 	private static final String TAKE_MEAT_OPTION = "take-meat";
@@ -76,6 +81,9 @@ public class BaHealerOrderPlugin extends Plugin
 	private static final String PANEL_ICON_RESOURCE = "/com/bahealerorder/penance_healer.png";
 
 	private static final int BA_HORN_OF_GLORY_GROUP_ID = 484;
+	private static final int BA_ATTACKER_GROUP_ID = 485;
+	private static final int BA_COLLECTOR_GROUP_ID = 486;
+	private static final int BA_DEFENDER_GROUP_ID = 487;
 	private static final int BA_HEALER_GROUP_ID = 488;
 	private static final int BA_HEALER_LISTEN_CHILD_ID = 7;
 	private static final int BA_HEALER_CALL_CHILD_ID = 9;
@@ -149,6 +157,37 @@ public class BaHealerOrderPlugin extends Plugin
 	private Integer selectedPoisonedFoodItemId;
 	private PendingFeedAttempt pendingFeedAttempt;
 	private NavigationButton navigationButton;
+	private Role currentRole;
+
+	private enum Role
+	{
+		ATTACKER(BA_ATTACKER_GROUP_ID, InterfaceID.BARBASSAULT_OVER_ATT),
+		COLLECTOR(BA_COLLECTOR_GROUP_ID, InterfaceID.BARBASSAULT_OVER_COL),
+		DEFENDER(BA_DEFENDER_GROUP_ID, InterfaceID.BARBASSAULT_OVER_DEF),
+		HEALER(BA_HEALER_GROUP_ID, InterfaceID.BARBASSAULT_OVER_HEAL);
+
+		private final int groupId;
+		private final int interfaceGroupId;
+
+		Role(int groupId, int interfaceGroupId)
+		{
+			this.groupId = groupId;
+			this.interfaceGroupId = interfaceGroupId;
+		}
+
+		private static Role fromGroupId(int groupId)
+		{
+			for (Role role : values())
+			{
+				if (groupId == role.groupId || groupId == role.interfaceGroupId)
+				{
+					return role;
+				}
+			}
+
+			return null;
+		}
+	}
 
 	@Override
 	protected void startUp()
@@ -186,10 +225,7 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		NPC npc = event.getNpc();
 
-		if (!isPenanceHealer(npc))
-		{
-			return;
-		}
+		if (!isPenanceHealer(npc)) return;
 
 		int npcIndex = npc.getIndex();
 		boolean addedNewIndex = healerIndexesSeenThisWave.add(npcIndex);
@@ -199,10 +235,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		Integer order = healerOrderByNpcIndex.get(npcIndex);
 
-		if (order == null)
-		{
-			return;
-		}
+		if (order == null) return;
 
 		visibleHealers.put(npc, order);
 
@@ -240,39 +273,23 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onMenuEntryAdded(MenuEntryAdded event)
 	{
-		if (!config.showMenuLabel()
-				&& !config.showMenuCode())
-		{
-			return;
-		}
+		if (!shouldShowMenuLabel() && !shouldShowMenuCode()) return;
 
 		MenuEntry entry = event.getMenuEntry();
 
-		if (entry == null)
-		{
-			return;
-		}
+		if (entry == null) return;
 
 		Integer healerOrder = getHealerOrderForMenuEntry(entry);
 
-		if (healerOrder == null)
-		{
-			return;
-		}
+		if (healerOrder == null) return;
 
 		String target = entry.getTarget();
 
-		if (target == null || hasHealerMenuSuffix(target))
-		{
-			return;
-		}
+		if (target == null || hasHealerMenuSuffix(target)) return;
 
 		String suffix = getHealerMenuSuffix(healerOrder);
 
-		if (suffix == null)
-		{
-			return;
-		}
+		if (suffix == null) return;
 
 		entry.setTarget(target + " " + suffix);
 	}
@@ -287,22 +304,13 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
-		if (event.getContainerId() != InventoryID.INVENTORY.getId())
-		{
-			return;
-		}
+		if (event.getContainerId() != InventoryID.INVENTORY.getId()) return;
 
-		if (pendingFeedAttempt == null)
-		{
-			return;
-		}
+		if (!isHealerRole() || pendingFeedAttempt == null) return;
 
 		int currentFoodCount = getItemCount(event.getItemContainer().getItems(), pendingFeedAttempt.foodItemId);
 
-		if (currentFoodCount >= pendingFeedAttempt.foodCountBeforeUse)
-		{
-			return;
-		}
+		if (currentFoodCount >= pendingFeedAttempt.foodCountBeforeUse) return;
 
 		foodFedByNpcIndex.merge(pendingFeedAttempt.npcIndex, 1, Integer::sum);
 
@@ -330,12 +338,27 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
-		updateCallIndexFromHealerWidget();
+		if (currentRole == null)
+		{
+			detectRoleFromLoadedWidgets();
+		}
+
+		if (isHealerRole())
+		{
+			updateCallIndexFromHealerWidget();
+		}
 
 		if (client.isMenuOpen())
 		{
 			applyDispenserMenuOptions();
 		}
+	}
+
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded event)
+	{
+		Role role = Role.fromGroupId(event.getGroupId());
+		if (role != null) setRole(role);
 	}
 
 	@Subscribe
@@ -363,10 +386,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		String message = Text.removeTags(event.getMessage()).toLowerCase(Locale.ROOT);
 
-		if (handleWaveStartMessage(message))
-		{
-			return;
-		}
+		if (handleWaveStartMessage(message)) return;
 
 		if (message.contains(WRONG_FOOD_MESSAGE))
 		{
@@ -380,10 +400,7 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		int currentInGameBit = client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING);
 
-		if (inGameBit == currentInGameBit)
-		{
-			return;
-		}
+		if (inGameBit == currentInGameBit) return;
 
 		inGameBit = currentInGameBit;
 
@@ -413,6 +430,33 @@ public class BaHealerOrderPlugin extends Plugin
 	public boolean isWaveActive()
 	{
 		return waveStartTimeMs > 0 && currentWave > 0;
+	}
+
+	public boolean isHealerRole()
+	{
+		return currentRole == Role.HEALER;
+	}
+
+	public boolean shouldShowFoodPanel()
+	{
+		BaHealerOrderConfig.FoodPanelMode mode = config.showFoodPanel();
+		return mode == BaHealerOrderConfig.FoodPanelMode.ALWAYS
+				|| mode == BaHealerOrderConfig.FoodPanelMode.AS_HEALER_ONLY && isHealerRole();
+	}
+
+	public boolean shouldShowLabels()
+	{
+		return !config.showLabelsAsHealerOnly() || isHealerRole();
+	}
+
+	public boolean shouldShowHealerHighlights()
+	{
+		return isHealerRole();
+	}
+
+	public boolean shouldShowFoodCountOnNpc()
+	{
+		return isHealerRole() && config.showFoodCountOnNpc();
 	}
 
 	public long getCurrentWaveElapsedMillis()
@@ -452,22 +496,23 @@ public class BaHealerOrderPlugin extends Plugin
 
 	public String getCurrentWaveCodeSource()
 	{
+		if (!isHealerRole()) return null;
+
 		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
 		return waveCode == null ? null : waveCode.getSourceText();
 	}
 
 	public String getCurrentWaveCodeName()
 	{
+		if (!isHealerRole()) return null;
+
 		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
 		return waveCode == null ? null : waveCode.getName();
 	}
 
 	public int getExpectedFoodForOrder(int healerOrder)
 	{
-		if (healerOrder <= 0)
-		{
-			return 0;
-		}
+		if (healerOrder <= 0 || !isHealerRole()) return 0;
 
 		return codeManager.getExpectedFoodForOrder(currentWave, healerOrder, currentCallIndex);
 	}
@@ -490,16 +535,22 @@ public class BaHealerOrderPlugin extends Plugin
 
 	public HealerCodeStatus getCurrentCodeStatus(int healerOrder)
 	{
+		if (!isHealerRole()) return null;
+
 		return codeManager.getCurrentStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
 	}
 
 	public HealerCodeStatus getPreviousCodeStatus(int healerOrder)
 	{
+		if (!isHealerRole()) return null;
+
 		return codeManager.getPreviousStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
 	}
 
 	public HealerCodeStatus getDisplayCodeStatus(int healerOrder)
 	{
+		if (!isHealerRole()) return null;
+
 		return codeManager.getDisplayStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
 	}
 
@@ -616,6 +667,8 @@ public class BaHealerOrderPlugin extends Plugin
 
 	public Map<Integer, Integer> getFoodFedByHealerOrder()
 	{
+		if (!isHealerRole()) return Collections.emptyMap();
+
 		Map<Integer, Integer> foodFedByHealerOrder = new HashMap<>();
 
 		for (Map.Entry<Integer, Integer> entry : foodFedByNpcIndex.entrySet())
@@ -661,13 +714,13 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		List<String> parts = new ArrayList<>();
 
-		if (config.showMenuLabel()
+		if (shouldShowMenuLabel()
 				&& config.healerLabelStyle() != BaHealerOrderConfig.HealerLabelStyle.NONE)
 		{
 			parts.add(ColorUtil.wrapWithColorTag("(" + getHealerLabel(healerOrder) + ")", config.textColor()));
 		}
 
-		if (config.showMenuCode())
+		if (shouldShowMenuCode())
 		{
 			int foodFed = getFoodFedByHealerOrder().getOrDefault(healerOrder, 0);
 			String codeText = getFoodCountText(healerOrder, foodFed);
@@ -693,16 +746,45 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private void startNewWave(int waveNumber)
 	{
-		if (waveNumber <= 0)
-		{
-			return;
-		}
+		if (waveNumber <= 0) return;
 
 		this.currentWave = waveNumber;
 		this.waveStartTimeMs = System.currentTimeMillis();
 		resetWaveTrackedState();
 
 		log.debug("Starting new BA wave {}", waveNumber);
+	}
+
+	private void setRole(Role role)
+	{
+		if (currentRole == role || currentRole != null && isWaveActive()) return;
+
+		currentRole = role;
+		log.debug("BA role detected as {}", role);
+	}
+
+	private void detectRoleFromLoadedWidgets()
+	{
+		if (client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING) != 1 && !isWaveActive()) return;
+
+		for (Role role : Role.values())
+		{
+			if (client.getWidget(role.groupId, 0) != null)
+			{
+				setRole(role);
+				return;
+			}
+		}
+	}
+
+	private boolean shouldShowMenuLabel()
+	{
+		return config.showMenuLabel() && shouldShowLabels();
+	}
+
+	private boolean shouldShowMenuCode()
+	{
+		return config.showMenuCode() && isHealerRole();
 	}
 
 	private void rebuildHealerOrderByNpcIndex()
@@ -760,17 +842,11 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private void updateCallIndexFromHealerWidget()
 	{
-		if (currentWave <= 0)
-		{
-			return;
-		}
+		if (currentWave <= 0) return;
 
 		String callText = getHealerCallText();
 
-		if (callText == null || callText.isEmpty())
-		{
-			return;
-		}
+		if (callText == null || callText.isEmpty()) return;
 
 		if (lastCallText == null)
 		{
@@ -831,17 +907,14 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		if (!config.highlightCalledDispenserFood()
 				&& !config.removeTakeVial()
-				&& !config.moveTakeMeatUp())
-		{
-			return;
-		}
+				&& !config.moveTakeMeatUp()
+				&& !config.deprioritizeOtherDispensers()) return;
+
+		if (!isHealerRole()) return;
 
 		MenuEntry[] menuEntries = client.getMenu().getMenuEntries();
 
-		if (menuEntries.length == 0)
-		{
-			return;
-		}
+		if (menuEntries.length == 0) return;
 
 		List<MenuEntry> nextEntries = new ArrayList<>(menuEntries.length);
 		boolean changed = false;
@@ -864,6 +937,12 @@ public class BaHealerOrderPlugin extends Plugin
 
 			String optionText = Text.removeTags(option).toLowerCase(Locale.ROOT);
 			String targetText = Text.removeTags(target).toLowerCase(Locale.ROOT);
+
+			if (config.deprioritizeOtherDispensers() && isOtherDispenserTarget(targetText))
+			{
+				changed = true;
+				continue;
+			}
 
 			if (!isHealerItemMachineTarget(targetText))
 			{
@@ -1022,6 +1101,8 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private String getHealerListenText()
 	{
+		if (!isHealerRole()) return null;
+
 		WidgetText hornOfGloryListen = getWidgetText(
 				BA_HORN_OF_GLORY_GROUP_ID,
 				BA_HORN_OF_GLORY_DEFENDER_CHILD_ID,
@@ -1040,6 +1121,13 @@ public class BaHealerOrderPlugin extends Plugin
 	private boolean isHealerItemMachineTarget(String targetText)
 	{
 		return targetText.contains(HEALER_ITEM_MACHINE_NAME.toLowerCase(Locale.ROOT));
+	}
+
+	private boolean isOtherDispenserTarget(String targetText)
+	{
+		return targetText.contains(ATTACKER_ITEM_MACHINE_NAME.toLowerCase(Locale.ROOT))
+				|| targetText.contains(DEFENDER_ITEM_MACHINE_NAME.toLowerCase(Locale.ROOT))
+				|| targetText.contains(COLLECTOR_CONVERTER_NAME.toLowerCase(Locale.ROOT));
 	}
 
 	private MenuEntry[] moveTakeMeatUp(MenuEntry[] entries)
@@ -1096,20 +1184,13 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private void handlePoisonedFoodSelection(MenuOptionClicked event, String option, String target)
 	{
-		if (event.getMenuAction() != MenuAction.WIDGET_TARGET)
-		{
-			return;
-		}
+		if (!isHealerRole()) return;
 
-		if (!"use".equals(option))
-		{
-			return;
-		}
+		if (event.getMenuAction() != MenuAction.WIDGET_TARGET) return;
 
-		if (!target.contains("poisoned"))
-		{
-			return;
-		}
+		if (!"use".equals(option)) return;
+
+		if (!target.contains("poisoned")) return;
 
 		selectedPoisonedFoodItemId = event.getItemId();
 	}
@@ -1119,6 +1200,7 @@ public class BaHealerOrderPlugin extends Plugin
 		if (!config.healerFoodOnly()
 				|| client.getGameState() != GameState.LOGGED_IN
 				|| client.isMenuOpen()
+				|| !isHealerRole()
 				|| !isPoisonedFoodSelected())
 		{
 			return;
@@ -1145,43 +1227,27 @@ public class BaHealerOrderPlugin extends Plugin
 			changed = true;
 		}
 
-		if (!changed)
-		{
-			return;
-		}
+		if (!changed) return;
 
 		client.getMenu().setMenuEntries(filteredEntries.toArray(new MenuEntry[0]));
 	}
 
 	private void handlePoisonedFoodUseOnHealer(MenuOptionClicked event, String option, String target)
 	{
-		if (event.getMenuAction() != MenuAction.WIDGET_TARGET_ON_NPC)
-		{
-			return;
-		}
+		if (!isHealerRole()) return;
 
-		if (!"use".equals(option))
-		{
-			return;
-		}
+		if (event.getMenuAction() != MenuAction.WIDGET_TARGET_ON_NPC) return;
 
-		if (!target.contains("poisoned") || !target.contains("penance healer"))
-		{
-			return;
-		}
+		if (!"use".equals(option)) return;
 
-		if (selectedPoisonedFoodItemId == null || selectedPoisonedFoodItemId <= 0)
-		{
-			return;
-		}
+		if (!target.contains("poisoned") || !target.contains("penance healer")) return;
+
+		if (selectedPoisonedFoodItemId == null || selectedPoisonedFoodItemId <= 0) return;
 
 		int npcIndex = event.getId();
 		Integer healerOrder = healerOrderByNpcIndex.get(npcIndex);
 
-		if (healerOrder == null)
-		{
-			return;
-		}
+		if (healerOrder == null) return;
 
 		int foodCountBeforeUse = getInventoryItemCount(selectedPoisonedFoodItemId);
 
@@ -1409,6 +1475,7 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		resetWaveTrackedState();
 		waveStartTimeMs = -1;
+		currentRole = null;
 	}
 
 	private void resetWaveTrackedState()

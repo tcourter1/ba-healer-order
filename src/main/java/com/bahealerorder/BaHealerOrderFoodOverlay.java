@@ -21,13 +21,11 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
     private static final Color COUNT_COLOR = new Color(0, 255, 0);
 
     private final BaHealerOrderPlugin plugin;
-    private final BaHealerOrderConfig config;
 
     @Inject
-    private BaHealerOrderFoodOverlay(BaHealerOrderPlugin plugin, BaHealerOrderConfig config)
+    private BaHealerOrderFoodOverlay(BaHealerOrderPlugin plugin)
     {
         this.plugin = plugin;
-        this.config = config;
 
         setPosition(OverlayPosition.TOP_LEFT);
         panelComponent.setPreferredSize(new Dimension(220, 0));
@@ -37,7 +35,7 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (!config.showFoodPanel() || !plugin.isWaveActive())
+        if (!plugin.shouldShowFoodPanel() || !plugin.isWaveActive())
         {
             return null;
         }
@@ -69,14 +67,18 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
 
         for (int healerOrder : healerOrders)
         {
-            int foodFed = foodFedByHealerOrder.getOrDefault(healerOrder, 0);
-            int expected = plugin.getExpectedFoodForOrder(healerOrder);
+            String rightText = "";
 
-            String rightText = expected > 0 ? (foodFed + "/" + expected + " fed") : (foodFed + " fed");
+            if (plugin.isHealerRole())
+            {
+                int foodFed = foodFedByHealerOrder.getOrDefault(healerOrder, 0);
+                int expected = plugin.getExpectedFoodForOrder(healerOrder);
+                rightText = expected > 0 ? (foodFed + "/" + expected + " fed") : (foodFed + " fed");
+            }
 
             panelComponent.getChildren().add(
                     LineComponent.builder()
-                            .left("#" + healerOrder)
+                            .left(getHealerOrderLabel(healerOrder))
                             .leftColor(TEXT_COLOR)
                             .right(rightText)
                             .rightColor(COUNT_COLOR)
@@ -87,6 +89,23 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel
         addCurrentWaveCode();
 
         return super.render(graphics);
+    }
+
+    private String getHealerOrderLabel(int healerOrder)
+    {
+        String label = plugin.getHealerLabel(healerOrder);
+
+        if (label == null || label.trim().isEmpty())
+        {
+            return "#" + healerOrder;
+        }
+
+        if (label.matches("\\d+"))
+        {
+            label += "s";
+        }
+
+        return "#" + healerOrder + " (" + label + ")";
     }
 
     private void addCurrentWaveCode()

@@ -92,6 +92,26 @@ public interface BaHealerOrderConfig extends Config
 		}
 	}
 
+	enum FoodPanelMode
+	{
+		ALWAYS("Always"),
+		AS_HEALER_ONLY("As Healer Only"),
+		NEVER("Never");
+
+		private final String name;
+
+		FoodPanelMode(String name)
+		{
+			this.name = name;
+		}
+
+		@Override
+		public String toString()
+		{
+			return name;
+		}
+	}
+
 	@ConfigItem(
 			keyName = "highlightStyle",
 			name = "Highlight Style",
@@ -163,7 +183,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Spread Stacked Labels",
 			description = "Horizontally separates healer labels when multiple Penance Healers occupy the same tile",
 			section = healerHighlightSection,
-			position = 6
+			position = 7
 	)
 	default boolean spreadStackedLabels()
 	{
@@ -179,7 +199,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Stacked Label Spacing",
 			description = "Horizontal pixel spacing used when spreading labels for stacked Penance Healers",
 			section = healerHighlightSection,
-			position = 7
+			position = 8
 	)
 	default int stackedLabelSpacing()
 	{
@@ -187,11 +207,23 @@ public interface BaHealerOrderConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "showLabelsAsHealerOnly",
+			name = "Show Labels as Healer Only",
+			description = "Only shows Penance Healer labels while playing the Healer role",
+			section = healerHighlightSection,
+			position = 6
+	)
+	default boolean showLabelsAsHealerOnly()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 			keyName = "showMenuLabel",
 			name = "Show Menu Label",
 			description = "Adds the tracked healer label next to Penance Healers in the right-click menu",
 			section = healerHighlightSection,
-			position = 8
+			position = 9
 	)
 	default boolean showMenuLabel()
 	{
@@ -203,7 +235,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Show Menu Code",
 			description = "Adds the current healer code next to Penance Healers in the right-click menu",
 			section = healerHighlightSection,
-			position = 9
+			position = 10
 	)
 	default boolean showMenuCode()
 	{
@@ -215,7 +247,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Healer Food Only",
 			description = "When poisoned food is selected, only Penance Healer Use entries remain clickable",
 			section = healerHighlightSection,
-			position = 10
+			position = 11
 	)
 	default boolean healerFoodOnly()
 	{
@@ -259,15 +291,27 @@ public interface BaHealerOrderConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "deprioritizeOtherDispensers",
+			name = "Deprioritize Other Dispensers",
+			description = "Removes interaction options from non-Healer dispensers while playing the Healer role",
+			section = dispenserOptionsSection,
+			position = 4
+	)
+	default boolean deprioritizeOtherDispensers()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 			keyName = "showFoodPanel",
 			name = "Show Food Panel",
 			description = "Shows a panel tracking how much good food has been fed to each Penance Healer",
 			section = foodCountSection,
 			position = 1
 	)
-	default boolean showFoodPanel()
+	default FoodPanelMode showFoodPanel()
 	{
-		return true;
+		return FoodPanelMode.AS_HEALER_ONLY;
 	}
 
 	@ConfigItem(
