@@ -66,14 +66,25 @@ import net.runelite.client.util.Text;
 public class BaHealerOrderPlugin extends Plugin
 {
 	private static final String PENANCE_HEALER_NAME = "Penance Healer";
+	private static final String HEALER_ITEM_MACHINE_NAME = "Healer item machine";
+	private static final String TAKE_TOFU_OPTION = "take-tofu";
+	private static final String TAKE_WORMS_OPTION = "take-worms";
+	private static final String TAKE_MEAT_OPTION = "take-meat";
+	private static final String TAKE_VIAL_OPTION = "take-vial";
 	private static final String WRONG_FOOD_MESSAGE = "that's the wrong type of poisoned food to use! penalty!";
 	private static final String PANEL_ICON_RESOURCE = "/com/bahealerorder/penance_healer.png";
+
+	private static final int BA_HORN_OF_GLORY_GROUP_ID = 484;
 	private static final int BA_HEALER_GROUP_ID = 488;
-	// This is the healer-side "to call" widget, not the defender's actual horn call.
-	// It changes with the real BA call cycle even if the defender calls late or not at all.
+	private static final int BA_HEALER_LISTEN_CHILD_ID = 7;
 	private static final int BA_HEALER_CALL_CHILD_ID = 9;
+	private static final int BA_HORN_OF_GLORY_DEFENDER_CHILD_ID = 6;
+
+	private static final Color CALLED_FOOD_MENU_COLOR = Color.GREEN;
+
 	private static final Pattern WAVE_START_PATTERN = Pattern.compile(".*\\bwave:\\s*(\\d+)\\b.*");
 	private static final Pattern WAVE_PATTERN = Pattern.compile(".*---- Wave: (10|[1-9]) ----.*");
+
 	private static final String[][] TIME_BASED_HEALER_LABELS = {
 			{},
 			{"6", "12"},
@@ -120,8 +131,7 @@ public class BaHealerOrderPlugin extends Plugin
 	private final Map<NPC, Integer> visibleHealers = new HashMap<>();
 
 	private final Set<Integer> healerIndexesSeenThisWave = new HashSet<>();
-	// Food has to be counted by NPC index first. Healer order can be corrected as later
-	// NPC indexes appear, but the index itself remains stable for the spawned healer.
+
 	private final Map<Integer, Integer> foodFedByNpcIndex = new HashMap<>();
 
 	@Getter
@@ -269,6 +279,7 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onPostMenuSort(PostMenuSort event)
 	{
 		filterPoisonedFoodUseEntries();
+		applyDispenserMenuOptions();
 	}
 
 	@Subscribe
@@ -291,8 +302,6 @@ public class BaHealerOrderPlugin extends Plugin
 			return;
 		}
 
-		// The menu click only tells us an attempt was made. The inventory delta confirms
-		// that a poisoned food item was actually consumed and should count.
 		foodFedByNpcIndex.merge(pendingFeedAttempt.npcIndex, 1, Integer::sum);
 
 		Integer currentOrder = healerOrderByNpcIndex.get(pendingFeedAttempt.npcIndex);
@@ -320,6 +329,11 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		updateCallIndexFromHealerWidget();
+
+		if (client.isMenuOpen())
+		{
+			applyDispenserMenuOptions();
+		}
 	}
 
 	@Subscribe
@@ -419,6 +433,21 @@ public class BaHealerOrderPlugin extends Plugin
 		return currentCallIndex;
 	}
 
+	public String getLastCallText()
+	{
+		return lastCallText;
+	}
+
+	public String getCurrentCallText()
+	{
+		return currentCallText;
+	}
+
+	public String getCurrentCallSource()
+	{
+		return currentCallSource;
+	}
+
 	public String getCurrentWaveCodeSource()
 	{
 		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
@@ -441,6 +470,17 @@ public class BaHealerOrderPlugin extends Plugin
 		return codeManager.getExpectedFoodForOrder(currentWave, healerOrder, currentCallIndex);
 	}
 
+	public String getHealerTarget(int healerOrder)
+	{
+		if (healerOrder <= 0)
+		{
+			return null;
+		}
+
+		HealerCodeStatus status = getCurrentCodeStatus(healerOrder);
+		return status == null ? null : formatCodeStatus(status);
+	}
+
 	public Map<NPC, Integer> getTrackedHealers()
 	{
 		return Collections.unmodifiableMap(visibleHealers);
@@ -449,6 +489,11 @@ public class BaHealerOrderPlugin extends Plugin
 	public HealerCodeStatus getCurrentCodeStatus(int healerOrder)
 	{
 		return codeManager.getCurrentStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
+	}
+
+	public HealerCodeStatus getPreviousCodeStatus(int healerOrder)
+	{
+		return codeManager.getPreviousStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
 	}
 
 	public HealerCodeStatus getDisplayCodeStatus(int healerOrder)
@@ -665,8 +710,6 @@ public class BaHealerOrderPlugin extends Plugin
 
 		healerOrderByNpcIndex.clear();
 
-		// BA healer NPC indexes sort in spawn order for the wave. Rebuilding the whole map
-		// lets earlier visible healers be corrected when a lower/higher index arrives later.
 		for (int i = 0; i < sortedIndexes.size(); i++)
 		{
 			healerOrderByNpcIndex.put(sortedIndexes.get(i), i + 1);
@@ -735,8 +778,6 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (!callTrackingArmed)
 		{
-			// The widget can settle during wave startup; require one stable tick before a
-			// changed value is treated as a real call advance.
 			lastCallText = callText;
 			callTrackingArmed = true;
 			return;
@@ -782,6 +823,273 @@ public class BaHealerOrderPlugin extends Plugin
 	private String normalizeCallText(String text)
 	{
 		return text.toLowerCase(Locale.ROOT);
+	}
+
+	private void applyDispenserMenuOptions()
+	{
+		if (!config.highlightCalledDispenserFood()
+				&& !config.removeTakeVial()
+				&& !config.moveTakeMeatUp())
+		{
+			return;
+		}
+
+		MenuEntry[] menuEntries = client.getMenu().getMenuEntries();
+
+		if (menuEntries.length == 0)
+		{
+			return;
+		}
+
+		List<MenuEntry> nextEntries = new ArrayList<>(menuEntries.length);
+		boolean changed = false;
+
+		for (MenuEntry entry : menuEntries)
+		{
+			if (restoreHighlightedDispenserEntry(entry))
+			{
+				changed = true;
+			}
+
+			String option = entry.getOption();
+			String target = entry.getTarget();
+
+			if (option == null || target == null)
+			{
+				nextEntries.add(entry);
+				continue;
+			}
+
+			String optionText = Text.removeTags(option).toLowerCase(Locale.ROOT);
+			String targetText = Text.removeTags(target).toLowerCase(Locale.ROOT);
+
+			if (!isHealerItemMachineTarget(targetText))
+			{
+				nextEntries.add(entry);
+				continue;
+			}
+
+			if (config.removeTakeVial() && TAKE_VIAL_OPTION.equals(optionText))
+			{
+				changed = true;
+				continue;
+			}
+
+			nextEntries.add(entry);
+		}
+
+		MenuEntry[] updatedEntries = nextEntries.toArray(new MenuEntry[0]);
+
+		if (config.moveTakeMeatUp())
+		{
+			MenuEntry[] movedEntries = moveTakeMeatUp(updatedEntries);
+
+			if (movedEntries != updatedEntries)
+			{
+				updatedEntries = movedEntries;
+				changed = true;
+			}
+		}
+
+		if (config.highlightCalledDispenserFood())
+		{
+			String calledFoodOption = getCalledDispenserFoodOption();
+
+			if (calledFoodOption != null)
+			{
+				changed |= highlightCalledDispenserFood(updatedEntries, calledFoodOption);
+			}
+		}
+
+		if (changed)
+		{
+			client.getMenu().setMenuEntries(updatedEntries);
+		}
+	}
+
+	private String getCalledDispenserFoodOption()
+	{
+		String callText = getHealerListenText();
+
+		if (callText == null)
+		{
+			return null;
+		}
+
+		if (callText.contains("tofu"))
+		{
+			return TAKE_TOFU_OPTION;
+		}
+
+		if (callText.contains("worm"))
+		{
+			return TAKE_WORMS_OPTION;
+		}
+
+		if (callText.contains("meat"))
+		{
+			return TAKE_MEAT_OPTION;
+		}
+
+		return null;
+	}
+
+	private boolean highlightCalledDispenserFood(MenuEntry[] entries, String calledFoodOption)
+	{
+		boolean changed = false;
+
+		for (MenuEntry entry : entries)
+		{
+			String option = entry.getOption();
+			String target = entry.getTarget();
+
+			if (option == null || target == null)
+			{
+				continue;
+			}
+
+			String optionText = Text.removeTags(option).toLowerCase(Locale.ROOT);
+			String targetText = Text.removeTags(target).toLowerCase(Locale.ROOT);
+
+			if (calledFoodOption.equals(optionText) && isHealerItemMachineTarget(targetText))
+			{
+				entry.setOption("");
+				entry.setTarget(ColorUtil.prependColorTag(Text.removeTags(option), CALLED_FOOD_MENU_COLOR) + " " + target);
+				changed = true;
+			}
+		}
+
+		return changed;
+	}
+
+	private boolean restoreHighlightedDispenserEntry(MenuEntry entry)
+	{
+		String option = entry.getOption();
+		String target = entry.getTarget();
+
+		if (option == null || target == null || !Text.removeTags(option).isEmpty())
+		{
+			return false;
+		}
+
+		String targetText = Text.removeTags(target);
+		String optionText = getDispenserOptionPrefix(targetText);
+
+		if (optionText == null)
+		{
+			return false;
+		}
+
+		String restoredTarget = target;
+		int optionIndex = restoredTarget.indexOf(optionText);
+
+		if (optionIndex >= 0)
+		{
+			restoredTarget = restoredTarget.substring(optionIndex + optionText.length()).trim();
+		}
+
+		if (!isHealerItemMachineTarget(Text.removeTags(restoredTarget).toLowerCase(Locale.ROOT)))
+		{
+			return false;
+		}
+
+		entry.setOption(optionText);
+		entry.setTarget(restoredTarget);
+		return true;
+	}
+
+	private String getDispenserOptionPrefix(String targetText)
+	{
+		if (targetText.startsWith("Take-Tofu "))
+		{
+			return "Take-Tofu";
+		}
+
+		if (targetText.startsWith("Take-Worms "))
+		{
+			return "Take-Worms";
+		}
+
+		if (targetText.startsWith("Take-Meat "))
+		{
+			return "Take-Meat";
+		}
+
+		return null;
+	}
+
+	private String getHealerListenText()
+	{
+		WidgetText hornOfGloryListen = getWidgetText(
+				BA_HORN_OF_GLORY_GROUP_ID,
+				BA_HORN_OF_GLORY_DEFENDER_CHILD_ID,
+				"horn defender listen"
+		);
+
+		if (hornOfGloryListen != null)
+		{
+			return normalizeCallText(hornOfGloryListen.text);
+		}
+
+		WidgetText healerListen = getWidgetText(BA_HEALER_GROUP_ID, BA_HEALER_LISTEN_CHILD_ID, "healer listen");
+		return healerListen == null ? null : normalizeCallText(healerListen.text);
+	}
+
+	private boolean isHealerItemMachineTarget(String targetText)
+	{
+		return targetText.contains(HEALER_ITEM_MACHINE_NAME.toLowerCase(Locale.ROOT));
+	}
+
+	private MenuEntry[] moveTakeMeatUp(MenuEntry[] entries)
+	{
+		int meatIndex = -1;
+		int wormsIndex = -1;
+
+		for (int i = 0; i < entries.length; i++)
+		{
+			MenuEntry entry = entries[i];
+			String option = entry.getOption();
+			String target = entry.getTarget();
+
+			if (option == null || target == null)
+			{
+				continue;
+			}
+
+			String optionText = Text.removeTags(option).toLowerCase(Locale.ROOT);
+			String targetText = Text.removeTags(target).toLowerCase(Locale.ROOT);
+
+			if (!isHealerItemMachineTarget(targetText))
+			{
+				continue;
+			}
+
+			if (TAKE_MEAT_OPTION.equals(optionText))
+			{
+				meatIndex = i;
+			}
+			else if (TAKE_WORMS_OPTION.equals(optionText))
+			{
+				wormsIndex = i;
+			}
+		}
+
+		if (meatIndex == -1 || wormsIndex == -1 || meatIndex == wormsIndex - 1)
+		{
+			return entries;
+		}
+
+		List<MenuEntry> movedEntries = new ArrayList<>(entries.length);
+		Collections.addAll(movedEntries, entries);
+		MenuEntry meatEntry = movedEntries.remove(meatIndex);
+
+		if (meatIndex < wormsIndex)
+		{
+			wormsIndex--;
+		}
+
+		movedEntries.add(wormsIndex, meatEntry);
+		return movedEntries.toArray(new MenuEntry[0]);
 	}
 
 	private void handlePoisonedFoodSelection(MenuOptionClicked event, String option, String target)
@@ -938,7 +1246,8 @@ public class BaHealerOrderPlugin extends Plugin
 			return false;
 		}
 
-		return normalizeMenuText(itemComposition.getName()).contains("poisoned");
+		String itemName = normalizeMenuText(itemComposition.getName());
+		return itemName.contains("poisoned") && (itemName.contains("tofu") || itemName.contains("worms") || itemName.contains("meat"));
 	}
 
 	private boolean isSelectedPoisonedFoodUseEntry(MenuEntry entry)
