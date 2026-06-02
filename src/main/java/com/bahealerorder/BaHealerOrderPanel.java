@@ -143,6 +143,7 @@ public class BaHealerOrderPanel extends PluginPanel
 
 				ComboItem item = (ComboItem) comboBox.getSelectedItem();
 				codeManager.setActiveWaveCodeId(selectedWave, item == null ? null : item.id);
+				selectImportWaveCode(selectedWave, item == null ? null : item.id);
 				refreshing = true;
 				refreshPresetCombo();
 				refreshing = false;
@@ -244,8 +245,20 @@ public class BaHealerOrderPanel extends PluginPanel
 
 	private void refreshUserWaveCodeCombo()
 	{
+		refreshUserWaveCodeCombo(getSelectedUserWaveCodeId());
+	}
+
+	private void selectImportWaveCode(int wave, String waveCodeId)
+	{
 		refreshingImport = true;
-		String previousSelection = getSelectedUserWaveCodeId();
+		selectComboValue(importWaveCombo, String.valueOf(wave));
+		refreshingImport = false;
+		refreshUserWaveCodeCombo(waveCodeId);
+	}
+
+	private void refreshUserWaveCodeCombo(String selectedWaveCodeId)
+	{
+		refreshingImport = true;
 		userWaveCodeCombo.removeAllItems();
 		userWaveCodeCombo.addItem(new ComboItem(null, ""));
 
@@ -254,7 +267,7 @@ public class BaHealerOrderPanel extends PluginPanel
 			userWaveCodeCombo.addItem(new ComboItem(code.getId(), code.getName()));
 		}
 
-		selectComboValue(userWaveCodeCombo, previousSelection);
+		selectComboValue(userWaveCodeCombo, selectedWaveCodeId);
 		refreshingImport = false;
 		loadSelectedUserWaveCode();
 	}
