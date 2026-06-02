@@ -404,7 +404,7 @@ public class BaHealerOrderPanel extends PluginPanel
 
 		int result = JOptionPane.showConfirmDialog(
 				this,
-				"Import one run preset from the clipboard?\n\nOnly the preset and any missing referenced wave codes will be imported. Existing wave codes with the same id will not be overwritten.",
+				"Import one run preset from the clipboard?\n\nExisting presets with the same name and wave codes with the same wave/name will be overwritten.",
 				"Import Preset",
 				JOptionPane.OK_CANCEL_OPTION
 		);
