@@ -64,14 +64,18 @@ public class BaHealerOrderOverlay extends Overlay
 
 			int xOffset = xOffsets.getOrDefault(npc, 0);
 
-			renderHighlight(graphics, npc);
+			if (plugin.shouldShowHealerHighlights())
+			{
+				renderHighlight(graphics, npc);
+			}
 
-			if (config.healerLabelStyle() != BaHealerOrderConfig.HealerLabelStyle.NONE)
+			if (plugin.shouldShowLabels()
+					&& config.healerLabelStyle() != BaHealerOrderConfig.HealerLabelStyle.NONE)
 			{
 				renderNumber(graphics, npc, order, xOffset);
 			}
 
-			if (config.showFoodCountOnNpc())
+			if (plugin.shouldShowFoodCountOnNpc())
 			{
 				int foodFed = foodFedByHealerOrder.getOrDefault(order, 0);
 				renderFoodCount(graphics, npc, order, foodFed, xOffset);
