@@ -8,7 +8,7 @@ public class RunPreset
 	private String id;
 	private String name;
 	private boolean builtIn;
-	private Map<Integer, String> waveCodeIds = new HashMap<>();
+	private Map<Integer, String> waveCodes = new HashMap<>();
 
 	public RunPreset()
 	{
@@ -19,7 +19,7 @@ public class RunPreset
 		this.id = id;
 		this.name = name;
 		this.builtIn = builtIn;
-		this.waveCodeIds = waveCodeIds == null ? new HashMap<>() : new HashMap<>(waveCodeIds);
+		this.waveCodes = waveCodeIds == null ? new HashMap<>() : new HashMap<>(waveCodeIds);
 	}
 
 	public String getId()
@@ -54,17 +54,17 @@ public class RunPreset
 
 	public Map<Integer, String> getWaveCodeIds()
 	{
-		if (waveCodeIds == null)
+		if (waveCodes == null)
 		{
-			waveCodeIds = new HashMap<>();
+			waveCodes = new HashMap<>();
 		}
 
-		return waveCodeIds;
+		return waveCodes;
 	}
 
 	public void setWaveCodeIds(Map<Integer, String> waveCodeIds)
 	{
-		this.waveCodeIds = waveCodeIds == null ? new HashMap<>() : new HashMap<>(waveCodeIds);
+		this.waveCodes = waveCodeIds == null ? new HashMap<>() : new HashMap<>(waveCodeIds);
 	}
 
 	public String getWaveCodeId(int wave)

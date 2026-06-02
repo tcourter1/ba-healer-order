@@ -5,20 +5,17 @@ import com.bahealerorder.codes.WaveCode;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.GridLayout;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import javax.inject.Inject;
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -27,23 +24,23 @@ import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.ListCellRenderer;
-import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 
 public class BaHealerOrderPanel extends PluginPanel
 {
-	private static final int INSET = 10;
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
+	private static final int CREATE_CODE_GAP = 24;
+	private static final int PRESET_BUTTON_WAVE_GAP = 26;
+	private static final int WAVE_LABEL_WIDTH = 48;
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
-	private static final Font FIELD_FONT = new JLabel().getFont().deriveFont(12f);
 
 	private final BaHealerCodeManager codeManager;
 	private final JComboBox<ComboItem> presetCombo = new JComboBox<>();
@@ -52,7 +49,8 @@ public class BaHealerOrderPanel extends PluginPanel
 	private final JComboBox<ComboItem> userWaveCodeCombo = new JComboBox<>();
 	private final JTextField importName = new JTextField();
 	private final JTextArea importCode = new JTextArea();
-	private JLabel deleteWaveCodeAction;
+	private final JPanel contentPanel = new JPanel();
+	private JButton deleteWaveCodeAction;
 
 	private boolean refreshing;
 	private boolean refreshingImport;
@@ -60,31 +58,18 @@ public class BaHealerOrderPanel extends PluginPanel
 	@Inject
 	public BaHealerOrderPanel(BaHealerCodeManager codeManager)
 	{
-		super(false);
 		this.codeManager = codeManager;
 
-		setLayout(new BorderLayout());
-		setBackground(ColorScheme.DARK_GRAY_COLOR);
+		contentPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
+		add(contentPanel, BorderLayout.NORTH);
 
-		JPanel content = verticalPanel(ColorScheme.DARK_GRAY_COLOR);
-		content.setBorder(new EmptyBorder(INSET, INSET, INSET, INSET));
-		content.setPreferredSize(new Dimension(CONTENT_WIDTH, 0));
-		content.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-
-		content.add(header("BA Healer Utilities"));
-		content.add(Box.createVerticalStrut(10));
-		content.add(createPresetSection());
-		content.add(Box.createVerticalStrut(10));
-		content.add(createWaveSection());
-		content.add(Box.createVerticalStrut(10));
-		content.add(createImportCodeSection());
-
-		JScrollPane scrollPane = new JScrollPane(content);
-		scrollPane.setBorder(null);
-		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		scrollPane.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
-		scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
-		add(scrollPane, BorderLayout.CENTER);
+		contentPanel.add(header("BA Healer Utilities"));
+		contentPanel.add(Box.createVerticalStrut(10));
+		contentPanel.add(createPresetSection());
+		contentPanel.add(Box.createVerticalStrut(CREATE_CODE_GAP));
+		contentPanel.add(createImportCodeSection());
 
 		refreshAll();
 	}
@@ -134,25 +119,21 @@ public class BaHealerOrderPanel extends PluginPanel
 		section.add(presetActionRow);
 		section.add(Box.createVerticalStrut(5));
 		JPanel jsonActionRow = horizontalActionRow();
-		jsonActionRow.add(action("Import Preset", this::importRunPresetFromClipboard));
-		jsonActionRow.add(action("Export Preset", this::exportSelectedRunPresetToClipboard));
+		jsonActionRow.add(action("Import", this::importRunPresetFromClipboard));
+		jsonActionRow.add(action("Export", this::exportSelectedRunPresetToClipboard));
 		section.add(jsonActionRow);
+		section.add(Box.createVerticalStrut(PRESET_BUTTON_WAVE_GAP));
+		addWaveSelectors(section);
 		return section;
 	}
 
-	private JPanel createWaveSection()
+	private void addWaveSelectors(JPanel section)
 	{
-		JPanel section = section("Wave Codes");
-
 		for (int wave = 1; wave <= 10; wave++)
 		{
-			JLabel waveLabel = label("Wave " + wave);
-			section.add(waveLabel);
-			section.add(Box.createVerticalStrut(3));
-
 			JComboBox<ComboItem> comboBox = new JComboBox<>();
 			final int selectedWave = wave;
-			styleCombo(comboBox);
+			styleCombo(comboBox, CONTENT_WIDTH - 16 - WAVE_LABEL_WIDTH - 6);
 			comboBox.addActionListener(event ->
 			{
 				if (refreshing)
@@ -162,16 +143,15 @@ public class BaHealerOrderPanel extends PluginPanel
 
 				ComboItem item = (ComboItem) comboBox.getSelectedItem();
 				codeManager.setActiveWaveCodeId(selectedWave, item == null ? null : item.id);
+				selectImportWaveCode(selectedWave, item == null ? null : item.id);
 				refreshing = true;
 				refreshPresetCombo();
 				refreshing = false;
 			});
 			waveCombos.put(wave, comboBox);
-			section.add(comboBox);
+			section.add(comboRow("Wave " + wave, comboBox));
 			section.add(Box.createVerticalStrut(6));
 		}
-
-		return section;
 	}
 
 	private JPanel createImportCodeSection()
@@ -265,8 +245,20 @@ public class BaHealerOrderPanel extends PluginPanel
 
 	private void refreshUserWaveCodeCombo()
 	{
+		refreshUserWaveCodeCombo(getSelectedUserWaveCodeId());
+	}
+
+	private void selectImportWaveCode(int wave, String waveCodeId)
+	{
 		refreshingImport = true;
-		String previousSelection = getSelectedUserWaveCodeId();
+		selectComboValue(importWaveCombo, String.valueOf(wave));
+		refreshingImport = false;
+		refreshUserWaveCodeCombo(waveCodeId);
+	}
+
+	private void refreshUserWaveCodeCombo(String selectedWaveCodeId)
+	{
+		refreshingImport = true;
 		userWaveCodeCombo.removeAllItems();
 		userWaveCodeCombo.addItem(new ComboItem(null, ""));
 
@@ -275,7 +267,7 @@ public class BaHealerOrderPanel extends PluginPanel
 			userWaveCodeCombo.addItem(new ComboItem(code.getId(), code.getName()));
 		}
 
-		selectComboValue(userWaveCodeCombo, previousSelection);
+		selectComboValue(userWaveCodeCombo, selectedWaveCodeId);
 		refreshingImport = false;
 		loadSelectedUserWaveCode();
 	}
@@ -404,7 +396,7 @@ public class BaHealerOrderPanel extends PluginPanel
 
 		int result = JOptionPane.showConfirmDialog(
 				this,
-				"Import one run preset from the clipboard?\n\nOnly the preset and any missing referenced wave codes will be imported. Existing wave codes with the same id will not be overwritten.",
+				"Import one run preset from the clipboard?\n\nExisting presets with the same name and wave codes with the same wave/name will be overwritten.",
 				"Import Preset",
 				JOptionPane.OK_CANCEL_OPTION
 		);
@@ -542,11 +534,6 @@ public class BaHealerOrderPanel extends PluginPanel
 	{
 		JTextField field = new JTextField(defaultValue);
 		styleTextField(field);
-		field.setBackground(ColorScheme.DARKER_GRAY_HOVER_COLOR);
-		field.setBorder(BorderFactory.createCompoundBorder(
-				BorderFactory.createLineBorder(ColorScheme.BRAND_ORANGE),
-				new EmptyBorder(2, 6, 2, 6)
-		));
 		int result = JOptionPane.showConfirmDialog(this, field, title, JOptionPane.OK_CANCEL_OPTION);
 
 		if (result != JOptionPane.OK_OPTION || field.getText().trim().isEmpty())
@@ -618,6 +605,22 @@ public class BaHealerOrderPanel extends PluginPanel
 		return row;
 	}
 
+	private JPanel comboRow(String text, JComboBox<ComboItem> comboBox)
+	{
+		JLabel rowLabel = label(text);
+		rowLabel.setPreferredSize(new Dimension(WAVE_LABEL_WIDTH, CONTROL_HEIGHT));
+		rowLabel.setMaximumSize(new Dimension(WAVE_LABEL_WIDTH, CONTROL_HEIGHT));
+
+		JPanel row = new JPanel(new BorderLayout(6, 0));
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setAlignmentX(LEFT_ALIGNMENT);
+		row.add(rowLabel, BorderLayout.WEST);
+		row.add(comboBox, BorderLayout.CENTER);
+		return row;
+	}
+
 	private JLabel label(String text)
 	{
 		return label(text, false);
@@ -632,41 +635,19 @@ public class BaHealerOrderPanel extends PluginPanel
 		return label;
 	}
 
-	private JLabel action(String text, Runnable runnable)
+	private JButton action(String text, Runnable runnable)
 	{
-		JLabel label = label(text);
-		label.setOpaque(true);
-		label.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		label.setBorder(new EmptyBorder(0, 8, 0, 8));
-		label.setHorizontalAlignment(SwingConstants.CENTER);
-		label.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		label.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		label.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent event)
-			{
-				runnable.run();
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent event)
-			{
-				label.setBackground(ColorScheme.DARK_GRAY_HOVER_COLOR);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent event)
-			{
-				label.setBackground(ColorScheme.DARK_GRAY_COLOR);
-			}
-		});
-		return label;
+		JButton button = new JButton(text);
+		button.addActionListener(event -> runnable.run());
+		button.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		button.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		button.setAlignmentX(LEFT_ALIGNMENT);
+		return button;
 	}
 
 	private JPanel horizontalActionRow()
 	{
-		JPanel panel = new JPanel(new GridLayout(1, 2, 6, 0));
+		JPanel panel = new JPanel(new DynamicGridLayout(1, 2, 6, 0));
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		panel.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
 		panel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
@@ -684,40 +665,26 @@ public class BaHealerOrderPanel extends PluginPanel
 
 	private void styleCombo(JComboBox<ComboItem> comboBox)
 	{
-		Dimension size = new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT);
-		comboBox.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		comboBox.setForeground(ColorScheme.TEXT_COLOR);
-		comboBox.setFont(FIELD_FONT);
-		comboBox.setBorder(BorderFactory.createLineBorder(ColorScheme.BORDER_COLOR));
+		styleCombo(comboBox, CONTENT_WIDTH - 16);
+	}
+
+	private void styleCombo(JComboBox<ComboItem> comboBox, int width)
+	{
+		Dimension size = new Dimension(width, CONTROL_HEIGHT);
+		comboBox.setFocusable(false);
 		comboBox.setPreferredSize(size);
 		comboBox.setMinimumSize(size);
 		comboBox.setMaximumSize(size);
 		comboBox.setAlignmentX(LEFT_ALIGNMENT);
-		ListCellRenderer<? super ComboItem> baseRenderer = comboBox.getRenderer();
-		comboBox.setRenderer((list, value, index, isSelected, cellHasFocus) ->
-		{
-			java.awt.Component component = baseRenderer.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-
-			if (component instanceof JLabel)
-			{
-				JLabel label = (JLabel) component;
-				label.setFont(FIELD_FONT);
-				label.setForeground(ColorScheme.TEXT_COLOR);
-				label.setBackground(isSelected ? ColorScheme.DARK_GRAY_HOVER_COLOR : ColorScheme.DARK_GRAY_COLOR);
-			}
-
-			return component;
-		});
 	}
 
 	private void styleTextField(JTextField field)
 	{
 		Dimension size = new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT);
-		field.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		field.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 		field.setForeground(ColorScheme.TEXT_COLOR);
 		field.setCaretColor(ColorScheme.TEXT_COLOR);
-		field.setFont(FIELD_FONT);
-		field.setBorder(new EmptyBorder(0, 6, 0, 6));
+		field.setBorder(new EmptyBorder(5, 5, 5, 5));
 		field.setPreferredSize(size);
 		field.setMaximumSize(size);
 		field.setAlignmentX(LEFT_ALIGNMENT);
@@ -728,18 +695,16 @@ public class BaHealerOrderPanel extends PluginPanel
 		area.setRows(rows);
 		area.setLineWrap(true);
 		area.setWrapStyleWord(true);
-		area.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		area.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 		area.setForeground(ColorScheme.TEXT_COLOR);
 		area.setCaretColor(ColorScheme.TEXT_COLOR);
-		area.setFont(FIELD_FONT);
-		area.setBorder(new EmptyBorder(6, 6, 6, 6));
+		area.setBorder(new EmptyBorder(5, 5, 5, 5));
 	}
 
 	private JScrollPane wrapTextArea(JTextArea area, int height)
 	{
 		JScrollPane scrollPane = new JScrollPane(area);
-		scrollPane.setBorder(BorderFactory.createLineBorder(ColorScheme.BORDER_COLOR));
-		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		scrollPane.getViewport().setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
 		scrollPane.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, height));
 		scrollPane.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, height));
 		scrollPane.setAlignmentX(LEFT_ALIGNMENT);

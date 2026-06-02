@@ -23,6 +23,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import javax.inject.Inject;
+import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
@@ -154,6 +155,7 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		codeManager.load();
 		panel.refreshAll();
+		SwingUtilities.updateComponentTreeUI(panel.getWrappedPanel());
 		resetAllState();
 		overlayManager.add(overlay);
 		overlayManager.add(foodOverlay);
