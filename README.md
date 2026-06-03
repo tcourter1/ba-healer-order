@@ -79,7 +79,9 @@ Healer-code entries can include time-based progression. Additional lines represe
 
 Target labels can be included in healer-code entries using parentheses. When present, the plugin can display the active target label above the healer.
 
-<img width="234" height="1030" alt="image" src="https://github.com/user-attachments/assets/82f1159b-4f2d-4e43-8459-4d9f0cf6bee6" />
+<img width="237" height="534" alt="image" src="https://github.com/user-attachments/assets/27866011-b816-40d2-b968-93f83c3465bb" />
+<img width="218" height="394" alt="image" src="https://github.com/user-attachments/assets/d686fb70-9243-4f35-8344-c0e85fd3aa5c" />
+
 
 The active code can also be displayed in the Penance Healers' right-click menu.
 
