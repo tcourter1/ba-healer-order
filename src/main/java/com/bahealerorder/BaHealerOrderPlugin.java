@@ -36,6 +36,7 @@ import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
 import net.runelite.api.NPC;
+import net.runelite.api.Renderable;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GameStateChanged;
@@ -50,8 +51,10 @@ import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.callback.Hooks;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.NpcUtil;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -69,6 +72,7 @@ import net.runelite.client.util.Text;
 public class BaHealerOrderPlugin extends Plugin
 {
 	private static final String PENANCE_HEALER_NAME = "Penance Healer";
+	private static final String PENANCE_NPC_PREFIX = "Penance ";
 	private static final String HEALER_ITEM_MACHINE_NAME = "Healer item machine";
 	private static final String ATTACKER_ITEM_MACHINE_NAME = "Attacker item machine";
 	private static final String DEFENDER_ITEM_MACHINE_NAME = "Defender item machine";
@@ -113,6 +117,12 @@ public class BaHealerOrderPlugin extends Plugin
 	private Client client;
 
 	@Inject
+	private Hooks hooks;
+
+	@Inject
+	private NpcUtil npcUtil;
+
+	@Inject
 	private OverlayManager overlayManager;
 
 	@Inject
@@ -145,6 +155,8 @@ public class BaHealerOrderPlugin extends Plugin
 
 	@Getter
 	private final List<FeedEvent> feedEvents = new ArrayList<>();
+
+	private final Hooks.RenderableDrawListener drawListener = this::shouldDrawRenderable;
 
 	private int currentWave = -1;
 	private int currentCallIndex = 0;
@@ -196,6 +208,7 @@ public class BaHealerOrderPlugin extends Plugin
 		panel.refreshAll();
 		SwingUtilities.updateComponentTreeUI(panel.getWrappedPanel());
 		resetAllState();
+		hooks.registerRenderableDrawListener(drawListener);
 		overlayManager.add(overlay);
 		overlayManager.add(foodOverlay);
 		navigationButton = NavigationButton.builder()
@@ -217,6 +230,7 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 		overlayManager.remove(foodOverlay);
 		overlayManager.remove(overlay);
+		hooks.unregisterRenderableDrawListener(drawListener);
 		resetAllState();
 	}
 
@@ -785,6 +799,56 @@ public class BaHealerOrderPlugin extends Plugin
 	private boolean shouldShowMenuCode()
 	{
 		return config.showMenuCode() && isHealerRole();
+	}
+
+	private boolean shouldDrawRenderable(Renderable renderable, boolean drawingUi)
+	{
+		if (!(renderable instanceof NPC))
+		{
+			return true;
+		}
+
+		return !shouldHideDeadNpc((NPC) renderable);
+	}
+
+	public boolean shouldHideDeadNpc(NPC npc)
+	{
+		BaHealerOrderConfig.HideDeadNpcMode mode = config.hideDeadNpcs();
+
+		if (mode == BaHealerOrderConfig.HideDeadNpcMode.NONE
+				|| !isWaveActive()
+				|| !isHealerRole())
+		{
+			return false;
+		}
+
+		if (mode == BaHealerOrderConfig.HideDeadNpcMode.HEALERS_ONLY)
+		{
+			return isDeadPenanceHealer(npc);
+		}
+
+		if (mode == BaHealerOrderConfig.HideDeadNpcMode.ALL_BA_NPCS)
+		{
+			return isDeadPenanceHealer(npc) || isBaNpc(npc) && npcUtil.isDying(npc);
+		}
+
+		return false;
+	}
+
+	private boolean isDeadPenanceHealer(NPC npc)
+	{
+		return isPenanceHealer(npc) && npc.getHealthRatio() == 0;
+	}
+
+	private boolean isBaNpc(NPC npc)
+	{
+		if (npc == null || npc.getName() == null)
+		{
+			return false;
+		}
+
+		String name = Text.removeTags(npc.getName());
+		return name.startsWith(PENANCE_NPC_PREFIX);
 	}
 
 	private void rebuildHealerOrderByNpcIndex()
