@@ -73,6 +73,26 @@ public interface BaHealerOrderConfig extends Config
 		}
 	}
 
+	enum HideDeadNpcMode
+	{
+		NONE("None"),
+		HEALERS_ONLY("Healers Only"),
+		ALL_BA_NPCS("All BA NPCs");
+
+		private final String name;
+
+		HideDeadNpcMode(String name)
+		{
+			this.name = name;
+		}
+
+		@Override
+		public String toString()
+		{
+			return name;
+		}
+	}
+
 	enum FoodCountType
 	{
 		COUNT_UP("Count Up"),
@@ -179,11 +199,35 @@ public interface BaHealerOrderConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "showLabelsAsHealerOnly",
+			name = "Show Labels as Healer Only",
+			description = "Only shows Penance Healer labels while playing the Healer role",
+			section = healerHighlightSection,
+			position = 6
+	)
+	default boolean showLabelsAsHealerOnly()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "hideDeadNpcs",
+			name = "Hide Dead NPCs",
+			description = "Hides selected BA NPCs immediately when they begin dying instead of waiting for their death animation to finish",
+			section = healerHighlightSection,
+			position = 7
+	)
+	default HideDeadNpcMode hideDeadNpcs()
+	{
+		return HideDeadNpcMode.NONE;
+	}
+
+	@ConfigItem(
 			keyName = "spreadStackedLabels",
 			name = "Spread Stacked Labels",
 			description = "Horizontally separates healer labels when multiple Penance Healers occupy the same tile",
 			section = healerHighlightSection,
-			position = 7
+			position = 8
 	)
 	default boolean spreadStackedLabels()
 	{
@@ -199,7 +243,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Stacked Label Spacing",
 			description = "Horizontal pixel spacing used when spreading labels for stacked Penance Healers",
 			section = healerHighlightSection,
-			position = 8
+			position = 9
 	)
 	default int stackedLabelSpacing()
 	{
@@ -207,23 +251,11 @@ public interface BaHealerOrderConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "showLabelsAsHealerOnly",
-			name = "Show Labels as Healer Only",
-			description = "Only shows Penance Healer labels while playing the Healer role",
-			section = healerHighlightSection,
-			position = 6
-	)
-	default boolean showLabelsAsHealerOnly()
-	{
-		return true;
-	}
-
-	@ConfigItem(
 			keyName = "showMenuLabel",
 			name = "Show Menu Label",
 			description = "Adds the tracked healer label next to Penance Healers in the right-click menu",
 			section = healerHighlightSection,
-			position = 9
+			position = 10
 	)
 	default boolean showMenuLabel()
 	{
@@ -235,7 +267,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Show Menu Code",
 			description = "Adds the current healer code next to Penance Healers in the right-click menu",
 			section = healerHighlightSection,
-			position = 10
+			position = 11
 	)
 	default boolean showMenuCode()
 	{
@@ -247,7 +279,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Healer Food Only",
 			description = "When poisoned food is selected, only Penance Healer Use entries remain clickable",
 			section = healerHighlightSection,
-			position = 11
+			position = 12
 	)
 	default boolean healerFoodOnly()
 	{
@@ -281,7 +313,7 @@ public interface BaHealerOrderConfig extends Config
 	@ConfigItem(
 			keyName = "moveTakeMeatUp",
 			name = "Move Take-Meat up",
-			description = "Moves Take-Meat closer to the other healer dispenser food options",
+			description = "Moves Take-Meat closer to the other healer food options",
 			section = dispenserOptionsSection,
 			position = 3
 	)

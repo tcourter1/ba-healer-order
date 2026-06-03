@@ -62,6 +62,11 @@ public class BaHealerOrderOverlay extends Overlay
 				continue;
 			}
 
+			if (plugin.shouldHideDeadNpc(npc))
+			{
+				continue;
+			}
+
 			int xOffset = xOffsets.getOrDefault(npc, 0);
 
 			if (plugin.shouldShowHealerHighlights())
@@ -100,7 +105,7 @@ public class BaHealerOrderOverlay extends Overlay
 		{
 			NPC npc = entry.getKey();
 
-			if (npc == null)
+			if (npc == null || plugin.shouldHideDeadNpc(npc))
 			{
 				continue;
 			}
