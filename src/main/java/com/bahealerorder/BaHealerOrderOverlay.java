@@ -31,6 +31,7 @@ public class BaHealerOrderOverlay extends Overlay
 	private static final float HULL_STROKE_WIDTH = 2.0f;
 	private static final float TILE_STROKE_WIDTH = 1.0f;
 	private static final int TILE_ALPHA = 50;
+	private static final int TTK_Y_OFFSET = 33;
 
 	private final BaHealerOrderPlugin plugin;
 	private final BaHealerOrderConfig config;
@@ -84,6 +85,16 @@ public class BaHealerOrderOverlay extends Overlay
 			{
 				int foodFed = foodFedByHealerOrder.getOrDefault(order, 0);
 				renderFoodCount(graphics, npc, order, foodFed, xOffset);
+			}
+
+			if (plugin.shouldShowHealerTtk())
+			{
+				String ttkText = plugin.getHealerTtkText(npc);
+
+				if (ttkText != null)
+				{
+					renderHealerTtk(graphics, npc, ttkText, xOffset, plugin.shouldShowFoodCountOnNpc());
+				}
 			}
 		}
 
@@ -279,6 +290,29 @@ public class BaHealerOrderOverlay extends Overlay
 		graphics.setFont(originalFont);
 	}
 
+	private void renderHealerTtk(Graphics2D graphics, NPC npc, String text, int xOffset, boolean hasFoodCount)
+	{
+		int zOffset = (npc.getLogicalHeight() / 2) + config.foodCountZOffset();
+
+		if (hasFoodCount)
+		{
+			zOffset -= config.foodCountTextSize() + 4;
+		}
+
+		Point textLocation = npc.getCanvasTextLocation(graphics, text, zOffset);
+
+		if (textLocation == null)
+		{
+			return;
+		}
+
+		Font originalFont = graphics.getFont();
+
+		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.foodCountTextSize()));
+		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset, TTK_Y_OFFSET), text, plugin.getHealerTtkColor());
+		graphics.setFont(originalFont);
+	}
+
 	private String getFoodCountText(int healerOrder, int foodFed)
 	{
 		return plugin.getFoodCountText(healerOrder, foodFed);
@@ -286,12 +320,17 @@ public class BaHealerOrderOverlay extends Overlay
 
 	private Point offsetPoint(Point point, int xOffset)
 	{
-		if (xOffset == 0)
+		return offsetPoint(point, xOffset, 0);
+	}
+
+	private Point offsetPoint(Point point, int xOffset, int yOffset)
+	{
+		if (xOffset == 0 && yOffset == 0)
 		{
 			return point;
 		}
 
-		return new Point(point.getX() + xOffset, point.getY());
+		return new Point(point.getX() + xOffset, point.getY() + yOffset);
 	}
 
 	private void renderOutlinedText(Graphics2D graphics, Point textLocation, String text, Color textColor)

@@ -315,6 +315,10 @@ public class BaHealerOrderPanel extends PluginPanel
 		{
 			codeManager.createUserPresetFromActive(name);
 		}
+		else if (!name.equalsIgnoreCase(currentPreset.getName()))
+		{
+			codeManager.createUserPresetFromActive(name);
+		}
 		else
 		{
 			codeManager.updateUserPreset(currentPreset.getId(), name, codeManager.getActiveWaveCodeIds());
