@@ -24,7 +24,7 @@ public final class BuiltInStrategyLibrary
 		add(waveCodes, 6, "2x-os", "2x OS", "3(18)-5-3-4 //\nRestock 3x os + 1x reg\n0-0-10-12");
 		add(waveCodes, 7, "regular", "Regular", "2-5(27)-1-1 //\n1(33)-0-1(33)-1-4-1\nRestock 13/13 or 1x os //\n1-3-7");
 		add(waveCodes, 7, "2x-os", "2x OS", "2(27)-6-6-1 //\nRestock 4x os\n0-0-0-1(39)-2-9-11");
-		add(waveCodes, 8, "regular", "Regular", "2-4(21)-1/2(27)-1 //\n1-1[42]-1/0-1-3(42)-1/2 //\nRestock\n0-0-0-0-6/5-X");
+		add(waveCodes, 8, "regular", "Regular", "2-4(21)-2(27)-1 //\n1-1[42]-1/0-1-3(42)-1/2 //\nRestock\n0-0-0-0-6/5-X");
 		add(waveCodes, 8, "1x-os", "1x OS", "1-9-1-1 //\n2-0-1-1(36)-2-1\nRestock 13/13 or 1-2x os //\n0-0-3-10");
 		add(waveCodes, 8, "2x-os", "2x OS", "4(24)-9-1-1 //\n0-0-1-2(39)-1-1\nRestock 4x os + 1x reg\n0-0-3(51)-5(51)[57]-X");
 		add(waveCodes, 9, "regular", "Regular", "2(18)-4/5(18)-1-1 //\n1[54]-2/3-1(33)-1(42)-1-1-1 //\nRestock\n0-0-0-0-1[69]-2[69]-5[75]-X");

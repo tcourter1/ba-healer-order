@@ -2,6 +2,7 @@ package com.bahealerorder;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import com.bahealerorder.codes.HealerCodeParser;
 import com.bahealerorder.codes.RunPreset;
@@ -39,5 +40,30 @@ public class BaHealerCodeManagerTest
 		assertEquals("user:preset:main-run", manager.getActiveRunPresetId());
 		assertEquals(1, store.getWaveCodes().size());
 		assertEquals(1, store.getRunPresets().size());
+	}
+
+	@Test
+	public void clearingWaveCodeSelectionDoesNotFallBackToActivePreset()
+	{
+		StrategyStore store = new StrategyStore();
+		WaveCode waveOne = HealerCodeParser.parseWaveCode("user:wave:one", "Wave One", 1, false, "1-1-1");
+		WaveCode waveTwo = HealerCodeParser.parseWaveCode("user:wave:two", "Wave Two", 2, false, "2-2-2");
+		store.getWaveCodes().add(waveOne);
+		store.getWaveCodes().add(waveTwo);
+
+		Map<Integer, String> waveCodeIds = new HashMap<>();
+		waveCodeIds.put(1, waveOne.getId());
+		waveCodeIds.put(2, waveTwo.getId());
+		store.getRunPresets().add(new RunPreset("user:preset:main-run", "Main Run", false, waveCodeIds));
+
+		BaHealerCodeManager manager = new BaHealerCodeManager(store, new Gson());
+
+		manager.applyRunPreset("user:preset:main-run");
+		manager.setActiveWaveCodeId(1, null);
+
+		assertNull(manager.getActiveWaveCode(1));
+		assertEquals(waveTwo.getId(), manager.getActiveWaveCodeId(2));
+		assertEquals(waveTwo, manager.getActiveWaveCode(2));
+		assertNull(manager.getActiveRunPresetId());
 	}
 }

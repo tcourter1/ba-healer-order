@@ -112,15 +112,38 @@ public interface BaHealerOrderConfig extends Config
 		}
 	}
 
-	enum FoodPanelMode
+	enum FoodPanelStyle
 	{
-		ALWAYS("Always"),
-		AS_HEALER_ONLY("As Healer Only"),
-		NEVER("Never");
+		NONE("None"),
+		ROWS("Rows"),
+		COLUMNS("Columns"),
+		SIMPLIFIED("Simplified"),
+		CODE_ONLY("Code Only");
 
 		private final String name;
 
-		FoodPanelMode(String name)
+		FoodPanelStyle(String name)
+		{
+			this.name = name;
+		}
+
+		@Override
+		public String toString()
+		{
+			return name;
+		}
+	}
+
+	enum HealerTtkDisplayMode
+	{
+		OFF("Off"),
+		TICKS("Ticks"),
+		SECONDS("Seconds"),
+		WAVE_TIME("Wave Time");
+
+		private final String name;
+
+		HealerTtkDisplayMode(String name)
 		{
 			this.name = name;
 		}
@@ -335,15 +358,27 @@ public interface BaHealerOrderConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "showFoodPanel",
-			name = "Show Food Panel",
-			description = "Shows a panel tracking how much good food has been fed to each Penance Healer",
+			keyName = "foodPanelStyle",
+			name = "Food Panel Style",
+			description = "Choose how the food panel displays tracked healer food",
 			section = foodCountSection,
 			position = 1
 	)
-	default FoodPanelMode showFoodPanel()
+	default FoodPanelStyle foodPanelStyle()
 	{
-		return FoodPanelMode.AS_HEALER_ONLY;
+		return FoodPanelStyle.ROWS;
+	}
+
+	@ConfigItem(
+			keyName = "showFoodPanelAsHealerOnly",
+			name = "Show Food Panel as Healer Only",
+			description = "Only shows the food panel while playing the Healer role",
+			section = foodCountSection,
+			position = 2
+	)
+	default boolean showFoodPanelAsHealerOnly()
+	{
+		return true;
 	}
 
 	@ConfigItem(
@@ -351,7 +386,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Show Food Count on NPC",
 			description = "Displays the number of food fed directly on each Penance Healer",
 			section = foodCountSection,
-			position = 2
+			position = 3
 	)
 	default boolean showFoodCountOnNpc()
 	{
@@ -363,7 +398,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Show Previous Call Code",
 			description = "Shows the previous call's completed code in gray above the active code",
 			section = foodCountSection,
-			position = 3
+			position = 4
 	)
 	default boolean showPreviousCallCode()
 	{
@@ -376,7 +411,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Not Started Code Color",
 			description = "Color used when a selected healer code has not received any food yet",
 			section = foodCountSection,
-			position = 4
+			position = 5
 	)
 	default Color notStartedCodeColor()
 	{
@@ -389,7 +424,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "In Progress Code Color",
 			description = "Color used when a selected healer code has started but is not complete",
 			section = foodCountSection,
-			position = 5
+			position = 6
 	)
 	default Color inProgressCodeColor()
 	{
@@ -402,7 +437,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Complete Code Color",
 			description = "Color used when a selected healer code is complete, including any timing requirement",
 			section = foodCountSection,
-			position = 6
+			position = 7
 	)
 	default Color completeCodeColor()
 	{
@@ -415,7 +450,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Previous Call Code Color",
 			description = "Color used for completed code text from a previous call when that healer has no active incomplete code",
 			section = foodCountSection,
-			position = 7
+			position = 8
 	)
 	default Color previousCodeColor()
 	{
@@ -431,7 +466,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Food Count Text Size",
 			description = "Font size used for the food count displayed on each Penance Healer",
 			section = foodCountSection,
-			position = 8
+			position = 9
 	)
 	default int foodCountTextSize()
 	{
@@ -447,7 +482,7 @@ public interface BaHealerOrderConfig extends Config
 			name = "Food Count Height",
 			description = "Adjusts the vertical position of the food count on each Penance Healer. Higher values move it upward.",
 			section = foodCountSection,
-			position = 9
+			position = 10
 	)
 	default int foodCountZOffset()
 	{
@@ -459,11 +494,11 @@ public interface BaHealerOrderConfig extends Config
 			name = "Food Count Type",
 			description = "Choose whether NPC food displays count up or count down when a selected code has an expected count",
 			section = foodCountSection,
-			position = 10
+			position = 11
 	)
 	default FoodCountType foodCountType()
 	{
-		return FoodCountType.COUNT_DOWN;
+		return FoodCountType.COUNT_UP;
 	}
 
 	@Alpha
@@ -472,10 +507,22 @@ public interface BaHealerOrderConfig extends Config
 			name = "Food Count Color",
 			description = "Fallback color used only when no selected code status applies and the NPC is showing the plain food count",
 			section = foodCountSection,
-			position = 11
+			position = 12
 	)
 	default Color foodCountColor()
 	{
 		return new Color(0, 255, 0);
+	}
+
+	@ConfigItem(
+			keyName = "healerTtkDisplay",
+			name = "Healer TTK",
+			description = "Shows when currently poisoned Penance Healers are expected to die",
+			section = foodCountSection,
+			position = 13
+	)
+	default HealerTtkDisplayMode healerTtkDisplay()
+	{
+		return HealerTtkDisplayMode.OFF;
 	}
 }

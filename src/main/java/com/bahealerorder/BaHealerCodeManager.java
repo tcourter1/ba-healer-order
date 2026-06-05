@@ -195,9 +195,16 @@ public class BaHealerCodeManager
 	{
 		RunPreset preset = findRunPreset(userStore.getActiveRunPresetId());
 
-		if (preset == null)
+		if (preset != null && preset.getWaveCodeIds().equals(userStore.getActiveWaveCodeIds()))
 		{
-			preset = findMatchingRunPreset();
+			return preset.getId();
+		}
+
+		preset = findMatchingRunPreset();
+
+		if (preset != null)
+		{
+			userStore.setActiveRunPresetId(preset.getId());
 		}
 
 		return preset == null ? null : preset.getId();
@@ -211,7 +218,7 @@ public class BaHealerCodeManager
 
 	public RunPreset getActiveRunPreset()
 	{
-		return findRunPreset(userStore.getActiveRunPresetId());
+		return findRunPreset(getActiveRunPresetId());
 	}
 
 	public RunPreset findMatchingRunPreset()
@@ -319,6 +326,8 @@ public class BaHealerCodeManager
 
 	public void setActiveWaveCodeId(int wave, String waveCodeId)
 	{
+		userStore.setActiveRunPresetId(null);
+
 		if (waveCodeId == null || waveCodeId.trim().isEmpty())
 		{
 			userStore.getActiveWaveCodeIds().remove(wave);
@@ -445,68 +454,18 @@ public class BaHealerCodeManager
 
 	public HealerCodeStatus getDisplayStatus(int wave, int healerOrder, int currentCallIndex, List<FeedEvent> feedEvents)
 	{
-		WaveCode waveCode = getActiveWaveCode(wave);
-
-		if (waveCode == null)
-		{
-			return null;
-		}
-
-		List<InstructionProgress> progresses = new ArrayList<>();
-
-		for (CallCode call : waveCode.getCalls())
-		{
-			if (call.getCallIndex() > currentCallIndex)
-			{
-				continue;
-			}
-
-			HealerInstruction instruction = call.getInstruction(healerOrder);
-
-			if (instruction != null && instruction.hasTarget())
-			{
-				progresses.add(new InstructionProgress(call.getCallIndex(), instruction));
-			}
-		}
-
-		if (progresses.isEmpty())
-		{
-			return null;
-		}
-
-		List<FeedEvent> events = new ArrayList<>();
-
-		for (FeedEvent event : safeEvents(feedEvents))
-		{
-			if (event.getHealerOrder() == healerOrder)
-			{
-				events.add(event);
-			}
-		}
-
-		events.sort(Comparator.comparingInt(FeedEvent::getElapsedSeconds));
-
-		for (FeedEvent event : events)
-		{
-			for (InstructionProgress progress : progresses)
-			{
-				// Feeds after a call change should continue satisfying the earliest
-				// incomplete prior instruction before they apply to the new call.
-				if (event.getCallIndex() >= progress.callIndex
-						&& progress.acceptsMoreFood())
-				{
-					progress.foodFed++;
-					progress.lastFoodElapsed = Math.max(progress.lastFoodElapsed, event.getElapsedSeconds());
-					break;
-				}
-			}
-		}
+		List<InstructionProgress> progresses = getInstructionProgresses(wave, healerOrder, currentCallIndex, feedEvents);
 
 		InstructionProgress currentProgress = null;
 		InstructionProgress mostRecentProgress = null;
 
 		for (InstructionProgress progress : progresses)
 		{
+			if (!progress.hasTarget())
+			{
+				continue;
+			}
+
 			mostRecentProgress = progress;
 
 			if (progress.callIndex == currentCallIndex)
@@ -530,6 +489,103 @@ public class BaHealerCodeManager
 		}
 
 		return mostRecentProgress == null ? null : mostRecentProgress.status(CodeDisplayState.PREVIOUS);
+	}
+
+	public HealerCodeStatus getPanelStatusForCall(int wave, int healerOrder, int currentCallIndex, int panelCallIndex, List<FeedEvent> feedEvents)
+	{
+		if (panelCallIndex > currentCallIndex)
+		{
+			WaveCode waveCode = getActiveWaveCode(wave);
+			CallCode call = waveCode == null ? null : waveCode.getCall(panelCallIndex);
+			HealerInstruction instruction = call == null ? null : call.getInstruction(healerOrder);
+			return instruction != null && instruction.hasTarget()
+					? new HealerCodeStatus(instruction, CodeDisplayState.NOT_STARTED, 0, -1)
+					: null;
+		}
+
+		for (InstructionProgress progress : getInstructionProgresses(wave, healerOrder, currentCallIndex, feedEvents))
+		{
+			if (progress.callIndex == panelCallIndex)
+			{
+				return progress.hasTarget() ? progress.status(getState(progress.instruction, progress.foodFed, progress.lastFoodElapsed)) : null;
+			}
+		}
+
+		return null;
+	}
+
+	public int getPanelFoodCountForCall(int wave, int healerOrder, int currentCallIndex, int panelCallIndex, List<FeedEvent> feedEvents)
+	{
+		for (InstructionProgress progress : getInstructionProgresses(wave, healerOrder, currentCallIndex, feedEvents))
+		{
+			if (progress.callIndex == panelCallIndex)
+			{
+				return progress.foodFed;
+			}
+		}
+
+		return 0;
+	}
+
+	private List<InstructionProgress> getInstructionProgresses(int wave, int healerOrder, int currentCallIndex, List<FeedEvent> feedEvents)
+	{
+		WaveCode waveCode = getActiveWaveCode(wave);
+
+		if (waveCode == null)
+		{
+			return new ArrayList<>();
+		}
+
+		List<InstructionProgress> progresses = new ArrayList<>();
+
+		for (int callIndex = 0; callIndex <= currentCallIndex; callIndex++)
+		{
+			CallCode call = waveCode.getCall(callIndex);
+			HealerInstruction instruction = call == null ? null : call.getInstruction(healerOrder);
+			progresses.add(new InstructionProgress(callIndex, instruction));
+		}
+
+		List<FeedEvent> events = new ArrayList<>();
+
+		for (FeedEvent event : safeEvents(feedEvents))
+		{
+			if (event.getHealerOrder() == healerOrder)
+			{
+				events.add(event);
+			}
+		}
+
+		events.sort(Comparator.comparingInt(FeedEvent::getElapsedSeconds));
+
+		for (FeedEvent event : events)
+		{
+			InstructionProgress fallbackProgress = null;
+
+			for (InstructionProgress progress : progresses)
+			{
+				if (progress.callIndex == event.getCallIndex())
+				{
+					fallbackProgress = progress;
+				}
+
+				// Feeds after a call change should continue satisfying the earliest
+				// incomplete prior instruction before they apply to the new call.
+				if (event.getCallIndex() >= progress.callIndex
+						&& progress.acceptsMoreFood())
+				{
+					progress.addFood(event.getElapsedSeconds());
+					fallbackProgress = null;
+					break;
+				}
+			}
+
+			if (fallbackProgress != null)
+			{
+				fallbackProgress.addFood(event.getElapsedSeconds());
+			}
+		}
+
+		return progresses;
 	}
 
 	public RunPreset createUserPreset(String name, Map<Integer, String> waveCodeIds)
@@ -932,8 +988,24 @@ public class BaHealerCodeManager
 			return new HealerCodeStatus(instruction, state, foodFed, lastFoodElapsed);
 		}
 
+		private void addFood(int elapsedSeconds)
+		{
+			foodFed++;
+			lastFoodElapsed = Math.max(lastFoodElapsed, elapsedSeconds);
+		}
+
+		private boolean hasTarget()
+		{
+			return instruction != null && instruction.hasTarget();
+		}
+
 		private boolean acceptsMoreFood()
 		{
+			if (!hasTarget())
+			{
+				return false;
+			}
+
 			if (foodFed < instruction.getTargetFoodCount())
 			{
 				return true;
