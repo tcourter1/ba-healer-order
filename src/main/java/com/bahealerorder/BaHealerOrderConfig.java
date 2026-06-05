@@ -498,7 +498,7 @@ public interface BaHealerOrderConfig extends Config
 	)
 	default FoodCountType foodCountType()
 	{
-		return FoodCountType.COUNT_DOWN;
+		return FoodCountType.COUNT_UP;
 	}
 
 	@Alpha
