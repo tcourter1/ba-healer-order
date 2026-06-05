@@ -117,6 +117,7 @@ public interface BaHealerOrderConfig extends Config
 		NONE("None"),
 		ROWS("Rows"),
 		COLUMNS("Columns"),
+		SIMPLIFIED("Simplified"),
 		CODE_ONLY("Code Only");
 
 		private final String name;

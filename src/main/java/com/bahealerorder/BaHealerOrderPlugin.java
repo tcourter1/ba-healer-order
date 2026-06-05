@@ -591,7 +591,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (!result.isPresent())
 		{
-			return null;
+			return ttkTracker.hasPoisonedHealerWithUnknownTtk(npc.getIndex()) ? "?" : null;
 		}
 
 		int deathTick = result.get().getDeathTick();
@@ -765,7 +765,12 @@ public class BaHealerOrderPlugin extends Plugin
 			return codeText;
 		}
 
-		return codeManager.getPanelFoodCountForCall(currentWave, healerOrder, currentCallIndex, callIndex, feedEvents) + "f";
+		return formatRawFoodCount(codeManager.getPanelFoodCountForCall(currentWave, healerOrder, currentCallIndex, callIndex, feedEvents));
+	}
+
+	private String formatRawFoodCount(int foodFed)
+	{
+		return String.valueOf(Math.max(foodFed, 0));
 	}
 
 	public Color getFoodPanelTextColor(int healerOrder, int callIndex)
@@ -800,6 +805,17 @@ public class BaHealerOrderPlugin extends Plugin
 
 		NPC npc = getVisibleHealerByOrder(healerOrder);
 		return npc != null && isDeadPenanceHealer(npc);
+	}
+
+	public boolean isHealerPresumedDead(int healerOrder)
+	{
+		if (isHealerDead(healerOrder) || getVisibleHealerByOrder(healerOrder) != null)
+		{
+			return false;
+		}
+
+		Integer deathTick = lastTtkDeathTickByHealerOrder.get(healerOrder);
+		return deathTick != null && client.getTickCount() > deathTick;
 	}
 
 	public HealerCodeStatus getCurrentCodeStatus(int healerOrder)
@@ -869,7 +885,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (expected <= 0)
 		{
-			return foodFed + "f";
+			return formatRawFoodCount(foodFed);
 		}
 
 		if (config.foodCountType() == BaHealerOrderConfig.FoodCountType.COUNT_UP)

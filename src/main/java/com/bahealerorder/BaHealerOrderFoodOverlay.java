@@ -86,6 +86,13 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel implements MouseListe
             return renderPanel(graphics);
         }
 
+        if (panelStyle == BaHealerOrderConfig.FoodPanelStyle.SIMPLIFIED)
+        {
+            addSimplifiedRows(healerOrders);
+            addCurrentWaveCode(true);
+            return renderPanel(graphics);
+        }
+
         if (panelStyle == BaHealerOrderConfig.FoodPanelStyle.COLUMNS)
         {
             addColumnTables(graphics, healerOrders);
@@ -141,20 +148,40 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel implements MouseListe
         return title;
     }
 
+    private void addSimplifiedRows(List<Integer> healerOrders)
+    {
+        for (int healerOrder : healerOrders)
+        {
+            boolean spawned = plugin.hasHealerSpawned(healerOrder);
+            boolean displayDead = shouldDisplayHealerDead(healerOrder);
+            Color healerColor = getHealerColor(spawned, displayDead);
+            String deathTime = getDeathTimeText(healerOrder);
+            String text = ColorUtil.prependColorTag(plugin.getFoodPanelHealerLabel(healerOrder), healerColor)
+                    + " "
+                    + ColorUtil.prependColorTag("(" + deathTime + ")", getDeathTimeColor(healerOrder, deathTime));
+
+            panelComponent.getChildren().add(
+                    LineComponent.builder()
+                            .left(text)
+                            .build()
+            );
+        }
+    }
+
     private void addHealerRows(List<Integer> healerOrders)
     {
         for (int healerOrder : healerOrders)
         {
             String countText = plugin.getFoodPanelText(healerOrder, -1);
             boolean spawned = plugin.hasHealerSpawned(healerOrder);
-            boolean dead = plugin.isHealerDead(healerOrder);
-            Color rowColor = getHealerColor(spawned, dead);
-            Color rightColor = spawned && !dead ? plugin.getFoodPanelTextColor(healerOrder, -1) : getHealerColor(spawned, dead);
+            boolean displayDead = shouldDisplayHealerDead(healerOrder);
+            Color rowColor = getHealerColor(spawned, displayDead);
+            Color rightColor = spawned && !displayDead ? plugin.getFoodPanelTextColor(healerOrder, -1) : getHealerColor(spawned, displayDead);
             String ttkText = plugin.getHealerPanelTtkText(healerOrder);
 
             if (rightColor == null)
             {
-                rightColor = getHealerColor(spawned, dead);
+                rightColor = getHealerColor(spawned, displayDead);
             }
 
             if (ttkText != null && !ttkText.isEmpty())
@@ -274,10 +301,10 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel implements MouseListe
     private String buildHealerCallRow(int healerOrder, FontMetrics metrics)
     {
         boolean spawned = plugin.hasHealerSpawned(healerOrder);
-        boolean dead = plugin.isHealerDead(healerOrder);
+        boolean displayDead = shouldDisplayHealerDead(healerOrder);
         StringBuilder builder = new StringBuilder(ColorUtil.prependColorTag(
                 padCell(plugin.getFoodPanelHealerLabel(healerOrder), ROW_LABEL_WIDTH, metrics),
-                getHealerColor(spawned, dead)));
+                getHealerColor(spawned, displayDead)));
 
         for (int callIndex : getRowCallIndexes())
         {
@@ -302,8 +329,8 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel implements MouseListe
         for (int healerOrder : healerOrders)
         {
             boolean spawned = plugin.hasHealerSpawned(healerOrder);
-            boolean dead = plugin.isHealerDead(healerOrder);
-            Color color = getHealerColor(spawned, dead);
+            boolean displayDead = shouldDisplayHealerDead(healerOrder);
+            Color color = getHealerColor(spawned, displayDead);
             String label = plugin.getFoodPanelHealerLabel(healerOrder);
 
             builder.append(ColorUtil.prependColorTag(padCell(label, COLUMN_CELL_WIDTH, metrics), color));
@@ -314,7 +341,7 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel implements MouseListe
 
     private String buildColumnRow(List<Integer> healerOrders, int callIndex, FontMetrics metrics)
     {
-        String rowLabel = callIndex < 0 ? "Tot" : "C" + (callIndex + 1);
+        String rowLabel = callIndex < 0 ? "Fed" : "C" + (callIndex + 1);
         StringBuilder builder = new StringBuilder(padCell(rowLabel, COLUMN_LABEL_WIDTH, metrics));
 
         for (int healerOrder : healerOrders)
@@ -340,12 +367,12 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel implements MouseListe
     private void appendFoodCell(StringBuilder builder, int healerOrder, int callIndex, int width, FontMetrics metrics)
     {
         boolean spawned = plugin.hasHealerSpawned(healerOrder);
-        boolean dead = plugin.isHealerDead(healerOrder);
-        Color color = spawned && !dead ? plugin.getFoodPanelTextColor(healerOrder, callIndex) : getHealerColor(spawned, dead);
+        boolean displayDead = shouldDisplayHealerDead(healerOrder);
+        Color color = spawned && !displayDead ? plugin.getFoodPanelTextColor(healerOrder, callIndex) : getHealerColor(spawned, displayDead);
 
         if (color == null)
         {
-            color = getHealerColor(spawned, dead);
+            color = getHealerColor(spawned, displayDead);
         }
 
         builder.append(ColorUtil.prependColorTag(padCell(plugin.getFoodPanelText(healerOrder, callIndex), width, metrics), color));
@@ -353,13 +380,28 @@ public class BaHealerOrderFoodOverlay extends OverlayPanel implements MouseListe
 
     private void appendDeathTimeCell(StringBuilder builder, int healerOrder, int width, FontMetrics metrics)
     {
-        String deathTime = plugin.getHealerPanelDeathTime(healerOrder);
-        String text = deathTime == null || deathTime.isEmpty() ? "-" : deathTime;
-        Color color = deathTime == null || deathTime.isEmpty()
-                ? getHealerColor(plugin.hasHealerSpawned(healerOrder), plugin.isHealerDead(healerOrder))
-                : TTK_COLOR;
+        String text = getDeathTimeText(healerOrder);
+        Color color = getDeathTimeColor(healerOrder, text);
 
         builder.append(ColorUtil.prependColorTag(padCell(text, width, metrics), color));
+    }
+
+    private String getDeathTimeText(int healerOrder)
+    {
+        String deathTime = plugin.getHealerPanelDeathTime(healerOrder);
+        return deathTime == null || deathTime.isEmpty() ? "-" : deathTime;
+    }
+
+    private Color getDeathTimeColor(int healerOrder, String deathTime)
+    {
+        boolean spawned = plugin.hasHealerSpawned(healerOrder);
+        boolean displayDead = shouldDisplayHealerDead(healerOrder);
+        return "-".equals(deathTime) || !spawned || displayDead ? getHealerColor(spawned, displayDead) : TTK_COLOR;
+    }
+
+    private boolean shouldDisplayHealerDead(int healerOrder)
+    {
+        return plugin.isHealerDead(healerOrder) || plugin.isHealerPresumedDead(healerOrder);
     }
 
     private Color getHealerColor(boolean spawned, boolean dead)
