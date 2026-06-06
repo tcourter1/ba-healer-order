@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -88,6 +89,7 @@ public class BaHealerOrderPlugin extends Plugin
 	private static final String WRONG_FOOD_MESSAGE = "that's the wrong type of poisoned food to use! penalty!";
 	private static final String PANEL_ICON_RESOURCE = "/com/bahealerorder/penance_healer.png";
 	private static final int MAX_FOOD_PANEL_CODE_CALLS = 3;
+	private static final int NPC_INDEX_MODULUS = 1 << 16;
 
 	private static final int BA_HORN_OF_GLORY_GROUP_ID = 484;
 	private static final int BA_ATTACKER_GROUP_ID = 485;
@@ -174,6 +176,7 @@ public class BaHealerOrderPlugin extends Plugin
 	private int currentWave = -1;
 	private int currentCallIndex = 0;
 	private int inGameBit;
+	private int healerIndexBase = -1;
 	private long waveStartTimeMs = -1;
 	private String lastCallText;
 	private String currentCallText;
@@ -257,6 +260,12 @@ public class BaHealerOrderPlugin extends Plugin
 		if (!isPenanceHealer(npc)) return;
 
 		int npcIndex = npc.getIndex();
+
+		if (healerIndexBase < 0)
+		{
+			healerIndexBase = npcIndex;
+		}
+
 		boolean addedNewIndex = healerIndexesSeenThisWave.add(npcIndex);
 
 		rebuildHealerOrderByNpcIndex();
@@ -1176,7 +1185,7 @@ public class BaHealerOrderPlugin extends Plugin
 	private void rebuildHealerOrderByNpcIndex()
 	{
 		List<Integer> sortedIndexes = new ArrayList<>(healerIndexesSeenThisWave);
-		Collections.sort(sortedIndexes);
+		sortedIndexes.sort(Comparator.comparingInt(this::normalizeNpcIndexForWave));
 
 		healerOrderByNpcIndex.clear();
 
@@ -1184,6 +1193,16 @@ public class BaHealerOrderPlugin extends Plugin
 		{
 			healerOrderByNpcIndex.put(sortedIndexes.get(i), i + 1);
 		}
+	}
+
+	private int normalizeNpcIndexForWave(int npcIndex)
+	{
+		if (healerIndexBase < 0)
+		{
+			return npcIndex;
+		}
+
+		return Math.floorMod(npcIndex - healerIndexBase, NPC_INDEX_MODULUS);
 	}
 
 	private void rebuildVisibleHealerOrders()
@@ -1869,6 +1888,7 @@ public class BaHealerOrderPlugin extends Plugin
 		visibleHealers.clear();
 		healerIndexesSeenThisWave.clear();
 		healerOrderByNpcIndex.clear();
+		healerIndexBase = -1;
 		deadHealerOrders.clear();
 		foodFedByNpcIndex.clear();
 		lastTtkDeathTickByHealerOrder.clear();
