@@ -79,9 +79,7 @@ Healer-code entries can include time-based progression. Additional lines represe
 
 Target labels can be included in healer-code entries using parentheses. When present, the plugin can display the active target label above the healer.
 
-<img width="237" height="534" alt="image" src="https://github.com/user-attachments/assets/27866011-b816-40d2-b968-93f83c3465bb" />
-<img width="218" height="394" alt="image" src="https://github.com/user-attachments/assets/d686fb70-9243-4f35-8344-c0e85fd3aa5c" />
-
+<img width="234" height="1030" alt="image" src="https://github.com/user-attachments/assets/82f1159b-4f2d-4e43-8459-4d9f0cf6bee6" />
 
 The active code can also be displayed in the Penance Healers' right-click menu.
 
@@ -142,3 +140,4 @@ BA Healer Utilities does not automate gameplay. It provides visual tracking for 
 * **1.0.7** - Lyelt added a fully redesigned healer code system complete with import/export/saving functions. Food count tracking updated with color-coding to track healer code progress. Updated the labeling logic to label all healers by Index ID sequentially, rather than by render order. Labels also self correct when labeled incorrectly on render. 
 * **1.0.8** - Added healer-only poisoned food menu protection. Added option to show healer codes in the right-click menu on tagged healers. Added dispenser menu options. Healer code side panel updated visually and import/export/saving function redesigned to work more reliably.
 * **1.0.9** - Added function to disable most features when you're not in the Healer role. Added option to instantly hide dead NPCs (skip death animation, similar to Entity Hider), including Penance Healers and/or Penance Healers/Fighters/Rangers.
+* **1.1.0** - Added Penance Healer TTK timer, expanded UI panel functionality with several new options, fixed a bug with healer labeling logic.
