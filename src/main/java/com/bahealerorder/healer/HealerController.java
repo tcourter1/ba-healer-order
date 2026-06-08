@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -78,6 +79,8 @@ public class HealerController
 	private static final String PANEL_ICON_RESOURCE = "/com/bahealerorder/penance_healer.png";
 	private static final int MAX_FOOD_PANEL_CODE_CALLS = 3;
 	private static final int NPC_INDEX_MODULUS = 1 << 16;
+	private static final int PENDING_FEED_ATTEMPT_MAX_AGE_TICKS = 5;
+	private static final int NO_ATTEMPT_DISTANCE = Integer.MAX_VALUE;
 
 	private static final int BA_HORN_OF_GLORY_GROUP_ID = 484;
 	private static final int BA_HEALER_GROUP_ID = 488;
@@ -155,6 +158,7 @@ public class HealerController
 
 	private final Map<Integer, Integer> foodFedByNpcIndex = new HashMap<>();
 	private final Map<Integer, Integer> lastTtkDeathTickByHealerOrder = new HashMap<>();
+	private final Map<Integer, Integer> lastPoisonedFoodCountByItemId = new HashMap<>();
 
 	@Getter
 	private final List<FeedEvent> feedEvents = new ArrayList<>();
@@ -171,7 +175,8 @@ public class HealerController
 	private String currentCallSource;
 	private boolean callTrackingArmed;
 	private Integer selectedPoisonedFoodItemId;
-	private PendingFeedAttempt pendingFeedAttempt;
+	private final List<PendingFeedAttempt> pendingFeedAttempts = new ArrayList<>();
+	private int feedAttemptSequence;
 	private NavigationButton navigationButton;
 	public void startUp()
 	{
@@ -294,34 +299,39 @@ public class HealerController
 	{
 		if (event.getContainerId() != InventoryID.INVENTORY.getId()) return;
 
-		if (!isHealerRole() || pendingFeedAttempt == null) return;
-
-		int currentFoodCount = getItemCount(event.getItemContainer().getItems(), pendingFeedAttempt.foodItemId);
-
-		if (currentFoodCount >= pendingFeedAttempt.foodCountBeforeUse) return;
-
-		foodFedByNpcIndex.merge(pendingFeedAttempt.npcIndex, 1, Integer::sum);
-		ttkTracker.onFoodConsumedForHealer(pendingFeedAttempt.npcIndex, client.getTickCount());
-
-		Integer currentOrder = healerOrderByNpcIndex.get(pendingFeedAttempt.npcIndex);
-		int totalFoodFed = foodFedByNpcIndex.getOrDefault(pendingFeedAttempt.npcIndex, 0);
-
-		if (currentOrder != null)
+		if (!isHealerRole())
 		{
-			feedEvents.add(new FeedEvent(currentOrder, Math.round(getCurrentWaveElapsedSeconds()), currentCallIndex));
+			cachePoisonedFoodCounts(event.getItemContainer());
+			return;
 		}
 
-		log.debug(
-				"Counted consumed poisoned food for healer #{} from NPC index {}. Item {} went from {} to {}. Total now {}",
-				currentOrder,
-				pendingFeedAttempt.npcIndex,
-				pendingFeedAttempt.foodItemId,
-				pendingFeedAttempt.foodCountBeforeUse,
-				currentFoodCount,
-				totalFoodFed
-		);
+		Map<Integer, Integer> consumedPoisonedFoodByItemId = getConsumedPoisonedFoodByItemId(event.getItemContainer());
 
-		pendingFeedAttempt = null;
+		if (consumedPoisonedFoodByItemId.isEmpty())
+		{
+			expireStalePendingFeedAttempts();
+			return;
+		}
+
+		for (Map.Entry<Integer, Integer> consumedEntry : consumedPoisonedFoodByItemId.entrySet())
+		{
+			int itemId = consumedEntry.getKey();
+			int consumedCount = consumedEntry.getValue();
+
+			for (int i = 0; i < consumedCount; i++)
+			{
+				PendingFeedAttempt attempt = findBestPendingFeedAttempt(itemId);
+
+				if (attempt == null)
+				{
+					log.debug("Poisoned food item {} was consumed with no matching pending healer feed attempt", itemId);
+					continue;
+				}
+
+				recordConsumedFoodForPendingAttempt(attempt);
+				pendingFeedAttempts.remove(attempt);
+			}
+		}
 	}
 	public void onGameTick(GameTick event)
 	{
@@ -367,7 +377,7 @@ public class HealerController
 		if (message.contains(WRONG_FOOD_MESSAGE))
 		{
 			log.debug("Wrong poisoned food detected. Cancelling pending feed attempt.");
-			pendingFeedAttempt = null;
+			pendingFeedAttempts.clear();
 		}
 	}
 	public void onVarbitChanged(VarbitChanged event)
@@ -1017,8 +1027,7 @@ public class HealerController
 		BaUtilitiesConfig.HideDeadNpcMode mode = config.hideDeadNpcs();
 
 		if (mode == BaUtilitiesConfig.HideDeadNpcMode.NONE
-				|| !isWaveActive()
-				|| !isHealerRole())
+				|| !isWaveActive())
 		{
 			return false;
 		}
@@ -1542,20 +1551,25 @@ public class HealerController
 
 		if (healerOrder == null) return;
 
-		int foodCountBeforeUse = getInventoryItemCount(selectedPoisonedFoodItemId);
-
-		pendingFeedAttempt = new PendingFeedAttempt(
+		NPC npc = getVisibleHealerByOrder(healerOrder);
+		PendingFeedAttempt attempt = new PendingFeedAttempt(
+				++feedAttemptSequence,
+				client.getTickCount(),
 				npcIndex,
+				healerOrder,
 				selectedPoisonedFoodItemId,
-				foodCountBeforeUse
+				npc
 		);
 
+		pendingFeedAttempts.add(attempt);
+		expireStalePendingFeedAttempts();
+
 		log.debug(
-				"Pending food feed for healer #{} from NPC index {} using item id {}. Count before use: {}",
+				"Queued pending food feed sequence {} for healer #{} from NPC index {} using item id {}",
+				attempt.sequence,
 				healerOrder,
 				npcIndex,
-				selectedPoisonedFoodItemId,
-				foodCountBeforeUse
+				selectedPoisonedFoodItemId
 		);
 	}
 
@@ -1664,16 +1678,164 @@ public class HealerController
 		return Text.removeTags(text).toLowerCase(Locale.ROOT);
 	}
 
-	private int getInventoryItemCount(int itemId)
+	private Map<Integer, Integer> getConsumedPoisonedFoodByItemId(ItemContainer itemContainer)
 	{
-		ItemContainer inventory = client.getItemContainer(InventoryID.INVENTORY);
+		Map<Integer, Integer> consumedByItemId = new HashMap<>();
 
-		if (inventory == null)
+		if (itemContainer == null)
 		{
-			return 0;
+			return consumedByItemId;
 		}
 
-		return getItemCount(inventory.getItems(), itemId);
+		Set<Integer> observedPoisonedFoodItemIds = new HashSet<>();
+		Item[] items = itemContainer.getItems();
+
+		if (items != null)
+		{
+			for (Item item : items)
+			{
+				if (item == null || item.getId() <= 0 || !isPoisonedFoodItem(item.getId())) continue;
+
+				observedPoisonedFoodItemIds.add(item.getId());
+			}
+		}
+
+		if (selectedPoisonedFoodItemId != null && selectedPoisonedFoodItemId > 0)
+		{
+			observedPoisonedFoodItemIds.add(selectedPoisonedFoodItemId);
+		}
+
+		for (PendingFeedAttempt attempt : pendingFeedAttempts)
+		{
+			observedPoisonedFoodItemIds.add(attempt.foodItemId);
+		}
+
+		for (Integer itemId : observedPoisonedFoodItemIds)
+		{
+			int currentCount = getItemCount(items, itemId);
+			Integer previousCount = lastPoisonedFoodCountByItemId.put(itemId, currentCount);
+
+			if (previousCount == null) continue;
+
+			int consumedCount = previousCount - currentCount;
+
+			if (consumedCount > 0)
+			{
+				consumedByItemId.put(itemId, consumedCount);
+			}
+		}
+
+		return consumedByItemId;
+	}
+
+	private void cachePoisonedFoodCounts(ItemContainer itemContainer)
+	{
+		if (itemContainer == null) return;
+
+		Item[] items = itemContainer.getItems();
+
+		if (items == null) return;
+
+		for (Item item : items)
+		{
+			if (item != null && item.getId() > 0 && isPoisonedFoodItem(item.getId()))
+			{
+				lastPoisonedFoodCountByItemId.put(item.getId(), getItemCount(items, item.getId()));
+			}
+		}
+	}
+
+	private PendingFeedAttempt findBestPendingFeedAttempt(int consumedItemId)
+	{
+		expireStalePendingFeedAttempts();
+
+		PendingFeedAttempt bestAttempt = null;
+		int bestDistance = NO_ATTEMPT_DISTANCE;
+
+		for (PendingFeedAttempt attempt : pendingFeedAttempts)
+		{
+			if (attempt.foodItemId != consumedItemId) continue;
+
+			int distance = getPendingFeedAttemptDistance(attempt);
+
+			if (bestAttempt == null
+					|| distance < bestDistance
+					|| distance == bestDistance && attempt.sequence > bestAttempt.sequence)
+			{
+				bestAttempt = attempt;
+				bestDistance = distance;
+			}
+		}
+
+		return bestAttempt;
+	}
+
+	private int getPendingFeedAttemptDistance(PendingFeedAttempt attempt)
+	{
+		if (client.getLocalPlayer() == null) return NO_ATTEMPT_DISTANCE;
+
+		NPC npc = attempt.npc;
+
+		if (npc == null)
+		{
+			npc = getVisibleHealerByOrder(attempt.healerOrder);
+		}
+
+		if (npc == null) return NO_ATTEMPT_DISTANCE;
+
+		return client.getLocalPlayer().getWorldLocation().distanceTo(npc.getWorldLocation());
+	}
+
+	private void recordConsumedFoodForPendingAttempt(PendingFeedAttempt attempt)
+	{
+		foodFedByNpcIndex.merge(attempt.npcIndex, 1, Integer::sum);
+		ttkTracker.onFoodConsumedForHealer(attempt.npcIndex, client.getTickCount());
+
+		Integer currentOrder = healerOrderByNpcIndex.get(attempt.npcIndex);
+		int totalFoodFed = foodFedByNpcIndex.getOrDefault(attempt.npcIndex, 0);
+
+		if (currentOrder != null)
+		{
+			feedEvents.add(new FeedEvent(currentOrder, Math.round(getCurrentWaveElapsedSeconds()), currentCallIndex));
+		}
+
+		log.debug(
+				"Counted consumed poisoned food for healer #{} from NPC index {} using item {} from pending sequence {}. Distance at consume {}. Total now {}",
+				currentOrder,
+				attempt.npcIndex,
+				attempt.foodItemId,
+				attempt.sequence,
+				getPendingFeedAttemptDistance(attempt),
+				totalFoodFed
+		);
+	}
+
+	private void expireStalePendingFeedAttempts()
+	{
+		Iterator<PendingFeedAttempt> iterator = pendingFeedAttempts.iterator();
+
+		while (iterator.hasNext())
+		{
+			PendingFeedAttempt attempt = iterator.next();
+
+			if (!isPendingFeedAttemptStale(attempt)) continue;
+
+			log.debug(
+					"Expiring pending food feed sequence {} for healer #{} NPC index {} item {} from tick {}",
+					attempt.sequence,
+					attempt.healerOrder,
+					attempt.npcIndex,
+					attempt.foodItemId,
+					attempt.tick
+			);
+
+			iterator.remove();
+		}
+	}
+
+	private boolean isPendingFeedAttemptStale(PendingFeedAttempt attempt)
+	{
+		return client.getTickCount() - attempt.tick > PENDING_FEED_ATTEMPT_MAX_AGE_TICKS;
 	}
 
 	private int getItemCount(Item[] items, int itemId)
@@ -1779,9 +1941,11 @@ public class HealerController
 		deadHealerOrders.clear();
 		foodFedByNpcIndex.clear();
 		lastTtkDeathTickByHealerOrder.clear();
+		lastPoisonedFoodCountByItemId.clear();
 		feedEvents.clear();
 		ttkTracker.reset();
-		pendingFeedAttempt = null;
+		pendingFeedAttempts.clear();
+		feedAttemptSequence = 0;
 		selectedPoisonedFoodItemId = null;
 		currentCallIndex = 0;
 		lastCallText = null;
@@ -1828,15 +1992,21 @@ public class HealerController
 
 	private static class PendingFeedAttempt
 	{
+		private final int sequence;
+		private final int tick;
 		private final int npcIndex;
+		private final int healerOrder;
 		private final int foodItemId;
-		private final int foodCountBeforeUse;
+		private final NPC npc;
 
-		private PendingFeedAttempt(int npcIndex, int foodItemId, int foodCountBeforeUse)
+		private PendingFeedAttempt(int sequence, int tick, int npcIndex, int healerOrder, int foodItemId, NPC npc)
 		{
+			this.sequence = sequence;
+			this.tick = tick;
 			this.npcIndex = npcIndex;
+			this.healerOrder = healerOrder;
 			this.foodItemId = foodItemId;
-			this.foodCountBeforeUse = foodCountBeforeUse;
+			this.npc = npc;
 		}
 	}
 
