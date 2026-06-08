@@ -1125,8 +1125,7 @@ public class BaHealerOrderPlugin extends Plugin
 		BaHealerOrderConfig.HideDeadNpcMode mode = config.hideDeadNpcs();
 
 		if (mode == BaHealerOrderConfig.HideDeadNpcMode.NONE
-				|| !isWaveActive()
-				|| !isHealerRole())
+				|| !isWaveActive())
 		{
 			return false;
 		}
