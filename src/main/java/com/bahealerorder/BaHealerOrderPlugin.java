@@ -35,6 +35,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.GameState;
 import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
@@ -94,6 +95,10 @@ public class BaHealerOrderPlugin extends Plugin
 	private static final String WRONG_FOOD_MESSAGE = "that's the wrong type of poisoned food to use! penalty!";
 	private static final String PANEL_ICON_RESOURCE = "/com/bahealerorder/penance_healer.png";
 	private static final String BA_SYNC_PASSPHRASE_SUFFIX = "BASYNC69";
+	private static final int BA_WAVE_DOOR_FIRST_ID = 20199;
+	private static final int BA_WAVE_DOOR_LAST_ID = 20208;
+	private static final int BA_WAVE_DOOR_EXIT_CONFIRM_TICKS = 10;
+	private static final int BA_LOBBY_REGION_ID = 10322;
 	private static final int MAX_FOOD_PANEL_CODE_CALLS = 3;
 	private static final int NPC_INDEX_MODULUS = 1 << 16;
 	private static final int PENDING_FEED_ATTEMPT_MAX_AGE_TICKS = 5;
@@ -128,6 +133,19 @@ public class BaHealerOrderPlugin extends Plugin
 			{"6", "12", "18", "24", "30", "R1", "R2"},
 			{"6", "12", "18", "24", "30", "36", "R1", "R2"},
 			{"6", "12", "18", "24", "R1", "R2", "R3"}
+	};
+
+	private static final int[][] BA_WAVE_DOOR_EXIT_TILES = {
+			{2579, 5299, 0}, // Wave 1
+			{2587, 5299, 0}, // Wave 2
+			{2599, 5299, 0}, // Wave 3
+			{2607, 5299, 0}, // Wave 4
+			{2579, 5289, 0}, // Wave 5
+			{2587, 5289, 0}, // Wave 6
+			{2599, 5289, 0}, // Wave 7
+			{2607, 5289, 0}, // Wave 8
+			{2579, 5279, 0}, // Wave 9
+			{2587, 5279, 0}  // Wave 10
 	};
 
 	@Getter
@@ -194,6 +212,9 @@ public class BaHealerOrderPlugin extends Plugin
 	private int healerIndexBase = -1;
 	private int feedAttemptSequence;
 	private int lastBaTeamWidgetDebugTick = -BA_TEAM_WIDGET_DEBUG_INTERVAL_TICKS;
+	private int baPartySyncJoinAttemptTick = -1;
+	private int baPartySyncPendingDoorExitTick = -1;
+	private int baPartySyncPendingDoorExitObjectId = -1;
 	private long waveStartTimeMs = -1;
 	private String lastCallText;
 	private String currentCallText;
@@ -334,8 +355,13 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		String option = Text.removeTags(event.getMenuOption()).toLowerCase(Locale.ROOT);
-		String target = Text.removeTags(event.getMenuTarget()).toLowerCase(Locale.ROOT);
+		String rawOption = event.getMenuOption();
+		String rawTarget = event.getMenuTarget();
+
+		String option = Text.removeTags(rawOption == null ? "" : rawOption).toLowerCase(Locale.ROOT);
+		String target = Text.removeTags(rawTarget == null ? "" : rawTarget).toLowerCase(Locale.ROOT);
+
+		debugBaDoorClick(event, rawOption, rawTarget);
 
 		handlePoisonedFoodSelection(event, option, target);
 		handlePoisonedFoodUseOnHealer(event, option, target);
@@ -433,6 +459,7 @@ public class BaHealerOrderPlugin extends Plugin
 			ttkTracker.observeVisibleHealers(visibleHealers.keySet(), client.getTickCount());
 		}
 
+		updateBaPartySyncDoorExit();
 		updateBaPartySync();
 
 		if (client.isMenuOpen())
@@ -493,7 +520,11 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (currentInGameBit == 0)
 		{
-			leaveBaSyncParty("BA wave or activity ended");
+			if (currentWave == 10)
+			{
+				leaveBaSyncParty("BA wave 10 ended");
+			}
+
 			resetWaveState();
 		}
 	}
@@ -1165,22 +1196,31 @@ public class BaHealerOrderPlugin extends Plugin
 
 				baSyncManagedParty = false;
 				baPartySyncPassphrase = null;
+				baPartySyncJoinAttemptTick = -1;
 				setBaPartySyncStatus("Already in Party", null);
 				return;
 			}
 
-			if (baSyncManagedParty && !teamRoster.isPresent())
-			{
-				leaveBaSyncParty("BA team widget no longer visible");
-				return;
-			}
-
+			baPartySyncJoinAttemptTick = -1;
 			setBaPartySyncStatus(baSyncManagedParty ? "Connected" : "Already in Party", baPartySyncProgenitorName);
 			return;
 		}
 
-		baSyncManagedParty = false;
-		baPartySyncPassphrase = null;
+		if (baSyncManagedParty && baPartySyncPassphrase != null)
+		{
+			int ticksSinceJoinAttempt = client.getTickCount() - baPartySyncJoinAttemptTick;
+
+			if (baPartySyncJoinAttemptTick >= 0 && ticksSinceJoinAttempt <= 10)
+			{
+				setBaPartySyncStatus("Connecting", baPartySyncProgenitorName);
+				return;
+			}
+
+			log.debug("Managed BA sync party did not connect after {} ticks. Allowing a fresh join attempt.", ticksSinceJoinAttempt);
+			baSyncManagedParty = false;
+			baPartySyncPassphrase = null;
+			baPartySyncJoinAttemptTick = -1;
+		}
 
 		if (!teamRoster.isPresent())
 		{
@@ -1201,14 +1241,23 @@ public class BaHealerOrderPlugin extends Plugin
 		baPartySyncProgenitorName = progenitorName;
 		String passphrase = buildBaPartySyncPassphrase(progenitorName);
 
+		if (baSyncManagedParty && passphrase.equals(baPartySyncPassphrase))
+		{
+			setBaPartySyncStatus("Connecting", progenitorName);
+			return;
+		}
+
 		setBaPartySyncStatus("Joining team party", progenitorName);
 
 		try
 		{
-			partyService.changeParty(passphrase);
 			baSyncManagedParty = true;
 			baPartySyncPassphrase = passphrase;
-			setBaPartySyncStatus("Connected", progenitorName);
+			baPartySyncJoinAttemptTick = client.getTickCount();
+
+			partyService.changeParty(passphrase);
+
+			setBaPartySyncStatus("Connecting", progenitorName);
 
 			log.debug(
 					"Joined or created BA sync party using progenitor {} and passphrase {}. Team roster: {}",
@@ -1221,9 +1270,150 @@ public class BaHealerOrderPlugin extends Plugin
 		{
 			baSyncManagedParty = false;
 			baPartySyncPassphrase = null;
+			baPartySyncJoinAttemptTick = -1;
 			setBaPartySyncStatus("Join failed", progenitorName);
 			log.debug("Failed to join BA sync party using passphrase {}", passphrase, ex);
 		}
+	}
+
+	private void debugBaDoorClick(MenuOptionClicked event, String option, String target)
+	{
+		if (client.getLocalPlayer() == null)
+		{
+			return;
+		}
+
+		String optionText = Text.removeTags(option == null ? "" : option).toLowerCase(Locale.ROOT);
+		String targetText = Text.removeTags(target == null ? "" : target).toLowerCase(Locale.ROOT);
+
+		boolean baWaveDoorClick = isBaWaveDoorClick(event, optionText, targetText);
+
+		if (!baWaveDoorClick)
+		{
+			return;
+		}
+
+		WorldPoint worldPoint = client.getLocalPlayer().getWorldLocation();
+		int regionId = worldPoint.getRegionID();
+		int regionX = worldPoint.getRegionX();
+		int regionY = worldPoint.getRegionY();
+		int areaExitPending = client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING);
+
+		log.debug(
+				"BA door debug: option='{}', target='{}', id={}, menuAction={}, param0={}, param1={}, world=({}, {}, {}), regionId={}, regionLocal=({}, {}), areaExitPending={}, wave={}, role={}, managedParty={}, inParty={}",
+				option,
+				target,
+				event.getId(),
+				event.getMenuAction(),
+				event.getParam0(),
+				event.getParam1(),
+				worldPoint.getX(),
+				worldPoint.getY(),
+				worldPoint.getPlane(),
+				regionId,
+				regionX,
+				regionY,
+				areaExitPending,
+				currentWave,
+				currentRole,
+				baSyncManagedParty,
+				partyService.isInParty()
+		);
+
+		if (baSyncManagedParty && partyService.isInParty())
+		{
+			baPartySyncPendingDoorExitTick = client.getTickCount();
+			baPartySyncPendingDoorExitObjectId = event.getId();
+
+			log.debug(
+					"Armed BA sync door-exit check from door id {} at world=({}, {}, {})",
+					event.getId(),
+					worldPoint.getX(),
+					worldPoint.getY(),
+					worldPoint.getPlane()
+			);
+		}
+	}
+
+	private boolean isBaWaveDoorClick(MenuOptionClicked event, String optionText, String targetText)
+	{
+		return event.getMenuAction() == MenuAction.GAME_OBJECT_FIRST_OPTION
+				&& "pass".equals(optionText)
+				&& "door".equals(targetText)
+				&& event.getId() >= BA_WAVE_DOOR_FIRST_ID
+				&& event.getId() <= BA_WAVE_DOOR_LAST_ID;
+	}
+
+	private void updateBaPartySyncDoorExit()
+	{
+		if (baPartySyncPendingDoorExitTick < 0)
+		{
+			return;
+		}
+
+		if (!baSyncManagedParty || !partyService.isInParty())
+		{
+			clearBaPartySyncPendingDoorExit();
+			return;
+		}
+
+		int ticksSinceDoorClick = client.getTickCount() - baPartySyncPendingDoorExitTick;
+
+		if (ticksSinceDoorClick > BA_WAVE_DOOR_EXIT_CONFIRM_TICKS)
+		{
+			log.debug("BA sync door-exit check expired after {} ticks", ticksSinceDoorClick);
+			clearBaPartySyncPendingDoorExit();
+			return;
+		}
+
+		if (client.getLocalPlayer() == null)
+		{
+			return;
+		}
+
+		WorldPoint worldPoint = client.getLocalPlayer().getWorldLocation();
+
+		if (!isBaWaveDoorExitLandingTile(worldPoint))
+		{
+			return;
+		}
+
+		log.debug(
+				"Confirmed BA sync door exit from door id {} at world=({}, {}, {}). Leaving managed party.",
+				baPartySyncPendingDoorExitObjectId,
+				worldPoint.getX(),
+				worldPoint.getY(),
+				worldPoint.getPlane()
+		);
+
+		clearBaPartySyncPendingDoorExit();
+		leaveBaSyncParty("left BA room through wave door");
+	}
+
+	private boolean isBaWaveDoorExitLandingTile(WorldPoint worldPoint)
+	{
+		if (worldPoint == null || worldPoint.getRegionID() != BA_LOBBY_REGION_ID)
+		{
+			return false;
+		}
+
+		for (int[] tile : BA_WAVE_DOOR_EXIT_TILES)
+		{
+			if (worldPoint.getX() == tile[0]
+					&& worldPoint.getY() == tile[1]
+					&& worldPoint.getPlane() == tile[2])
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private void clearBaPartySyncPendingDoorExit()
+	{
+		baPartySyncPendingDoorExitTick = -1;
+		baPartySyncPendingDoorExitObjectId = -1;
 	}
 
 	private String buildBaPartySyncPassphrase(String progenitorName)
@@ -1237,6 +1427,8 @@ public class BaHealerOrderPlugin extends Plugin
 		{
 			baPartySyncPassphrase = null;
 			baPartySyncProgenitorName = null;
+			baPartySyncJoinAttemptTick = -1;
+			clearBaPartySyncPendingDoorExit();
 			updateBaPartySyncPanelStatus();
 			return;
 		}
@@ -1258,6 +1450,8 @@ public class BaHealerOrderPlugin extends Plugin
 			baSyncManagedParty = false;
 			baPartySyncPassphrase = null;
 			baPartySyncProgenitorName = null;
+			baPartySyncJoinAttemptTick = -1;
+			clearBaPartySyncPendingDoorExit();
 			setBaPartySyncStatus(config.enableBaPartySync() ? "Waiting for BA team" : "Off", null);
 		}
 	}
@@ -2696,6 +2890,8 @@ public class BaHealerOrderPlugin extends Plugin
 		baSyncManagedParty = false;
 		baPartySyncPassphrase = null;
 		baPartySyncProgenitorName = null;
+		baPartySyncJoinAttemptTick = -1;
+		clearBaPartySyncPendingDoorExit();
 		setBaPartySyncStatus(config.enableBaPartySync() ? "Waiting for BA team" : "Off", null);
 	}
 
