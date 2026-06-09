@@ -47,6 +47,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.MenuEntryAdded;
+import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
@@ -344,11 +345,17 @@ public class BaHealerOrderPlugin extends Plugin
 		entry.setTarget(target + " " + suffix);
 	}
 
-	@Subscribe(priority = -1)
+	@Subscribe(priority = -2)
 	public void onPostMenuSort(PostMenuSort event)
 	{
 		filterPoisonedFoodUseEntries();
 		applyDispenserMenuOptions();
+	}
+
+	@Subscribe
+	public void onMenuOpened(MenuOpened event)
+	{
+		applyDispenserMenuOptions(true);
 	}
 
 	@Subscribe
@@ -408,7 +415,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (client.isMenuOpen())
 		{
-			applyDispenserMenuOptions();
+			applyDispenserMenuOptions(true);
 		}
 	}
 
@@ -1319,6 +1326,11 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private void applyDispenserMenuOptions()
 	{
+		applyDispenserMenuOptions(false);
+	}
+
+	private void applyDispenserMenuOptions(boolean forceHighlightTopEntry)
+	{
 		if (!config.highlightCalledDispenserFood()
 				&& !config.removeTakeVial()
 				&& !config.moveTakeMeatUp()
@@ -1392,7 +1404,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 			if (calledFoodOption != null)
 			{
-				changed |= highlightCalledDispenserFood(updatedEntries, calledFoodOption);
+				changed |= highlightCalledDispenserFood(updatedEntries, calledFoodOption, forceHighlightTopEntry);
 			}
 		}
 
@@ -1429,12 +1441,13 @@ public class BaHealerOrderPlugin extends Plugin
 		return null;
 	}
 
-	private boolean highlightCalledDispenserFood(MenuEntry[] entries, String calledFoodOption)
+	private boolean highlightCalledDispenserFood(MenuEntry[] entries, String calledFoodOption, boolean forceHighlightTopEntry)
 	{
 		boolean changed = false;
 
-		for (MenuEntry entry : entries)
+		for (int i = 0; i < entries.length; i++)
 		{
+			MenuEntry entry = entries[i];
 			String option = entry.getOption();
 			String target = entry.getTarget();
 
@@ -1448,6 +1461,11 @@ public class BaHealerOrderPlugin extends Plugin
 
 			if (calledFoodOption.equals(optionText) && isHealerItemMachineTarget(targetText))
 			{
+				if (!forceHighlightTopEntry && i == entries.length - 1)
+				{
+					continue;
+				}
+
 				entry.setOption("");
 				entry.setTarget(ColorUtil.prependColorTag(Text.removeTags(option), CALLED_FOOD_MENU_COLOR) + " " + target);
 				changed = true;
