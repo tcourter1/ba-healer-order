@@ -52,23 +52,17 @@ public class HealerOverlay extends Overlay
 		this.controller = controller;
 	}
 
-	private HealerController plugin()
-	{
-		return controller;
-	}
-
-
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (plugin() == null)
+		if (controller == null)
 		{
 			return null;
 		}
 
-		List<Map.Entry<NPC, Integer>> healers = new ArrayList<>(plugin().getTrackedHealers().entrySet());
+		List<Map.Entry<NPC, Integer>> healers = new ArrayList<>(controller.getTrackedHealers().entrySet());
 		Map<NPC, Integer> xOffsets = getStackedLabelXOffsets(healers);
-		Map<Integer, Integer> foodFedByHealerOrder = plugin().getFoodFedByHealerOrder();
+		Map<Integer, Integer> foodFedByHealerOrder = controller.getFoodFedByHealerOrder();
 
 		for (Map.Entry<NPC, Integer> entry : healers)
 		{
@@ -80,37 +74,37 @@ public class HealerOverlay extends Overlay
 				continue;
 			}
 
-			if (plugin().shouldHideDeadNpc(npc))
+			if (controller.shouldHideDeadNpc(npc))
 			{
 				continue;
 			}
 
 			int xOffset = xOffsets.getOrDefault(npc, 0);
 
-			if (plugin().shouldShowHealerHighlights())
+			if (controller.shouldShowHealerHighlights())
 			{
 				renderHighlight(graphics, npc);
 			}
 
-			if (plugin().shouldShowLabels()
+			if (controller.shouldShowLabels()
 					&& config.healerLabelStyle() != BaUtilitiesConfig.HealerLabelStyle.NONE)
 			{
 				renderNumber(graphics, npc, order, xOffset);
 			}
 
-			if (plugin().shouldShowFoodCountOnNpc())
+			if (controller.shouldShowFoodCountOnNpc())
 			{
 				int foodFed = foodFedByHealerOrder.getOrDefault(order, 0);
 				renderFoodCount(graphics, npc, order, foodFed, xOffset);
 			}
 
-			if (plugin().shouldShowHealerTtk())
+			if (controller.shouldShowHealerTtk())
 			{
-				String ttkText = plugin().getHealerTtkText(npc);
+				String ttkText = controller.getHealerTtkText(npc);
 
 				if (ttkText != null)
 				{
-					renderHealerTtk(graphics, npc, ttkText, xOffset, plugin().shouldShowFoodCountOnNpc());
+					renderHealerTtk(graphics, npc, ttkText, xOffset, controller.shouldShowFoodCountOnNpc());
 				}
 			}
 		}
@@ -133,7 +127,7 @@ public class HealerOverlay extends Overlay
 		{
 			NPC npc = entry.getKey();
 
-			if (npc == null || plugin().shouldHideDeadNpc(npc))
+			if (npc == null || controller.shouldHideDeadNpc(npc))
 			{
 				continue;
 			}
@@ -210,7 +204,7 @@ public class HealerOverlay extends Overlay
 
 	private void renderTile(Graphics2D graphics, NPC npc)
 	{
-		Polygon tile = Perspective.getCanvasTilePoly(plugin().getClient(), npc.getLocalLocation());
+		Polygon tile = Perspective.getCanvasTilePoly(controller.getClient(), npc.getLocalLocation());
 
 		if (tile == null)
 		{
@@ -222,14 +216,14 @@ public class HealerOverlay extends Overlay
 
 	private void renderTrueTile(Graphics2D graphics, NPC npc)
 	{
-		LocalPoint trueTileLocation = LocalPoint.fromWorld(plugin().getClient(), npc.getWorldLocation());
+		LocalPoint trueTileLocation = LocalPoint.fromWorld(controller.getClient(), npc.getWorldLocation());
 
 		if (trueTileLocation == null)
 		{
 			return;
 		}
 
-		Polygon tile = Perspective.getCanvasTilePoly(plugin().getClient(), trueTileLocation);
+		Polygon tile = Perspective.getCanvasTilePoly(controller.getClient(), trueTileLocation);
 
 		if (tile == null)
 		{
@@ -265,7 +259,7 @@ public class HealerOverlay extends Overlay
 
 	private void renderNumber(Graphics2D graphics, NPC npc, int order, int xOffset)
 	{
-		String text = plugin().getHealerLabel(order);
+		String text = controller.getHealerLabel(order);
 
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,
@@ -303,7 +297,7 @@ public class HealerOverlay extends Overlay
 		Font originalFont = graphics.getFont();
 
 		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.foodCountTextSize()));
-		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, plugin().getFoodCountColor(healerOrder, foodFed));
+		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, controller.getFoodCountColor(healerOrder, foodFed));
 		graphics.setFont(originalFont);
 	}
 
@@ -326,13 +320,13 @@ public class HealerOverlay extends Overlay
 		Font originalFont = graphics.getFont();
 
 		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.foodCountTextSize()));
-		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset, TTK_Y_OFFSET), text, plugin().getHealerTtkColor());
+		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset, TTK_Y_OFFSET), text, controller.getHealerTtkColor());
 		graphics.setFont(originalFont);
 	}
 
 	private String getFoodCountText(int healerOrder, int foodFed)
 	{
-		return plugin().getFoodCountText(healerOrder, foodFed);
+		return controller.getFoodCountText(healerOrder, foodFed);
 	}
 
 	private Point offsetPoint(Point point, int xOffset)

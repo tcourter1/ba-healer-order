@@ -51,21 +51,15 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
         this.controller = controller;
     }
 
-	private HealerController plugin()
-	{
-		return controller;
-	}
-
-
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (plugin() == null)
+        if (controller == null)
         {
             return null;
         }
 
-        if (!plugin().shouldShowFoodPanel() || !plugin().isWaveActive())
+        if (!controller.shouldShowFoodPanel() || !controller.isWaveActive())
         {
             return null;
         }
@@ -75,12 +69,12 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
         codeToggleBounds.setBounds(0, 0, 0, 0);
         codeToggleLine = null;
 
-        List<Integer> healerOrders = plugin().getHealerOrdersForCurrentWave();
-        BaUtilitiesConfig.FoodPanelStyle panelStyle = plugin().getFoodPanelStyle();
+        List<Integer> healerOrders = controller.getHealerOrdersForCurrentWave();
+        BaUtilitiesConfig.FoodPanelStyle panelStyle = controller.getFoodPanelStyle();
 
         if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.CODE_ONLY)
         {
-            String sourceText = plugin().getCurrentWaveCodeSource();
+            String sourceText = controller.getCurrentWaveCodeSource();
 
             if (sourceText == null || sourceText.isEmpty())
             {
@@ -115,7 +109,7 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
             return renderPanel(graphics);
         }
 
-        if (plugin().hasActiveWaveCode())
+        if (controller.hasActiveWaveCode())
         {
             addHealerCallRows(graphics, healerOrders);
         }
@@ -146,14 +140,14 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
     private String getPanelTitle()
     {
         String title = "Healers";
-        int wave = plugin().getCurrentWave();
+        int wave = controller.getCurrentWave();
 
         if (wave > 0)
         {
             title = "Wave " + wave;
         }
 
-        String codeName = plugin().getCurrentWaveCodeName();
+        String codeName = controller.getCurrentWaveCodeName();
 
         if (codeName != null && !codeName.trim().isEmpty())
         {
@@ -167,11 +161,11 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
     {
         for (int healerOrder : healerOrders)
         {
-            boolean spawned = plugin().hasHealerSpawned(healerOrder);
+            boolean spawned = controller.hasHealerSpawned(healerOrder);
             boolean displayDead = shouldDisplayHealerDead(healerOrder);
             Color healerColor = getHealerColor(spawned, displayDead);
             String deathTime = getDeathTimeText(healerOrder);
-            String text = ColorUtil.prependColorTag(plugin().getFoodPanelHealerLabel(healerOrder), healerColor)
+            String text = ColorUtil.prependColorTag(controller.getFoodPanelHealerLabel(healerOrder), healerColor)
                     + " "
                     + ColorUtil.prependColorTag("(" + deathTime + ")", getDeathTimeColor(healerOrder, deathTime));
 
@@ -187,12 +181,12 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
     {
         for (int healerOrder : healerOrders)
         {
-            String countText = plugin().getFoodPanelText(healerOrder, -1);
-            boolean spawned = plugin().hasHealerSpawned(healerOrder);
+            String countText = controller.getFoodPanelText(healerOrder, -1);
+            boolean spawned = controller.hasHealerSpawned(healerOrder);
             boolean displayDead = shouldDisplayHealerDead(healerOrder);
             Color rowColor = getHealerColor(spawned, displayDead);
-            Color rightColor = spawned && !displayDead ? plugin().getFoodPanelTextColor(healerOrder, -1) : getHealerColor(spawned, displayDead);
-            String ttkText = plugin().getHealerPanelTtkText(healerOrder);
+            Color rightColor = spawned && !displayDead ? controller.getFoodPanelTextColor(healerOrder, -1) : getHealerColor(spawned, displayDead);
+            String ttkText = controller.getHealerPanelTtkText(healerOrder);
 
             if (rightColor == null)
             {
@@ -206,7 +200,7 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
             panelComponent.getChildren().add(
                     LineComponent.builder()
-                            .left(plugin().getFoodPanelHealerLabel(healerOrder))
+                            .left(controller.getFoodPanelHealerLabel(healerOrder))
                             .leftColor(rowColor)
                             .right(countText)
                             .rightColor(rightColor)
@@ -215,10 +209,8 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
         }
     }
 
-    private boolean addColumnTables(Graphics2D graphics, List<Integer> healerOrders)
+    private void addColumnTables(Graphics2D graphics, List<Integer> healerOrders)
     {
-        boolean hasMultipleTables = healerOrders.size() > MAX_HEALER_COLUMNS;
-
         for (int start = 0; start < healerOrders.size(); start += MAX_HEALER_COLUMNS)
         {
             if (start > 0)
@@ -228,8 +220,6 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
             addColumnTable(graphics, healerOrders.subList(start, Math.min(start + MAX_HEALER_COLUMNS, healerOrders.size())));
         }
-
-        return hasMultipleTables;
     }
 
     private void addColumnTable(Graphics2D graphics, List<Integer> healerOrders)
@@ -268,14 +258,14 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
     private List<Integer> getColumnCallIndexes()
     {
-        if (!plugin().hasActiveWaveCode())
+        if (!controller.hasActiveWaveCode())
         {
             List<Integer> totalOnly = new ArrayList<>();
             totalOnly.add(-1);
             return totalOnly;
         }
 
-        return plugin().getFoodPanelCallIndexes();
+        return controller.getFoodPanelCallIndexes();
     }
 
     private void addHealerCallRows(Graphics2D graphics, List<Integer> healerOrders)
@@ -315,10 +305,10 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
     private String buildHealerCallRow(int healerOrder, FontMetrics metrics)
     {
-        boolean spawned = plugin().hasHealerSpawned(healerOrder);
+        boolean spawned = controller.hasHealerSpawned(healerOrder);
         boolean displayDead = shouldDisplayHealerDead(healerOrder);
         StringBuilder builder = new StringBuilder(ColorUtil.prependColorTag(
-                padCell(plugin().getFoodPanelHealerLabel(healerOrder), ROW_LABEL_WIDTH, metrics),
+                padCell(controller.getFoodPanelHealerLabel(healerOrder), ROW_LABEL_WIDTH, metrics),
                 getHealerColor(spawned, displayDead)));
 
         for (int callIndex : getRowCallIndexes())
@@ -333,7 +323,7 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
     private List<Integer> getRowCallIndexes()
     {
         List<Integer> callIndexes = new ArrayList<>();
-        callIndexes.addAll(plugin().getFoodPanelCallIndexes());
+        callIndexes.addAll(controller.getFoodPanelCallIndexes());
         return callIndexes;
     }
 
@@ -343,10 +333,10 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
         for (int healerOrder : healerOrders)
         {
-            boolean spawned = plugin().hasHealerSpawned(healerOrder);
+            boolean spawned = controller.hasHealerSpawned(healerOrder);
             boolean displayDead = shouldDisplayHealerDead(healerOrder);
             Color color = getHealerColor(spawned, displayDead);
-            String label = plugin().getFoodPanelHealerLabel(healerOrder);
+            String label = controller.getFoodPanelHealerLabel(healerOrder);
 
             builder.append(ColorUtil.prependColorTag(padCell(label, COLUMN_CELL_WIDTH, metrics), color));
         }
@@ -381,16 +371,16 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
     private void appendFoodCell(StringBuilder builder, int healerOrder, int callIndex, int width, FontMetrics metrics)
     {
-        boolean spawned = plugin().hasHealerSpawned(healerOrder);
+        boolean spawned = controller.hasHealerSpawned(healerOrder);
         boolean displayDead = shouldDisplayHealerDead(healerOrder);
-        Color color = spawned && !displayDead ? plugin().getFoodPanelTextColor(healerOrder, callIndex) : getHealerColor(spawned, displayDead);
+        Color color = spawned && !displayDead ? controller.getFoodPanelTextColor(healerOrder, callIndex) : getHealerColor(spawned, displayDead);
 
         if (color == null)
         {
             color = getHealerColor(spawned, displayDead);
         }
 
-        builder.append(ColorUtil.prependColorTag(padCell(plugin().getFoodPanelText(healerOrder, callIndex), width, metrics), color));
+        builder.append(ColorUtil.prependColorTag(padCell(controller.getFoodPanelText(healerOrder, callIndex), width, metrics), color));
     }
 
     private void appendDeathTimeCell(StringBuilder builder, int healerOrder, int width, FontMetrics metrics)
@@ -403,20 +393,20 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
     private String getDeathTimeText(int healerOrder)
     {
-        String deathTime = plugin().getHealerPanelDeathTime(healerOrder);
+        String deathTime = controller.getHealerPanelDeathTime(healerOrder);
         return deathTime == null || deathTime.isEmpty() ? "-" : deathTime;
     }
 
     private Color getDeathTimeColor(int healerOrder, String deathTime)
     {
-        boolean spawned = plugin().hasHealerSpawned(healerOrder);
+        boolean spawned = controller.hasHealerSpawned(healerOrder);
         boolean displayDead = shouldDisplayHealerDead(healerOrder);
         return "-".equals(deathTime) || !spawned || displayDead ? getHealerColor(spawned, displayDead) : TTK_COLOR;
     }
 
     private boolean shouldDisplayHealerDead(int healerOrder)
     {
-        return plugin().isHealerDead(healerOrder) || plugin().isHealerPresumedDead(healerOrder);
+        return controller.isHealerDead(healerOrder) || controller.isHealerPresumedDead(healerOrder);
     }
 
     private Color getHealerColor(boolean spawned, boolean dead)
@@ -487,7 +477,7 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
     private void addCurrentWaveCode(boolean collapsible)
     {
-        String sourceText = plugin().getCurrentWaveCodeSource();
+        String sourceText = controller.getCurrentWaveCodeSource();
 
         if (sourceText == null || sourceText.isEmpty())
         {
