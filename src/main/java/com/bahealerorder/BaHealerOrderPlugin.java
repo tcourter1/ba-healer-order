@@ -10,6 +10,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.MenuEntryAdded;
+import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
@@ -73,11 +74,17 @@ public class BaHealerOrderPlugin extends Plugin
 		healerController.onMenuEntryAdded(event);
 	}
 
-	@Subscribe(priority = -1)
+	@Subscribe(priority = -2)
 	public void onPostMenuSort(PostMenuSort event)
 	{
 		dispenserMenuService.apply();
 		healerController.onPostMenuSort(event);
+	}
+
+	@Subscribe
+	public void onMenuOpened(MenuOpened event)
+	{
+		healerController.onMenuOpened(event);
 	}
 
 	@Subscribe

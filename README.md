@@ -143,3 +143,4 @@ BA Healer Utilities does not automate gameplay. It provides visual tracking for 
 * **1.0.8** - Added healer-only poisoned food menu protection. Added option to show healer codes in the right-click menu on tagged healers. Added dispenser menu options. Healer code side panel updated visually and import/export/saving function redesigned to work more reliably.
 * **1.0.9** - Added function to disable most features when you're not in the Healer role. Added option to instantly hide dead NPCs (skip death animation, similar to Entity Hider), including Penance Healers and/or Penance Healers/Fighters/Rangers.
 * **1.1.0** - Added Penance Healer TTK timer, expanded UI panel functionality with several new options, fixed a bug with healer labeling logic.
+* **1.1.1** - Fixed a bug where, in certain circumstances, fed-food could be applied to the incorrect Penance Healer. Opened Hide Dead NPCs up to all roles.

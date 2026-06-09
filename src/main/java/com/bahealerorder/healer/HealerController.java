@@ -49,6 +49,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.MenuEntryAdded;
+import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
@@ -295,6 +296,10 @@ public class HealerController
 		filterPoisonedFoodUseEntries();
 		applyDispenserMenuOptions();
 	}
+	public void onMenuOpened(MenuOpened event)
+	{
+		applyDispenserMenuOptions(true);
+	}
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
 		if (event.getContainerId() != InventoryID.INVENTORY.getId()) return;
@@ -344,7 +349,7 @@ public class HealerController
 
 		if (client.isMenuOpen())
 		{
-			applyDispenserMenuOptions();
+			applyDispenserMenuOptions(true);
 		}
 	}
 
@@ -1221,6 +1226,11 @@ public class HealerController
 
 	private void applyDispenserMenuOptions()
 	{
+		applyDispenserMenuOptions(false);
+	}
+
+	private void applyDispenserMenuOptions(boolean forceHighlightTopEntry)
+	{
 		if (!config.highlightCalledDispenserFood()
 				&& !config.removeTakeVial()
 				&& !config.moveTakeMeatUp()) return;
@@ -1287,7 +1297,7 @@ public class HealerController
 
 			if (calledFoodOption != null)
 			{
-				changed |= highlightCalledDispenserFood(updatedEntries, calledFoodOption);
+				changed |= highlightCalledDispenserFood(updatedEntries, calledFoodOption, forceHighlightTopEntry);
 			}
 		}
 
@@ -1324,12 +1334,13 @@ public class HealerController
 		return null;
 	}
 
-	private boolean highlightCalledDispenserFood(MenuEntry[] entries, String calledFoodOption)
+	private boolean highlightCalledDispenserFood(MenuEntry[] entries, String calledFoodOption, boolean forceHighlightTopEntry)
 	{
 		boolean changed = false;
 
-		for (MenuEntry entry : entries)
+		for (int i = 0; i < entries.length; i++)
 		{
+			MenuEntry entry = entries[i];
 			String option = entry.getOption();
 			String target = entry.getTarget();
 
@@ -1343,6 +1354,11 @@ public class HealerController
 
 			if (calledFoodOption.equals(optionText) && isHealerItemMachineTarget(targetText))
 			{
+				if (!forceHighlightTopEntry && i == entries.length - 1)
+				{
+					continue;
+				}
+
 				entry.setOption("");
 				entry.setTarget(ColorUtil.prependColorTag(Text.removeTags(option), CALLED_FOOD_MENU_COLOR) + " " + target);
 				changed = true;
