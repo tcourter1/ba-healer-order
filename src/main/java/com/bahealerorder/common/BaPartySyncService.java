@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Optional;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -24,7 +25,12 @@ import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.party.PartyService;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginInstantiationException;
+import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.party.PartyPlugin;
 import net.runelite.client.util.Text;
 
 @Slf4j
@@ -55,6 +61,7 @@ public class BaPartySyncService
 
 	private final Client client;
 	private final PartyService partyService;
+	private final PluginManager pluginManager;
 	private final BaUtilitiesConfig config;
 	private final HealerCodePanel panel;
 
@@ -74,16 +81,22 @@ public class BaPartySyncService
 	private boolean baSyncManagedParty;
 
 	@Inject
-	private BaPartySyncService(Client client, PartyService partyService, BaUtilitiesConfig config, HealerCodePanel panel)
+	private BaPartySyncService(Client client, PartyService partyService, PluginManager pluginManager, BaUtilitiesConfig config, HealerCodePanel panel)
 	{
 		this.client = client;
 		this.partyService = partyService;
+		this.pluginManager = pluginManager;
 		this.config = config;
 		this.panel = panel;
 	}
 
 	public void startUp()
 	{
+		if (config.enableBaPartySync())
+		{
+			enablePartyPluginIfNeeded();
+		}
+
 		updateBaPartySyncPanelStatus();
 	}
 
@@ -145,6 +158,49 @@ public class BaPartySyncService
 			leaveBaSyncParty("game state changed to " + gameState);
 			resetAllState();
 		}
+	}
+
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (!"bahealerorder".equals(event.getGroup())
+				|| !"enableBaPartySync".equals(event.getKey())
+				|| !config.enableBaPartySync())
+		{
+			return;
+		}
+
+		enablePartyPluginIfNeeded();
+	}
+
+	private void enablePartyPluginIfNeeded()
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			Optional<Plugin> partyPlugin = pluginManager.getPlugins().stream()
+					.filter(PartyPlugin.class::isInstance)
+					.findFirst();
+
+			if (!partyPlugin.isPresent()) return;
+
+			Plugin plugin = partyPlugin.get();
+
+			try
+			{
+				if (!pluginManager.isPluginEnabled(plugin))
+				{
+					pluginManager.setPluginEnabled(plugin, true);
+				}
+
+				if (!pluginManager.isPluginActive(plugin))
+				{
+					pluginManager.startPlugin(plugin);
+				}
+			}
+			catch (PluginInstantiationException ex)
+			{
+				log.debug("Failed to enable Party plugin for BA Party Sync", ex);
+			}
+		});
 	}
 
 	private void updateBaPartySync()

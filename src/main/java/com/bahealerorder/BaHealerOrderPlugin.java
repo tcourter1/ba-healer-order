@@ -20,6 +20,7 @@ import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
@@ -135,6 +136,12 @@ public class BaHealerOrderPlugin extends Plugin
 		roleDetector.onGameStateChanged(event);
 		partySyncService.onGameStateChanged(event);
 		healerController.onGameStateChanged(event);
+	}
+
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		partySyncService.onConfigChanged(event);
 	}
 
 	@Provides
