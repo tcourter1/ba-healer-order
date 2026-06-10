@@ -1,8 +1,10 @@
 package com.bahealerorder.healer;
 
+import com.bahealerorder.common.BaPartySyncMemberStatus;
 import com.bahealerorder.healer.codes.RunPreset;
 import com.bahealerorder.healer.codes.WaveCode;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Toolkit;
@@ -11,8 +13,10 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -32,6 +36,7 @@ import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 
+@Singleton
 public class HealerCodePanel extends PluginPanel
 {
 	private static final int CONTROL_HEIGHT = 24;
@@ -50,8 +55,8 @@ public class HealerCodePanel extends PluginPanel
 	private final JTextField importName = new JTextField();
 	private final JTextArea importCode = new JTextArea();
 	private final JPanel contentPanel = new JPanel();
-	private final JLabel partySyncStatus = label("Status: Off");
-	private final JLabel partySyncProgenitor = label("Team: Not detected");
+	private final JLabel partySyncStatus = label("Party Sync Off", true);
+	private final JPanel partySyncMembersPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 	private JButton deleteWaveCodeAction;
 
 	private boolean refreshing;
@@ -87,22 +92,106 @@ public class HealerCodePanel extends PluginPanel
 		refreshing = false;
 	}
 
-	public void updatePartySyncStatus(String status, String progenitorName)
+	public void updatePartySyncStatus(String status, List<BaPartySyncMemberStatus> memberStatuses)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
-			partySyncStatus.setText("Status: " + (status == null || status.isEmpty() ? "Unknown" : status));
-			partySyncProgenitor.setText("Team: " + (progenitorName == null || progenitorName.isEmpty() ? "Not detected" : progenitorName));
+			partySyncStatus.setText("Party Sync " + (status == null || status.isEmpty() ? "Unknown" : status));
+			partySyncStatus.setForeground(getPartySyncStatusColor(status));
+			partySyncMembersPanel.removeAll();
+			partySyncMembersPanel.setVisible("Connected".equals(status));
+
+			if ("Connected".equals(status))
+			{
+				for (BaPartySyncMemberStatus memberStatus : memberStatuses)
+				{
+					String statusText = memberStatus.isInParty() ? "In Party" : "Not In Party";
+					partySyncMembersPanel.add(partySyncMemberRow(
+							memberStatus.getName(),
+							statusText,
+							memberStatus.isInParty() ? Color.GREEN : Color.RED
+					));
+					partySyncMembersPanel.add(Box.createVerticalStrut(3));
+				}
+			}
+
+			contentPanel.revalidate();
+			contentPanel.repaint();
 		});
 	}
 
 	private JPanel createPartySyncSection()
 	{
-		JPanel section = section("BA Party Sync");
-		section.add(partySyncStatus);
-		section.add(Box.createVerticalStrut(4));
-		section.add(partySyncProgenitor);
+		JPanel section = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		section.setBorder(new EmptyBorder(8, 8, 8, 8));
+		section.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
+		section.setAlignmentX(LEFT_ALIGNMENT);
+		section.add(partySyncHeaderRow());
+		section.add(Box.createVerticalStrut(6));
+		partySyncMembersPanel.setAlignmentX(LEFT_ALIGNMENT);
+		partySyncMembersPanel.setVisible(false);
+		section.add(partySyncMembersPanel);
 		return section;
+	}
+
+	private JPanel partySyncHeaderRow()
+	{
+		partySyncStatus.setHorizontalAlignment(SwingConstants.CENTER);
+
+		JPanel row = new JPanel(new BorderLayout());
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setAlignmentX(LEFT_ALIGNMENT);
+		row.add(partySyncStatus, BorderLayout.CENTER);
+		return row;
+	}
+
+	private JPanel partySyncMemberRow(String name, String status, Color statusColor)
+	{
+		JLabel nameLabel = label(name);
+		JLabel statusLabel = label(status);
+		statusLabel.setForeground(statusColor);
+		statusLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+
+		JPanel row = new JPanel(new BorderLayout(6, 0));
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setAlignmentX(LEFT_ALIGNMENT);
+		row.add(nameLabel, BorderLayout.CENTER);
+		row.add(statusLabel, BorderLayout.EAST);
+		return row;
+	}
+
+	private Color getPartySyncStatusColor(String status)
+	{
+		if ("Off".equals(status))
+		{
+			return Color.RED;
+		}
+
+		if ("Waiting for Team".equals(status))
+		{
+			return Color.WHITE;
+		}
+
+		if ("Joining".equals(status) || "Connecting".equals(status))
+		{
+			return Color.YELLOW;
+		}
+
+		if ("Connected".equals(status))
+		{
+			return Color.GREEN;
+		}
+
+		if ("Already in Party".equals(status))
+		{
+			return Color.ORANGE;
+		}
+
+		return ColorScheme.TEXT_COLOR;
 	}
 
 	private JPanel createPresetSection()

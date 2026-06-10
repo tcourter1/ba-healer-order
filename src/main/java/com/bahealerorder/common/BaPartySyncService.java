@@ -69,7 +69,8 @@ public class BaPartySyncService
 	private String baPartySyncProgenitorName;
 	private String baPartySyncPassphrase;
 	private String lastDisplayedBaPartySyncStatus;
-	private String lastDisplayedBaPartySyncProgenitorName;
+	private List<BaPartySyncMemberStatus> lastDisplayedBaPartySyncMemberStatuses = new ArrayList<>();
+	private List<String> baPartySyncTeamNames = new ArrayList<>();
 	private boolean baSyncManagedParty;
 
 	@Inject
@@ -161,7 +162,7 @@ public class BaPartySyncService
 
 		if (isWaveActive())
 		{
-			setBaPartySyncStatus(partyService.isInParty() ? "In wave" : "In wave - not connected", baPartySyncProgenitorName);
+			setBaPartySyncStatus(partyService.isInParty() ? "In Wave" : "In Wave - Not Connected", baPartySyncProgenitorName);
 			return;
 		}
 
@@ -170,6 +171,7 @@ public class BaPartySyncService
 		if (partyService.isInParty())
 		{
 			String currentPassphrase = partyService.getPartyPassphrase();
+			teamRoster.ifPresent(roster -> baPartySyncTeamNames = roster.names);
 
 			if (baSyncManagedParty && baPartySyncPassphrase != null && !baPartySyncPassphrase.equals(currentPassphrase))
 			{
@@ -210,7 +212,7 @@ public class BaPartySyncService
 		if (!teamRoster.isPresent())
 		{
 			baPartySyncProgenitorName = null;
-			setBaPartySyncStatus("Waiting for BA team", null);
+			setBaPartySyncStatus("Waiting for Team", null);
 			return;
 		}
 
@@ -219,11 +221,12 @@ public class BaPartySyncService
 		if (progenitorName == null || progenitorName.isEmpty())
 		{
 			baPartySyncProgenitorName = null;
-			setBaPartySyncStatus("Waiting for BA team", null);
+			setBaPartySyncStatus("Waiting for Team", null);
 			return;
 		}
 
 		baPartySyncProgenitorName = progenitorName;
+		baPartySyncTeamNames = teamRoster.get().names;
 		String passphrase = buildBaPartySyncPassphrase(progenitorName);
 
 		if (baSyncManagedParty && passphrase.equals(baPartySyncPassphrase))
@@ -232,7 +235,7 @@ public class BaPartySyncService
 			return;
 		}
 
-		setBaPartySyncStatus("Joining team party", progenitorName);
+		setBaPartySyncStatus("Joining", progenitorName);
 
 		try
 		{
@@ -387,6 +390,7 @@ public class BaPartySyncService
 		{
 			baPartySyncPassphrase = null;
 			baPartySyncProgenitorName = null;
+			baPartySyncTeamNames = new ArrayList<>();
 			baPartySyncJoinAttemptTick = -1;
 			clearBaPartySyncPendingDoorExit();
 			updateBaPartySyncPanelStatus();
@@ -410,9 +414,10 @@ public class BaPartySyncService
 			baSyncManagedParty = false;
 			baPartySyncPassphrase = null;
 			baPartySyncProgenitorName = null;
+			baPartySyncTeamNames = new ArrayList<>();
 			baPartySyncJoinAttemptTick = -1;
 			clearBaPartySyncPendingDoorExit();
-			setBaPartySyncStatus(config.enableBaPartySync() ? "Waiting for BA team" : "Off", null);
+			setBaPartySyncStatus(config.enableBaPartySync() ? "Waiting for Team" : "Off", null);
 		}
 	}
 
@@ -425,17 +430,57 @@ public class BaPartySyncService
 
 	private void updateBaPartySyncPanelStatus()
 	{
+		List<BaPartySyncMemberStatus> memberStatuses = getBaPartySyncMemberStatuses();
+
 		if (baPartySyncStatus != null
 				&& baPartySyncStatus.equals(lastDisplayedBaPartySyncStatus)
-				&& ((baPartySyncProgenitorName == null && lastDisplayedBaPartySyncProgenitorName == null)
-				|| baPartySyncProgenitorName != null && baPartySyncProgenitorName.equals(lastDisplayedBaPartySyncProgenitorName)))
+				&& memberStatusesEqual(memberStatuses, lastDisplayedBaPartySyncMemberStatuses))
 		{
 			return;
 		}
 
 		lastDisplayedBaPartySyncStatus = baPartySyncStatus;
-		lastDisplayedBaPartySyncProgenitorName = baPartySyncProgenitorName;
-		panel.updatePartySyncStatus(baPartySyncStatus, baPartySyncProgenitorName);
+		lastDisplayedBaPartySyncMemberStatuses = memberStatuses;
+		panel.updatePartySyncStatus(baPartySyncStatus, memberStatuses);
+	}
+
+	private List<BaPartySyncMemberStatus> getBaPartySyncMemberStatuses()
+	{
+		List<BaPartySyncMemberStatus> statuses = new ArrayList<>();
+
+		if (!"Connected".equals(baPartySyncStatus))
+		{
+			return statuses;
+		}
+
+		for (String name : baPartySyncTeamNames)
+		{
+			statuses.add(new BaPartySyncMemberStatus(name, partyService.getMemberByDisplayName(name) != null));
+		}
+
+		return statuses;
+	}
+
+	private boolean memberStatusesEqual(List<BaPartySyncMemberStatus> left, List<BaPartySyncMemberStatus> right)
+	{
+		if (left.size() != right.size())
+		{
+			return false;
+		}
+
+		for (int i = 0; i < left.size(); i++)
+		{
+			BaPartySyncMemberStatus leftStatus = left.get(i);
+			BaPartySyncMemberStatus rightStatus = right.get(i);
+
+			if (!leftStatus.getName().equals(rightStatus.getName())
+					|| leftStatus.isInParty() != rightStatus.isInParty())
+			{
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	private Optional<BaTeamRoster> getBaTeamRosterFromWidgetScanner()
@@ -466,14 +511,20 @@ public class BaPartySyncService
 			return directBaTeamRoster;
 		}
 
+		boolean hasCurrentTeamText = hasCurrentTeamContextText(contextTexts);
 		debugBaTeamWidgetScan(
-				hasCurrentTeamContextText(contextTexts)
+				hasCurrentTeamText
 						? "Current team widget detected, but no visible BA team names found"
 						: "No known BA team widget detected",
 				candidates,
 				contextTexts,
 				null
 		);
+
+		if (hasCurrentTeamText && baSyncManagedParty)
+		{
+			leaveBaSyncParty("BA team cleared");
+		}
 
 		return Optional.empty();
 	}
