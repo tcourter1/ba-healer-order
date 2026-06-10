@@ -99,7 +99,7 @@ public class HealerCodePanel extends PluginPanel
 			partySyncStatus.setText("Party Sync " + (status == null || status.isEmpty() ? "Unknown" : status));
 			partySyncStatus.setForeground(getPartySyncStatusColor(status));
 			partySyncMembersPanel.removeAll();
-			partySyncMembersPanel.setVisible("Connected".equals(status));
+			partySyncMembersPanel.setVisible("Connected".equals(status) || "Already in Party".equals(status));
 
 			if ("Connected".equals(status))
 			{
@@ -113,6 +113,10 @@ public class HealerCodePanel extends PluginPanel
 					));
 					partySyncMembersPanel.add(Box.createVerticalStrut(3));
 				}
+			}
+			else if ("Already in Party".equals(status))
+			{
+				partySyncMembersPanel.add(partySyncMessage("You must leave your current party to join a BA party."));
 			}
 
 			contentPanel.revalidate();
@@ -162,6 +166,24 @@ public class HealerCodePanel extends PluginPanel
 		row.add(nameLabel, BorderLayout.CENTER);
 		row.add(statusLabel, BorderLayout.EAST);
 		return row;
+	}
+
+	private JTextArea partySyncMessage(String text)
+	{
+		JTextArea message = new JTextArea(text);
+		message.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		message.setForeground(ColorScheme.TEXT_COLOR);
+		message.setFont(LABEL_FONT);
+		message.setEditable(false);
+		message.setFocusable(false);
+		message.setLineWrap(true);
+		message.setWrapStyleWord(true);
+		message.setOpaque(false);
+		message.setBorder(null);
+		message.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2));
+		message.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2));
+		message.setAlignmentX(LEFT_ALIGNMENT);
+		return message;
 	}
 
 	private Color getPartySyncStatusColor(String status)
