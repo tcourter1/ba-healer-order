@@ -50,6 +50,8 @@ public class HealerCodePanel extends PluginPanel
 	private final JTextField importName = new JTextField();
 	private final JTextArea importCode = new JTextArea();
 	private final JPanel contentPanel = new JPanel();
+	private final JLabel partySyncStatus = label("Status: Off");
+	private final JLabel partySyncProgenitor = label("Team: Not detected");
 	private JButton deleteWaveCodeAction;
 
 	private boolean refreshing;
@@ -67,6 +69,8 @@ public class HealerCodePanel extends PluginPanel
 
 		contentPanel.add(header("BA Healer Utilities"));
 		contentPanel.add(Box.createVerticalStrut(10));
+		contentPanel.add(createPartySyncSection());
+		contentPanel.add(Box.createVerticalStrut(10));
 		contentPanel.add(createPresetSection());
 		contentPanel.add(Box.createVerticalStrut(CREATE_CODE_GAP));
 		contentPanel.add(createImportCodeSection());
@@ -81,6 +85,24 @@ public class HealerCodePanel extends PluginPanel
 		refreshWaveCombos();
 		refreshUserWaveCodeCombo();
 		refreshing = false;
+	}
+
+	public void updatePartySyncStatus(String status, String progenitorName)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			partySyncStatus.setText("Status: " + (status == null || status.isEmpty() ? "Unknown" : status));
+			partySyncProgenitor.setText("Team: " + (progenitorName == null || progenitorName.isEmpty() ? "Not detected" : progenitorName));
+		});
+	}
+
+	private JPanel createPartySyncSection()
+	{
+		JPanel section = section("BA Party Sync");
+		section.add(partySyncStatus);
+		section.add(Box.createVerticalStrut(4));
+		section.add(partySyncProgenitor);
+		return section;
 	}
 
 	private JPanel createPresetSection()

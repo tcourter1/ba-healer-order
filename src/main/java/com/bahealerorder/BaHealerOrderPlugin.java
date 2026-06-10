@@ -1,8 +1,9 @@
 package com.bahealerorder;
 
-import com.bahealerorder.healer.HealerController;
 import com.bahealerorder.common.BaDispenserMenuService;
+import com.bahealerorder.common.BaPartySyncService;
 import com.bahealerorder.common.BaRoleDetector;
+import com.bahealerorder.healer.HealerController;
 import com.google.inject.Provides;
 import javax.inject.Inject;
 import net.runelite.api.events.ChatMessage;
@@ -38,9 +39,13 @@ public class BaHealerOrderPlugin extends Plugin
 	@Inject
 	private BaDispenserMenuService dispenserMenuService;
 
+	@Inject
+	private BaPartySyncService partySyncService;
+
 	@Override
 	protected void startUp()
 	{
+		partySyncService.startUp();
 		healerController.startUp();
 	}
 
@@ -48,6 +53,7 @@ public class BaHealerOrderPlugin extends Plugin
 	protected void shutDown()
 	{
 		healerController.shutDown();
+		partySyncService.shutDown();
 	}
 
 	@Subscribe
@@ -65,6 +71,7 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
+		partySyncService.onMenuOptionClicked(event);
 		healerController.onMenuOptionClicked(event);
 	}
 
@@ -97,6 +104,7 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		roleDetector.onGameTick(event);
+		partySyncService.onGameTick(event);
 		healerController.onGameTick(event);
 	}
 
@@ -109,6 +117,7 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		partySyncService.onChatMessage(event);
 		healerController.onChatMessage(event);
 	}
 
@@ -116,6 +125,7 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onVarbitChanged(VarbitChanged event)
 	{
 		roleDetector.onVarbitChanged(event);
+		partySyncService.onVarbitChanged(event);
 		healerController.onVarbitChanged(event);
 	}
 
@@ -123,6 +133,7 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		roleDetector.onGameStateChanged(event);
+		partySyncService.onGameStateChanged(event);
 		healerController.onGameStateChanged(event);
 	}
 

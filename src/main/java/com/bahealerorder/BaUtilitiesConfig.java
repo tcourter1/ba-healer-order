@@ -32,6 +32,13 @@ public interface BaUtilitiesConfig extends Config
 	)
 	String dispenserOptionsSection = "dispenserOptions";
 
+	@ConfigSection(
+			name = "BA Party Sync",
+			description = "Settings for automatic Barbarian Assault Party sync",
+			position = 4
+	)
+	String partySyncSection = "partySync";
+
 	enum HighlightStyle
 	{
 		NONE("None"),
@@ -524,5 +531,17 @@ public interface BaUtilitiesConfig extends Config
 	default HealerTtkDisplayMode healerTtkDisplay()
 	{
 		return HealerTtkDisplayMode.OFF;
+	}
+
+	@ConfigItem(
+			keyName = "enableBaPartySync",
+			name = "Enable BA Party Sync",
+			description = "Automatically joins a temporary RuneLite Party with your current Barbarian Assault team while in the BA lobby. The plugin leaves the sync party after each wave.",
+			section = partySyncSection,
+			position = 1
+	)
+	default boolean enableBaPartySync()
+	{
+		return false;
 	}
 }
