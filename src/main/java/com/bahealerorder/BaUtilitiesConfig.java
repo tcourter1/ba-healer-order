@@ -14,28 +14,28 @@ public interface BaUtilitiesConfig extends Config
 	@ConfigSection(
 			name = "Healer Highlight",
 			description = "Settings for healer highlighting and labels",
-			position = 1
+			position = 2
 	)
 	String healerHighlightSection = "healerHighlight";
 
 	@ConfigSection(
 			name = "Food Count",
 			description = "Settings for poisoned-food count tracking and display",
-			position = 2
+			position = 3
 	)
 	String foodCountSection = "foodCount";
 
 	@ConfigSection(
 			name = "Dispenser Options",
 			description = "Utility helpers for the BA healer role",
-			position = 3
+			position = 4
 	)
 	String dispenserOptionsSection = "dispenserOptions";
 
 	@ConfigSection(
-			name = "BA Party Sync",
+			name = "General",
 			description = "Settings for automatic Barbarian Assault Party sync",
-			position = 4
+			position = 1
 	)
 	String partySyncSection = "partySync";
 
