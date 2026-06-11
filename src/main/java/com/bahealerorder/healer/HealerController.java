@@ -481,7 +481,7 @@ public class HealerController
 
 	public boolean shouldShowFoodCountOnNpc()
 	{
-		return config.showFoodCountOnNpc() && (isHealerRole() || partySyncService.isBaPartySyncConnected());
+		return isHealerRole() && config.showFoodCountOnNpc();
 	}
 
 	public boolean shouldShowHealerTtk()
