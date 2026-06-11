@@ -27,6 +27,8 @@ import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.party.PartyService;
+import net.runelite.client.party.WSClient;
+import net.runelite.client.party.PartyMember;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
@@ -62,6 +64,7 @@ public class BaPartySyncService
 	private final Client client;
 	private final PartyService partyService;
 	private final PluginManager pluginManager;
+	private final WSClient wsClient;
 	private final BaUtilitiesConfig config;
 	private final HealerCodePanel panel;
 
@@ -81,11 +84,12 @@ public class BaPartySyncService
 	private boolean baSyncManagedParty;
 
 	@Inject
-	private BaPartySyncService(Client client, PartyService partyService, PluginManager pluginManager, BaUtilitiesConfig config, HealerCodePanel panel)
+	private BaPartySyncService(Client client, PartyService partyService, PluginManager pluginManager, WSClient wsClient, BaUtilitiesConfig config, HealerCodePanel panel)
 	{
 		this.client = client;
 		this.partyService = partyService;
 		this.pluginManager = pluginManager;
+		this.wsClient = wsClient;
 		this.config = config;
 		this.panel = panel;
 	}
@@ -97,12 +101,39 @@ public class BaPartySyncService
 			enablePartyPluginIfNeeded();
 		}
 
+		wsClient.registerMessage(BaHealerSyncMessage.class);
 		updateBaPartySyncPanelStatus();
 	}
 
 	public void shutDown()
 	{
 		leaveBaSyncParty("plugin shutdown");
+		wsClient.unregisterMessage(BaHealerSyncMessage.class);
+	}
+
+	public boolean isBaPartySyncConnected()
+	{
+		return config.enableBaPartySync() && baSyncManagedParty && partyService.isInParty();
+	}
+
+	public boolean isLocalPartyMember(long memberId)
+	{
+		PartyMember localMember = partyService.getLocalMember();
+		return localMember != null && localMember.getMemberId() == memberId;
+	}
+
+	public void sendHealerSync(BaHealerSyncMessage message)
+	{
+		if (!isBaPartySyncConnected() || message == null) return;
+
+		try
+		{
+			partyService.send(message);
+		}
+		catch (RuntimeException ex)
+		{
+			log.debug("Failed to send BA healer sync message", ex);
+		}
 	}
 
 	public void onGameTick(GameTick event)
@@ -504,7 +535,7 @@ public class BaPartySyncService
 	{
 		List<BaPartySyncMemberStatus> statuses = new ArrayList<>();
 
-		if (!"Connected".equals(baPartySyncStatus))
+		if (!"Connected".equals(baPartySyncStatus) && !"In Wave".equals(baPartySyncStatus))
 		{
 			return statuses;
 		}

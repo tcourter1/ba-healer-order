@@ -1,6 +1,7 @@
 package com.bahealerorder;
 
 import com.bahealerorder.common.BaDispenserMenuService;
+import com.bahealerorder.common.BaHealerSyncMessage;
 import com.bahealerorder.common.BaPartySyncService;
 import com.bahealerorder.common.BaRoleDetector;
 import com.bahealerorder.healer.HealerController;
@@ -21,6 +22,7 @@ import net.runelite.api.events.WidgetLoaded;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.party.events.UserJoin;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
@@ -142,6 +144,18 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onConfigChanged(ConfigChanged event)
 	{
 		partySyncService.onConfigChanged(event);
+	}
+
+	@Subscribe
+	public void onBaHealerSyncMessage(BaHealerSyncMessage event)
+	{
+		healerController.onBaHealerSyncMessage(event);
+	}
+
+	@Subscribe
+	public void onUserJoin(UserJoin event)
+	{
+		healerController.onPartyUserJoin(event);
 	}
 
 	@Provides

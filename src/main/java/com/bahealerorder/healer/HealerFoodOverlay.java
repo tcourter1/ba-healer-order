@@ -70,9 +70,9 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
         codeToggleLine = null;
 
         List<Integer> healerOrders = controller.getHealerOrdersForCurrentWave();
-        BaUtilitiesConfig.FoodPanelStyle panelStyle = controller.getFoodPanelStyle();
+        BaUtilitiesConfig.FoodPanelStyle panelStyle = getEffectivePanelStyle();
 
-        if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.CODE_ONLY)
+        if (controller.isHealerRole() && panelStyle == BaUtilitiesConfig.FoodPanelStyle.CODE_ONLY)
         {
             String sourceText = controller.getCurrentWaveCodeSource();
 
@@ -98,14 +98,14 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
         if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.SIMPLIFIED)
         {
             addSimplifiedRows(healerOrders);
-            addCurrentWaveCode(true);
+            addCurrentWaveCodeIfHealer(true);
             return renderPanel(graphics);
         }
 
         if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.COLUMNS)
         {
             addColumnTables(graphics, healerOrders);
-            addCurrentWaveCode(true);
+            addCurrentWaveCodeIfHealer(true);
             return renderPanel(graphics);
         }
 
@@ -118,9 +118,16 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
             addHealerRows(healerOrders);
         }
 
-        addCurrentWaveCode(true);
+        addCurrentWaveCodeIfHealer(true);
 
         return renderPanel(graphics);
+    }
+
+    private BaUtilitiesConfig.FoodPanelStyle getEffectivePanelStyle()
+    {
+        return controller.isHealerRole()
+                ? controller.getFoodPanelStyle()
+                : BaUtilitiesConfig.FoodPanelStyle.SIMPLIFIED;
     }
 
     private Dimension renderPanel(Graphics2D graphics)
@@ -147,7 +154,7 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
             title = "Wave " + wave;
         }
 
-        String codeName = controller.getCurrentWaveCodeName();
+        String codeName = controller.isHealerRole() ? controller.getCurrentWaveCodeName() : null;
 
         if (codeName != null && !codeName.trim().isEmpty())
         {
@@ -507,6 +514,14 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
                         .leftColor(TEXT_COLOR)
                         .build()
             );
+        }
+    }
+
+    private void addCurrentWaveCodeIfHealer(boolean collapsible)
+    {
+        if (controller.isHealerRole())
+        {
+            addCurrentWaveCode(collapsible);
         }
     }
 

@@ -99,9 +99,9 @@ public class HealerCodePanel extends PluginPanel
 			partySyncStatus.setText("Party Sync " + (status == null || status.isEmpty() ? "Unknown" : status));
 			partySyncStatus.setForeground(getPartySyncStatusColor(status));
 			partySyncMembersPanel.removeAll();
-			partySyncMembersPanel.setVisible("Connected".equals(status) || "Already in Party".equals(status));
+			partySyncMembersPanel.setVisible(shouldShowPartySyncMembers(status) || "Already in Party".equals(status));
 
-			if ("Connected".equals(status))
+			if (shouldShowPartySyncMembers(status))
 			{
 				for (BaPartySyncMemberStatus memberStatus : memberStatuses)
 				{
@@ -122,6 +122,11 @@ public class HealerCodePanel extends PluginPanel
 			contentPanel.revalidate();
 			contentPanel.repaint();
 		});
+	}
+
+	private boolean shouldShowPartySyncMembers(String status)
+	{
+		return "Connected".equals(status) || "In Wave".equals(status);
 	}
 
 	private JPanel createPartySyncSection()
@@ -203,7 +208,7 @@ public class HealerCodePanel extends PluginPanel
 			return Color.YELLOW;
 		}
 
-		if ("Connected".equals(status))
+		if ("Connected".equals(status) || "In Wave".equals(status))
 		{
 			return Color.GREEN;
 		}

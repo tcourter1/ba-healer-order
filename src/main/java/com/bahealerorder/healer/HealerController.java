@@ -1,10 +1,11 @@
 package com.bahealerorder.healer;
 
 import com.bahealerorder.BaUtilitiesConfig;
+import com.bahealerorder.common.BaHealerSyncMessage;
+import com.bahealerorder.common.BaPartySyncService;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.BaRoleDetector;
 import com.bahealerorder.healer.codes.CodeDisplayState;
-import com.bahealerorder.healer.codes.FeedEvent;
 import com.bahealerorder.healer.codes.HealerCodeStatus;
 import com.bahealerorder.healer.codes.WaveCode;
 import com.bahealerorder.healer.ttk.HealerTtkResult;
@@ -65,6 +66,7 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
+import net.runelite.client.party.events.UserJoin;
 
 @Slf4j
 public class HealerController
@@ -148,6 +150,9 @@ public class HealerController
 	@Inject
 	private BaRoleDetector roleDetector;
 
+	@Inject
+	private BaPartySyncService partySyncService;
+
 	@Getter
 	private final Map<Integer, Integer> healerOrderByNpcIndex = new HashMap<>();
 
@@ -157,12 +162,9 @@ public class HealerController
 	private final Set<Integer> healerIndexesSeenThisWave = new HashSet<>();
 	private final Set<Integer> deadHealerOrders = new HashSet<>();
 
-	private final Map<Integer, Integer> foodFedByNpcIndex = new HashMap<>();
-	private final Map<Integer, Integer> lastTtkDeathTickByHealerOrder = new HashMap<>();
 	private final Map<Integer, Integer> lastPoisonedFoodCountByItemId = new HashMap<>();
-
-	@Getter
-	private final List<FeedEvent> feedEvents = new ArrayList<>();
+	private final Map<Integer, String> lastSentHealerSyncByOrder = new HashMap<>();
+	private final HealerSharedState sharedState = new HealerSharedState();
 
 	private final Hooks.RenderableDrawListener drawListener = this::shouldDrawRenderable;
 
@@ -236,6 +238,8 @@ public class HealerController
 
 		visibleHealers.put(npc, order);
 		ttkTracker.onHealerSpawned(npcIndex, order, client.getTickCount());
+		sharedState.recordLocalSpawn(order, npcIndex);
+		sendHealerSyncForOrder(order);
 
 		if (addedNewIndex)
 		{
@@ -351,6 +355,36 @@ public class HealerController
 		{
 			applyDispenserMenuOptions(true);
 		}
+
+		sendVisibleHealerSync();
+	}
+
+	public void onBaHealerSyncMessage(BaHealerSyncMessage event)
+	{
+		if (event == null
+				|| partySyncService.isLocalPartyMember(event.getMemberId())
+				|| event.getWorld() != client.getWorld()
+				|| currentWave > 0 && event.getWave() != currentWave)
+		{
+			return;
+		}
+
+		if (currentWave <= 0)
+		{
+			currentWave = event.getWave();
+		}
+
+		sharedState.updateFromParty(event);
+	}
+
+	public void onPartyUserJoin(UserJoin event)
+	{
+		if (event == null || partySyncService.isLocalPartyMember(event.getMemberId()))
+		{
+			return;
+		}
+
+		broadcastHealerSyncState();
 	}
 
 	public void onChatMessage(ChatMessage event)
@@ -437,7 +471,7 @@ public class HealerController
 
 	public boolean shouldShowLabels()
 	{
-		return !config.showLabelsAsHealerOnly() || isHealerRole();
+		return !config.showLabelsAsHealerOnly() || isHealerRole() || partySyncService.isBaPartySyncConnected();
 	}
 
 	public boolean shouldShowHealerHighlights()
@@ -447,12 +481,13 @@ public class HealerController
 
 	public boolean shouldShowFoodCountOnNpc()
 	{
-		return isHealerRole() && config.showFoodCountOnNpc();
+		return config.showFoodCountOnNpc() && (isHealerRole() || partySyncService.isBaPartySyncConnected());
 	}
 
 	public boolean shouldShowHealerTtk()
 	{
-		return isHealerRole() && config.healerTtkDisplay() != BaUtilitiesConfig.HealerTtkDisplayMode.OFF;
+		return config.healerTtkDisplay() != BaUtilitiesConfig.HealerTtkDisplayMode.OFF
+				&& (isHealerRole() || partySyncService.isBaPartySyncConnected());
 	}
 
 	public Color getHealerTtkColor()
@@ -468,11 +503,17 @@ public class HealerController
 		}
 
 		Optional<HealerTtkResult> result = ttkTracker.getTtk(npc.getIndex(), client.getTickCount());
+		Integer healerOrder = visibleHealers.get(npc);
 
 		if (!result.isPresent())
 		{
 			if (ttkTracker.hasPoisonedHealerWithUnknownTtk(npc.getIndex()))
 			{
+				if (healerOrder != null)
+				{
+					sharedState.recordLocalPrediction(healerOrder, -1, true, getCurrentWaveTick());
+				}
+
 				return "?";
 			}
 
@@ -480,11 +521,10 @@ public class HealerController
 		}
 
 		int deathTick = result.get().getDeathTick();
-		Integer healerOrder = visibleHealers.get(npc);
 
 		if (healerOrder != null)
 		{
-			lastTtkDeathTickByHealerOrder.put(healerOrder, deathTick);
+			sharedState.recordLocalPrediction(healerOrder, toWaveTick(deathTick), false, getCurrentWaveTick());
 		}
 
 		int ticksRemaining = Math.max(deathTick - client.getTickCount() + 1, 0);
@@ -516,34 +556,47 @@ public class HealerController
 
 	public String getHealerPanelDeathTime(int healerOrder)
 	{
-		if (!isHealerRole() || healerOrder <= 0)
+		if (healerOrder <= 0)
 		{
 			return null;
 		}
 
-		Integer cachedDeathTick = lastTtkDeathTickByHealerOrder.get(healerOrder);
-
 		if (isHealerDead(healerOrder))
 		{
-			return cachedDeathTick == null ? null : formatTickAsWaveTime(cachedDeathTick);
+			Integer deathTick = sharedState.getActualDeathTick(healerOrder);
+			return deathTick == null ? null : formatWaveTickAsTime(deathTick);
 		}
 
 		NPC npc = getVisibleHealerByOrder(healerOrder);
 
 		if (npc == null)
 		{
-			return cachedDeathTick == null ? null : formatTickAsWaveTime(cachedDeathTick) + "?";
+			Integer deathTick = sharedState.getActualDeathTick(healerOrder);
+			if (deathTick != null) return formatWaveTickAsTime(deathTick);
+
+			Integer predictedDeathTick = sharedState.getPredictedDeathTick(healerOrder);
+			if (predictedDeathTick != null) return formatWaveTickAsTime(predictedDeathTick);
+
+			if (sharedState.hasUnknownTtk(healerOrder)) return "?";
+
+			return null;
 		}
 
 		Optional<HealerTtkResult> result = ttkTracker.getTtk(npc.getIndex(), client.getTickCount());
 
 		if (!result.isPresent())
 		{
-			return ttkTracker.hasPoisonedHealerWithUnknownTtk(npc.getIndex()) ? "?" : null;
+			boolean unknownTtk = ttkTracker.hasPoisonedHealerWithUnknownTtk(npc.getIndex());
+			if (unknownTtk)
+			{
+				sharedState.recordLocalPrediction(healerOrder, -1, true, getCurrentWaveTick());
+			}
+
+			return unknownTtk ? "?" : null;
 		}
 
 		int deathTick = result.get().getDeathTick();
-		lastTtkDeathTickByHealerOrder.put(healerOrder, deathTick);
+		sharedState.recordLocalPrediction(healerOrder, toWaveTick(deathTick), false, getCurrentWaveTick());
 		return formatTickAsWaveTime(deathTick);
 	}
 
@@ -584,33 +637,27 @@ public class HealerController
 
 	public String getCurrentWaveCodeSource()
 	{
-		if (!isHealerRole()) return null;
-
 		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
 		return waveCode == null ? null : waveCode.getSourceText();
 	}
 
 	public String getCurrentWaveCodeName()
 	{
-		if (!isHealerRole()) return null;
-
 		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
 		return waveCode == null ? null : waveCode.getName();
 	}
 
 	public boolean hasActiveWaveCode()
 	{
-		if (!isHealerRole()) return false;
-
 		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
 		return waveCode != null && !waveCode.getCalls().isEmpty();
 	}
 
 	public int getExpectedFoodForOrder(int healerOrder)
 	{
-		if (healerOrder <= 0 || !isHealerRole()) return 0;
+		if (healerOrder <= 0) return 0;
 
-		return codeManager.getExpectedFoodForOrder(currentWave, healerOrder, currentCallIndex);
+		return codeManager.getExpectedFoodForOrder(currentWave, healerOrder, getEffectiveCurrentCallIndex());
 	}
 
 	public String getHealerTarget(int healerOrder)
@@ -656,7 +703,7 @@ public class HealerController
 		}
 
 		List<Integer> callIndexes = new ArrayList<>();
-		int lastVisibleCallIndex = Math.min(currentCallIndex, MAX_FOOD_PANEL_CODE_CALLS - 1);
+		int lastVisibleCallIndex = Math.min(getEffectiveCurrentCallIndex(), MAX_FOOD_PANEL_CODE_CALLS - 1);
 
 		for (int callIndex = 0; callIndex <= lastVisibleCallIndex; callIndex++)
 		{
@@ -689,11 +736,6 @@ public class HealerController
 
 	public String getFoodPanelText(int healerOrder, int callIndex)
 	{
-		if (!isHealerRole())
-		{
-			return "";
-		}
-
 		if (isHealerDead(healerOrder))
 		{
 			return "-";
@@ -705,7 +747,7 @@ public class HealerController
 			return getFoodCountText(healerOrder, foodFed);
 		}
 
-		HealerCodeStatus status = codeManager.getPanelStatusForCall(currentWave, healerOrder, currentCallIndex, callIndex, feedEvents);
+		HealerCodeStatus status = codeManager.getPanelStatusForCall(currentWave, healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
 		String codeText = formatCodeStatus(status);
 
 		if (codeText != null)
@@ -713,7 +755,7 @@ public class HealerController
 			return codeText;
 		}
 
-		return formatRawFoodCount(codeManager.getPanelFoodCountForCall(currentWave, healerOrder, currentCallIndex, callIndex, feedEvents));
+		return formatRawFoodCount(codeManager.getPanelFoodCountForCall(currentWave, healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents()));
 	}
 
 	private String formatRawFoodCount(int foodFed)
@@ -729,7 +771,7 @@ public class HealerController
 			return status == null ? null : getFoodPanelCodeStatusColor(status.getState());
 		}
 
-		HealerCodeStatus status = codeManager.getPanelStatusForCall(currentWave, healerOrder, currentCallIndex, callIndex, feedEvents);
+		HealerCodeStatus status = codeManager.getPanelStatusForCall(currentWave, healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
 
 		return status == null ? null : getFoodPanelCodeStatusColor(status.getState());
 	}
@@ -741,12 +783,17 @@ public class HealerController
 
 	public boolean hasHealerSpawned(int healerOrder)
 	{
-		return healerOrderByNpcIndex.containsValue(healerOrder);
+		return sharedState.hasSpawned(healerOrder);
 	}
 
 	public boolean isHealerDead(int healerOrder)
 	{
 		if (deadHealerOrders.contains(healerOrder))
+		{
+			return true;
+		}
+
+		if (sharedState.isDead(healerOrder))
 		{
 			return true;
 		}
@@ -762,29 +809,23 @@ public class HealerController
 			return false;
 		}
 
-		Integer deathTick = lastTtkDeathTickByHealerOrder.get(healerOrder);
-		return deathTick != null && client.getTickCount() > deathTick;
+		Integer deathTick = sharedState.getPredictedDeathTick(healerOrder);
+		return deathTick != null && getCurrentWaveTick() > deathTick;
 	}
 
 	public HealerCodeStatus getCurrentCodeStatus(int healerOrder)
 	{
-		if (!isHealerRole()) return null;
-
-		return codeManager.getCurrentStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
+		return codeManager.getCurrentStatus(currentWave, healerOrder, getEffectiveCurrentCallIndex(), sharedState.getFeedEvents());
 	}
 
 	public HealerCodeStatus getPreviousCodeStatus(int healerOrder)
 	{
-		if (!isHealerRole()) return null;
-
-		return codeManager.getPreviousStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
+		return codeManager.getPreviousStatus(currentWave, healerOrder, getEffectiveCurrentCallIndex(), sharedState.getFeedEvents());
 	}
 
 	public HealerCodeStatus getDisplayCodeStatus(int healerOrder)
 	{
-		if (!isHealerRole()) return null;
-
-		return codeManager.getDisplayStatus(currentWave, healerOrder, currentCallIndex, feedEvents);
+		return codeManager.getDisplayStatus(currentWave, healerOrder, getEffectiveCurrentCallIndex(), sharedState.getFeedEvents());
 	}
 
 	public String formatCodeStatus(HealerCodeStatus status)
@@ -900,25 +941,12 @@ public class HealerController
 
 	public Map<Integer, Integer> getFoodFedByHealerOrder()
 	{
-		if (!isHealerRole()) return Collections.emptyMap();
+		return Collections.unmodifiableMap(sharedState.getFoodFedByHealerOrder());
+	}
 
-		Map<Integer, Integer> foodFedByHealerOrder = new HashMap<>();
-
-		for (Map.Entry<Integer, Integer> entry : foodFedByNpcIndex.entrySet())
-		{
-			Integer npcIndex = entry.getKey();
-			Integer foodFed = entry.getValue();
-			Integer healerOrder = healerOrderByNpcIndex.get(npcIndex);
-
-			if (healerOrder == null)
-			{
-				continue;
-			}
-
-			foodFedByHealerOrder.merge(healerOrder, foodFed, Integer::sum);
-		}
-
-		return Collections.unmodifiableMap(foodFedByHealerOrder);
+	private int getEffectiveCurrentCallIndex()
+	{
+		return Math.max(currentCallIndex, sharedState.getCurrentCallIndex());
 	}
 
 	public String getHealerLabel(int healerOrder)
@@ -984,6 +1012,7 @@ public class HealerController
 		this.currentWave = waveNumber;
 		this.waveStartTimeMs = System.currentTimeMillis();
 		resetWaveTrackedState();
+		sharedState.startWave(waveNumber);
 		ttkTracker.startWave(client.getTickCount());
 
 		log.debug("Starting new BA wave {}", waveNumber);
@@ -1005,6 +1034,121 @@ public class HealerController
 
 		double elapsedSeconds = Math.max(0, tick - waveStartTick) * 0.6d;
 		return String.format(Locale.ROOT, "%.1f", elapsedSeconds);
+	}
+
+	private String formatWaveTickAsTime(int waveTick)
+	{
+		return String.format(Locale.ROOT, "%.1f", Math.max(0, waveTick) * 0.6d);
+	}
+
+	private int getCurrentWaveTick()
+	{
+		int waveStartTick = ttkTracker.getWaveStartTick();
+		return waveStartTick < 0 ? -1 : Math.max(0, client.getTickCount() - waveStartTick);
+	}
+
+	private int toWaveTick(int tick)
+	{
+		int waveStartTick = ttkTracker.getWaveStartTick();
+		return tick < 0 || waveStartTick < 0 ? -1 : Math.max(0, tick - waveStartTick);
+	}
+
+	private void sendVisibleHealerSync()
+	{
+		if (!partySyncService.isBaPartySyncConnected()) return;
+
+		for (Integer healerOrder : new HashSet<>(visibleHealers.values()))
+		{
+			if (healerOrder != null)
+			{
+				sendHealerSyncForOrder(healerOrder);
+			}
+		}
+	}
+
+	private void broadcastHealerSyncState()
+	{
+		if (!partySyncService.isBaPartySyncConnected()) return;
+
+		for (int healerOrder : getHealerOrdersForCurrentWave())
+		{
+			if (hasHealerSpawned(healerOrder) || isHealerDead(healerOrder) || getFoodFedByHealerOrder().containsKey(healerOrder))
+			{
+				sendHealerSyncForOrder(healerOrder, true);
+			}
+		}
+	}
+
+	private void sendHealerSyncForOrder(int healerOrder)
+	{
+		sendHealerSyncForOrder(healerOrder, false);
+	}
+
+	private void sendHealerSyncForOrder(int healerOrder, boolean force)
+	{
+		if (!partySyncService.isBaPartySyncConnected() || currentWave <= 0 || healerOrder <= 0) return;
+
+		BaHealerSyncMessage message = buildHealerSyncMessage(healerOrder);
+		if (message == null) return;
+
+		String signature = buildHealerSyncSignature(message);
+
+		if (!force && signature.equals(lastSentHealerSyncByOrder.get(healerOrder))) return;
+
+		lastSentHealerSyncByOrder.put(healerOrder, signature);
+		partySyncService.sendHealerSync(message);
+	}
+
+	private BaHealerSyncMessage buildHealerSyncMessage(int healerOrder)
+	{
+		updateLocalTtkState(healerOrder);
+
+		HealerSharedState.LocalSnapshot snapshot = sharedState.getLocalSnapshot(healerOrder);
+
+		if (snapshot == null || snapshot.getNpcIndex() < 0) return null;
+
+		return new BaHealerSyncMessage(
+				client.getWorld(),
+				currentWave,
+				snapshot.getNpcIndex(),
+				healerOrder,
+				currentCallIndex,
+				snapshot.getPredictedDeathTick(),
+				snapshot.isUnknownTtk(),
+				snapshot.getActualDeathTick(),
+				getCurrentWaveTick()
+		);
+	}
+
+	private String buildHealerSyncSignature(BaHealerSyncMessage message)
+	{
+		return message.getWave()
+				+ ":" + message.getNpcIndex()
+				+ ":" + message.getHealerOrder()
+				+ ":" + message.getCurrentCallIndex()
+				+ ":" + message.getPredictedDeathTick()
+				+ ":" + message.isUnknownTtk()
+				+ ":" + message.getActualDeathTick();
+	}
+
+	private void updateLocalTtkState(int healerOrder)
+	{
+		NPC npc = getVisibleHealerByOrder(healerOrder);
+
+		if (npc == null) return;
+
+		Optional<HealerTtkResult> result = ttkTracker.getTtk(npc.getIndex(), client.getTickCount());
+
+		if (result.isPresent())
+		{
+			sharedState.recordLocalPrediction(healerOrder, toWaveTick(result.get().getDeathTick()), false, getCurrentWaveTick());
+			return;
+		}
+
+		if (ttkTracker.hasPoisonedHealerWithUnknownTtk(npc.getIndex()))
+		{
+			sharedState.recordLocalPrediction(healerOrder, -1, true, getCurrentWaveTick());
+		}
 	}
 
 	private boolean shouldShowMenuLabel()
@@ -1070,7 +1214,8 @@ public class HealerController
 	{
 		if (deadHealerOrders.add(healerOrder))
 		{
-			lastTtkDeathTickByHealerOrder.put(healerOrder, client.getTickCount());
+			sharedState.recordLocalDeath(healerOrder, getCurrentWaveTick());
+			sendHealerSyncForOrder(healerOrder);
 		}
 	}
 
@@ -1185,6 +1330,7 @@ public class HealerController
 		if (!lastCallText.equals(callText))
 		{
 			currentCallIndex++;
+			sharedState.recordLocalCallIndex(currentCallIndex);
 			lastCallText = callText;
 			log.debug("BA healer call changed to {} at wave {} call {}", callText, currentWave, currentCallIndex);
 		}
@@ -1804,16 +1950,17 @@ public class HealerController
 
 	private void recordConsumedFoodForPendingAttempt(PendingFeedAttempt attempt)
 	{
-		foodFedByNpcIndex.merge(attempt.npcIndex, 1, Integer::sum);
 		ttkTracker.onFoodConsumedForHealer(attempt.npcIndex, client.getTickCount());
 
 		Integer currentOrder = healerOrderByNpcIndex.get(attempt.npcIndex);
-		int totalFoodFed = foodFedByNpcIndex.getOrDefault(attempt.npcIndex, 0);
 
 		if (currentOrder != null)
 		{
-			feedEvents.add(new FeedEvent(currentOrder, Math.round(getCurrentWaveElapsedSeconds()), currentCallIndex));
+			sharedState.recordLocalFood(currentOrder, currentCallIndex, Math.round(getCurrentWaveElapsedSeconds()));
+			sendHealerSyncForOrder(currentOrder);
 		}
+
+		int totalFoodFed = currentOrder == null ? 0 : getFoodFedByHealerOrder().getOrDefault(currentOrder, 0);
 
 		log.debug(
 				"Counted consumed poisoned food for healer #{} from NPC index {} using item {} from pending sequence {}. Distance at consume {}. Total now {}",
@@ -1955,10 +2102,9 @@ public class HealerController
 		healerOrderByNpcIndex.clear();
 		healerIndexBase = -1;
 		deadHealerOrders.clear();
-		foodFedByNpcIndex.clear();
-		lastTtkDeathTickByHealerOrder.clear();
 		lastPoisonedFoodCountByItemId.clear();
-		feedEvents.clear();
+		lastSentHealerSyncByOrder.clear();
+		sharedState.reset();
 		ttkTracker.reset();
 		pendingFeedAttempts.clear();
 		feedAttemptSequence = 0;
