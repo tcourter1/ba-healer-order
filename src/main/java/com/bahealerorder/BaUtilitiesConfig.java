@@ -12,6 +12,13 @@ import net.runelite.client.config.Range;
 public interface BaUtilitiesConfig extends Config
 {
 	@ConfigSection(
+			name = "General",
+			description = "General settings and settings that can apply to any BA role",
+			position = 1
+	)
+	String generalSection = "general";
+
+	@ConfigSection(
 			name = "Healer Highlight",
 			description = "Settings for healer highlighting and labels",
 			position = 2
@@ -31,13 +38,6 @@ public interface BaUtilitiesConfig extends Config
 			position = 4
 	)
 	String dispenserOptionsSection = "dispenserOptions";
-
-	@ConfigSection(
-			name = "General",
-			description = "Settings for automatic Barbarian Assault Party sync",
-			position = 1
-	)
-	String partySyncSection = "partySync";
 
 	enum HighlightStyle
 	{
@@ -537,7 +537,7 @@ public interface BaUtilitiesConfig extends Config
 			keyName = "enableBaPartySync",
 			name = "Enable BA Party Sync",
 			description = "Automatically joins a temporary RuneLite Party with your current Barbarian Assault team while in the BA lobby. The plugin leaves the sync party after each wave.",
-			section = partySyncSection,
+			section = generalSection,
 			position = 1
 	)
 	default boolean enableBaPartySync()
