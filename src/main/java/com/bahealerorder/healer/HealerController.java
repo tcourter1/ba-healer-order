@@ -233,13 +233,10 @@ public class HealerController
 		rebuildVisibleHealerOrders();
 
 		Integer order = getKnownHealerOrder(npcIndex);
-		Integer visibleOrder = order == null ? healerOrderByNpcIndex.get(npcIndex) : order;
-
-		if (visibleOrder == null) return;
-
-		visibleHealers.put(npc, visibleOrder);
 
 		if (order == null) return;
+
+		visibleHealers.put(npc, order);
 
 		ttkTracker.onHealerSpawned(npcIndex, order, client.getTickCount());
 		sharedState.recordLocalSpawn(order, npcIndex);
@@ -1327,17 +1324,14 @@ public class HealerController
 			return partyOrder;
 		}
 
-		if (isPartyHealerIdentityActive())
+		Integer sharedOrder = sharedState.getHealerOrderByNpcIndex(npcIndex);
+
+		if (sharedOrder != null)
 		{
-			return null;
+			return sharedOrder;
 		}
 
-		return sharedState.getHealerOrderByNpcIndex(npcIndex);
-	}
-
-	private boolean isPartyHealerIdentityActive()
-	{
-		return partySyncService.isBaPartySyncConnected() && sharedState.hasPartySpawnData();
+		return healerOrderByNpcIndex.get(npcIndex);
 	}
 
 	private void rebuildVisibleHealerOrders()

@@ -144,19 +144,6 @@ class HealerSharedState
 		return null;
 	}
 
-	boolean hasPartySpawnData()
-	{
-		for (State state : statesByOrder.values())
-		{
-			if (state.partySpawned)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
 	boolean isDead(int healerOrder)
 	{
 		State state = stateOrNull(healerOrder);
