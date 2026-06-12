@@ -37,7 +37,11 @@ class HealerSharedState
 		State state = state(healerOrder);
 		state.spawned = true;
 		state.localSpawned = true;
-		state.npcIndex = npcIndex;
+
+		if (!state.partySpawned)
+		{
+			state.npcIndex = npcIndex;
+		}
 	}
 
 	void recordLocalCallIndex(int callIndex)
@@ -79,19 +83,22 @@ class HealerSharedState
 
 		State state = state(message.getHealerOrder());
 		state.spawned = true;
+		state.partySpawned = true;
 
-		if (!state.localSpawned && state.npcIndex < 0)
+		if (message.getNpcIndex() >= 0)
 		{
+			clearNpcIndexFromOtherStates(message.getHealerOrder(), message.getNpcIndex());
 			state.npcIndex = message.getNpcIndex();
 		}
 
-		if (!state.localDeath && state.actualDeathTick < 0 && message.getActualDeathTick() >= 0)
+		if (message.getActualDeathTick() >= 0)
 		{
 			state.actualDeathTick = message.getActualDeathTick();
 		}
 
+		boolean hasPrediction = message.getPredictedDeathTick() >= 0 || message.isUnknownTtk();
 		boolean newerObservation = message.getObservedTick() >= state.observedTick;
-		if (!state.localPrediction && state.actualDeathTick < 0 && newerObservation)
+		if (hasPrediction && state.actualDeathTick < 0 && newerObservation)
 		{
 			state.predictedDeathTick = message.getPredictedDeathTick();
 			state.unknownTtk = message.getPredictedDeathTick() < 0 && message.isUnknownTtk();
@@ -102,6 +109,52 @@ class HealerSharedState
 	boolean hasSpawned(int healerOrder)
 	{
 		return stateOrNull(healerOrder) != null && state(healerOrder).spawned;
+	}
+
+	Integer getHealerOrderByNpcIndex(int npcIndex)
+	{
+		Integer partyOrder = getPartyHealerOrderByNpcIndex(npcIndex);
+
+		if (partyOrder != null)
+		{
+			return partyOrder;
+		}
+
+		for (State state : statesByOrder.values())
+		{
+			if (state.npcIndex == npcIndex)
+			{
+				return state.healerOrder;
+			}
+		}
+
+		return null;
+	}
+
+	Integer getPartyHealerOrderByNpcIndex(int npcIndex)
+	{
+		for (State state : statesByOrder.values())
+		{
+			if (state.partySpawned && state.npcIndex == npcIndex)
+			{
+				return state.healerOrder;
+			}
+		}
+
+		return null;
+	}
+
+	boolean hasPartySpawnData()
+	{
+		for (State state : statesByOrder.values())
+		{
+			if (state.partySpawned)
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	boolean isDead(int healerOrder)
@@ -193,6 +246,18 @@ class HealerSharedState
 		return statesByOrder.get(healerOrder);
 	}
 
+	private void clearNpcIndexFromOtherStates(int healerOrder, int npcIndex)
+	{
+		for (State state : statesByOrder.values())
+		{
+			if (state.healerOrder != healerOrder && state.npcIndex == npcIndex)
+			{
+				state.npcIndex = UNKNOWN_TICK;
+				state.partySpawned = false;
+			}
+		}
+	}
+
 	static class LocalSnapshot
 	{
 		private final int npcIndex;
@@ -238,6 +303,7 @@ class HealerSharedState
 		private final int healerOrder;
 		private boolean spawned;
 		private boolean localSpawned;
+		private boolean partySpawned;
 		private int npcIndex = UNKNOWN_TICK;
 		private int[] localFoodFedByCall = new int[SYNC_CALL_COUNT];
 		private int[] localLastFoodElapsedByCall = filledArray(SYNC_CALL_COUNT, UNKNOWN_TICK);
