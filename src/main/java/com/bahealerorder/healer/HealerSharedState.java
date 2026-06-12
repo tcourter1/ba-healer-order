@@ -34,12 +34,17 @@ class HealerSharedState
 
 	void recordLocalSpawn(int healerOrder, int npcIndex)
 	{
+		recordSpawn(healerOrder, npcIndex);
+	}
+
+	private void recordSpawn(int healerOrder, int npcIndex)
+	{
 		State state = state(healerOrder);
 		state.spawned = true;
-		state.localSpawned = true;
 
-		if (!state.partySpawned)
+		if (npcIndex >= 0)
 		{
+			clearNpcIndexFromOtherStates(healerOrder, npcIndex);
 			state.npcIndex = npcIndex;
 		}
 	}
@@ -57,48 +62,49 @@ class HealerSharedState
 		state.localLastFoodElapsedByCall[callIndex] = Math.max(state.localLastFoodElapsedByCall[callIndex], elapsedSeconds);
 	}
 
-	void recordLocalPrediction(int healerOrder, int predictedDeathTick, boolean unknownTtk, int observedTick)
+	void recordPrediction(int healerOrder, int predictedDeathTick, boolean unknownTtk, int observedTick)
 	{
 		State state = state(healerOrder);
-		state.localPrediction = true;
-		state.predictedDeathTick = predictedDeathTick;
-		state.unknownTtk = predictedDeathTick < 0 && unknownTtk;
+
+		if (state.actualDeathTick >= 0) return;
+
+		if (predictedDeathTick >= 0)
+		{
+			state.predictedDeathTick = predictedDeathTick;
+			state.unknownTtk = false;
+			state.observedTick = Math.max(state.observedTick, observedTick);
+			return;
+		}
+
+		state.unknownTtk = unknownTtk;
 		state.observedTick = Math.max(state.observedTick, observedTick);
 	}
 
-	void recordLocalDeath(int healerOrder, int deathTick)
+	void recordDeath(int healerOrder, int deathTick)
 	{
 		State state = state(healerOrder);
-		state.localDeath = true;
-		state.actualDeathTick = deathTick;
+		recordDeath(state, deathTick);
 		state.unknownTtk = false;
 	}
 
-	void updateFromParty(BaHealerSyncMessage message)
+	void updateFromParty(BaHealerSyncMessage message, boolean acceptPrediction)
 	{
 		if (message.getWave() <= 0 || message.getHealerOrder() <= 0) return;
 
 		startWave(message.getWave());
 		currentCallIndex = Math.max(currentCallIndex, message.getCurrentCallIndex());
 
+		recordSpawn(message.getHealerOrder(), message.getNpcIndex());
 		State state = state(message.getHealerOrder());
-		state.spawned = true;
-		state.partySpawned = true;
-
-		if (message.getNpcIndex() >= 0)
-		{
-			clearNpcIndexFromOtherStates(message.getHealerOrder(), message.getNpcIndex());
-			state.npcIndex = message.getNpcIndex();
-		}
 
 		if (message.getActualDeathTick() >= 0)
 		{
-			state.actualDeathTick = message.getActualDeathTick();
+			recordDeath(state, message.getActualDeathTick());
 		}
 
 		boolean hasPrediction = message.getPredictedDeathTick() >= 0 || message.isUnknownTtk();
 		boolean newerObservation = message.getObservedTick() >= state.observedTick;
-		if (hasPrediction && state.actualDeathTick < 0 && newerObservation)
+		if (acceptPrediction && hasPrediction && state.actualDeathTick < 0 && newerObservation)
 		{
 			state.predictedDeathTick = message.getPredictedDeathTick();
 			state.unknownTtk = message.getPredictedDeathTick() < 0 && message.isUnknownTtk();
@@ -111,37 +117,30 @@ class HealerSharedState
 		return stateOrNull(healerOrder) != null && state(healerOrder).spawned;
 	}
 
-	Integer getHealerOrderByNpcIndex(int npcIndex)
+	Integer getHealerOrderForNpcIndex(int npcIndex)
 	{
-		Integer partyOrder = getPartyHealerOrderByNpcIndex(npcIndex);
-
-		if (partyOrder != null)
-		{
-			return partyOrder;
-		}
-
-		for (State state : statesByOrder.values())
-		{
-			if (state.npcIndex == npcIndex)
-			{
-				return state.healerOrder;
-			}
-		}
-
-		return null;
+		return getHealerOrdersByNpcIndex().get(npcIndex);
 	}
 
-	Integer getPartyHealerOrderByNpcIndex(int npcIndex)
+	Map<Integer, Integer> getHealerOrdersByNpcIndex()
 	{
+		Map<Integer, Integer> orderByNpcIndex = new HashMap<>();
+
 		for (State state : statesByOrder.values())
 		{
-			if (state.partySpawned && state.npcIndex == npcIndex)
+			if (state.npcIndex >= 0)
 			{
-				return state.healerOrder;
+				orderByNpcIndex.put(state.npcIndex, state.healerOrder);
 			}
 		}
 
-		return null;
+		return orderByNpcIndex;
+	}
+
+	int getNpcIndex(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state == null ? UNKNOWN_TICK : state.npcIndex;
 	}
 
 	boolean isDead(int healerOrder)
@@ -160,6 +159,12 @@ class HealerSharedState
 	{
 		State state = stateOrNull(healerOrder);
 		return state == null || state.predictedDeathTick < 0 ? null : state.predictedDeathTick;
+	}
+
+	boolean hasTtk(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state != null && (state.predictedDeathTick >= 0 || state.unknownTtk || state.actualDeathTick >= 0);
 	}
 
 	boolean hasUnknownTtk(int healerOrder)
@@ -210,19 +215,6 @@ class HealerSharedState
 		return feedEvents;
 	}
 
-	LocalSnapshot getLocalSnapshot(int healerOrder)
-	{
-		State state = stateOrNull(healerOrder);
-		if (state == null || !state.hasLocalData()) return null;
-
-		return new LocalSnapshot(
-				state.npcIndex,
-				state.localPrediction ? state.predictedDeathTick : UNKNOWN_TICK,
-				state.localPrediction && state.predictedDeathTick < 0 && state.unknownTtk,
-				state.localDeath ? state.actualDeathTick : UNKNOWN_TICK
-		);
-	}
-
 	private State state(int healerOrder)
 	{
 		return statesByOrder.computeIfAbsent(healerOrder, State::new);
@@ -240,75 +232,34 @@ class HealerSharedState
 			if (state.healerOrder != healerOrder && state.npcIndex == npcIndex)
 			{
 				state.npcIndex = UNKNOWN_TICK;
-				state.partySpawned = false;
 			}
 		}
 	}
 
-	static class LocalSnapshot
+	private void recordDeath(State state, int deathTick)
 	{
-		private final int npcIndex;
-		private final int predictedDeathTick;
-		private final boolean unknownTtk;
-		private final int actualDeathTick;
+		if (deathTick < 0) return;
 
-		private LocalSnapshot(
-				int npcIndex,
-				int predictedDeathTick,
-				boolean unknownTtk,
-				int actualDeathTick)
-		{
-			this.npcIndex = npcIndex;
-			this.predictedDeathTick = predictedDeathTick;
-			this.unknownTtk = unknownTtk;
-			this.actualDeathTick = actualDeathTick;
-		}
-
-		int getNpcIndex()
-		{
-			return npcIndex;
-		}
-
-		int getPredictedDeathTick()
-		{
-			return predictedDeathTick;
-		}
-
-		boolean isUnknownTtk()
-		{
-			return unknownTtk;
-		}
-
-		int getActualDeathTick()
-		{
-			return actualDeathTick;
-		}
+		state.actualDeathTick = state.actualDeathTick < 0
+				? deathTick
+				: Math.min(state.actualDeathTick, deathTick);
 	}
 
 	private static class State
 	{
 		private final int healerOrder;
 		private boolean spawned;
-		private boolean localSpawned;
-		private boolean partySpawned;
 		private int npcIndex = UNKNOWN_TICK;
 		private int[] localFoodFedByCall = new int[SYNC_CALL_COUNT];
 		private int[] localLastFoodElapsedByCall = filledArray(SYNC_CALL_COUNT, UNKNOWN_TICK);
-		private boolean localPrediction;
 		private int predictedDeathTick = UNKNOWN_TICK;
 		private boolean unknownTtk;
-		private boolean localDeath;
 		private int actualDeathTick = UNKNOWN_TICK;
 		private int observedTick = UNKNOWN_TICK;
 
 		private State(int healerOrder)
 		{
 			this.healerOrder = healerOrder;
-		}
-
-		private boolean hasLocalData()
-		{
-			return localSpawned || localTotalFoodFed() > 0 || localPrediction || localDeath;
 		}
 
 		private int callCount()
@@ -333,18 +284,6 @@ class HealerSharedState
 			for (int callIndex = 0; callIndex < callCount(); callIndex++)
 			{
 				total += foodFed(callIndex);
-			}
-
-			return total;
-		}
-
-		private int localTotalFoodFed()
-		{
-			int total = 0;
-
-			for (int count : localFoodFedByCall)
-			{
-				total += count;
 			}
 
 			return total;
