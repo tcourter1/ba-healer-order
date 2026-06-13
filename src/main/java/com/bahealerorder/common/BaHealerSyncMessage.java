@@ -12,9 +12,11 @@ public class BaHealerSyncMessage extends PartyMemberMessage
 	int wave;
 	int npcIndex;
 	int healerOrder;
+	int spawnTick;
 	int currentCallIndex;
 	int predictedDeathTick;
 	boolean unknownTtk;
 	int actualDeathTick;
 	int observedTick;
+	int[] foodTicks;
 }

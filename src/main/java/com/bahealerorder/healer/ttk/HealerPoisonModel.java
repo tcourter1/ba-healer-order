@@ -7,7 +7,7 @@ public class HealerPoisonModel
 	static final int TICKS_PER_POISON_HIT = 5;
 	static final int HITS_PER_POISON_DAMAGE = 5;
 	private static final int INITIAL_POISON_DAMAGE = 4;
-	private static final int TOTAL_POISON_HITS = INITIAL_POISON_DAMAGE * HITS_PER_POISON_DAMAGE;
+	static final int TOTAL_POISON_HITS = INITIAL_POISON_DAMAGE * HITS_PER_POISON_DAMAGE;
 
 	public OptionalInt calculateDeathTick(int currentHp, int firstPoisonTick, int lastFoodTick, int currentTick)
 	{
@@ -58,7 +58,7 @@ public class HealerPoisonModel
 		return lastFoodTick + poisonHitNumber * TICKS_PER_POISON_HIT;
 	}
 
-	private static int getDamageAtPoisonTick(int lastFoodTick, int poisonTick)
+	static int getDamageAtPoisonTick(int lastFoodTick, int poisonTick)
 	{
 		int elapsedTicks = poisonTick - lastFoodTick;
 
