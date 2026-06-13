@@ -1,84 +1,105 @@
 package com.bahealerorder.healer.ttk;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 class HealerTtkState
 {
 	private static final int FOOD_DAMAGE = 4;
+	private static final int UNKNOWN_TICK = -1;
 
 	private final int npcIndex;
-	private final HealerPoisonModel poisonModel;
+	private final List<Integer> foodTicks = new ArrayList<>();
 	private int healerOrder;
 	private int spawnTick;
-	private int confirmedFoodCount;
-	private int firstPoisonTick = -1;
-	private int lastFoodTick = -1;
-	private int currentHpTick = -1;
-	private Integer currentHp;
-	private Integer maxHp;
+	private int maxHp;
+	private int firstPoisonTick = UNKNOWN_TICK;
 
-	HealerTtkState(int npcIndex, int healerOrder, int spawnTick, HealerPoisonModel poisonModel)
+	HealerTtkState(int npcIndex, int healerOrder, int spawnTick, int maxHp)
 	{
 		this.npcIndex = npcIndex;
 		this.healerOrder = healerOrder;
 		this.spawnTick = spawnTick;
-		this.poisonModel = poisonModel;
+		this.maxHp = maxHp;
 	}
 
-	void updateSpawn(int healerOrder, int spawnTick)
+	void updateSpawn(int healerOrder, int spawnTick, int maxHp)
 	{
 		this.healerOrder = healerOrder;
 		this.spawnTick = spawnTick;
+		this.maxHp = maxHp;
 	}
 
 	void recordFoodConsumed(int tick, int waveStartTick)
 	{
-		confirmedFoodCount++;
-		if (firstPoisonTick < 0)
-		{
-			firstPoisonTick = calculateFirstPoisonTick(tick, waveStartTick);
-		}
-		lastFoodTick = tick;
+		foodTicks.add(tick);
+		Collections.sort(foodTicks);
 
-		if (currentHp != null)
+		if (!foodTicks.isEmpty())
 		{
-			currentHp = Math.max(currentHp - FOOD_DAMAGE, 0);
-			currentHpTick = tick;
+			firstPoisonTick = calculateFirstPoisonTick(foodTicks.get(0), waveStartTick);
 		}
-	}
-
-	void observeHp(int tick, ObservedHealerHp hp)
-	{
-		if (currentHp == null || hp.getCurrentHp() < currentHp)
-		{
-			currentHp = hp.getCurrentHp();
-			currentHpTick = tick;
-		}
-
-		maxHp = hp.getMaxHp();
 	}
 
 	Optional<HealerTtkResult> getTtk(int currentTick)
 	{
-		if (currentHp == null || confirmedFoodCount <= 0 || firstPoisonTick < 0 || lastFoodTick < 0 || currentHpTick < 0)
+		if (maxHp <= 0 || foodTicks.isEmpty() || firstPoisonTick < 0)
 		{
 			return Optional.empty();
 		}
 
-		return poisonModel.calculateDeathTick(currentHp, firstPoisonTick, lastFoodTick, currentHpTick)
-				.stream()
-				.mapToObj(HealerTtkResult::new)
-				.findFirst();
+		int deathTick = calculateDeathTick();
+		return deathTick < 0 ? Optional.empty() : Optional.of(new HealerTtkResult(deathTick));
 	}
 
 	boolean hasPoisonedHealerWithUnknownTtk()
 	{
-		if (currentHp == null || confirmedFoodCount <= 0 || firstPoisonTick < 0 || lastFoodTick < 0 || currentHpTick < 0)
-		{
-			return false;
-		}
+		return maxHp > 0 && !foodTicks.isEmpty() && firstPoisonTick >= 0 && calculateDeathTick() < 0;
+	}
 
-		return !poisonModel.calculateDeathTick(currentHp, firstPoisonTick, lastFoodTick, currentHpTick).isPresent();
+	private int calculateDeathTick()
+	{
+		int hp = maxHp;
+		int foodIndex = 0;
+		int lastFoodTick = UNKNOWN_TICK;
+		int poisonTick = firstPoisonTick;
+
+		while (true)
+		{
+			int nextFoodTick = foodIndex < foodTicks.size() ? foodTicks.get(foodIndex) : Integer.MAX_VALUE;
+			boolean poisonCanHit = lastFoodTick >= 0
+					&& poisonTick <= lastFoodTick + HealerPoisonModel.TOTAL_POISON_HITS * HealerPoisonModel.TICKS_PER_POISON_HIT;
+			int nextPoisonTick = poisonCanHit ? poisonTick : Integer.MAX_VALUE;
+
+			if (nextFoodTick == Integer.MAX_VALUE && nextPoisonTick == Integer.MAX_VALUE)
+			{
+				return UNKNOWN_TICK;
+			}
+
+			if (nextPoisonTick <= nextFoodTick)
+			{
+				int damage = HealerPoisonModel.getDamageAtPoisonTick(lastFoodTick, poisonTick);
+				if (damage > 0)
+				{
+					hp -= damage;
+					if (hp <= 0) return poisonTick;
+				}
+
+				poisonTick += HealerPoisonModel.TICKS_PER_POISON_HIT;
+				continue;
+			}
+
+			while (foodIndex < foodTicks.size() && foodTicks.get(foodIndex) == nextFoodTick)
+			{
+				hp -= FOOD_DAMAGE;
+				lastFoodTick = nextFoodTick;
+				foodIndex++;
+
+				if (hp <= 0) return nextFoodTick;
+			}
+		}
 	}
 
 	private int calculateFirstPoisonTick(int firstFoodTick, int waveStartTick)
@@ -109,17 +130,12 @@ class HealerTtkState
 
 	int getConfirmedFoodCount()
 	{
-		return confirmedFoodCount;
+		return foodTicks.size();
 	}
 
 	int getFirstPoisonTick()
 	{
 		return firstPoisonTick;
-	}
-
-	Integer getCurrentHp()
-	{
-		return currentHp;
 	}
 
 	Integer getMaxHp()

@@ -17,6 +17,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -241,7 +242,7 @@ public class HealerController
 		visibleHealers.put(npc, order);
 
 		ttkTracker.onHealerSpawned(npcIndex, order, client.getTickCount());
-		sharedState.recordLocalSpawn(order, npcIndex);
+		sharedState.recordLocalSpawn(order, npcIndex, getCurrentWaveTick());
 		sendHealerSyncForOrder(order);
 
 		if (addedNewIndex)
@@ -345,7 +346,6 @@ public class HealerController
 		{
 			updateCallIndexFromHealerWidget();
 			updateDeadHealerOrders();
-			ttkTracker.observeVisibleHealers(visibleHealers.keySet(), client.getTickCount());
 			updateVisibleHealerTtkState();
 		}
 
@@ -373,6 +373,7 @@ public class HealerController
 		}
 
 		sharedState.updateFromParty(event, !hasLocalTtkForOrder(event.getHealerOrder()));
+		recordPartyHealerFood(event);
 		rebuildVisibleHealerOrders();
 	}
 
@@ -1052,7 +1053,7 @@ public class HealerController
 		this.waveStartTimeMs = System.currentTimeMillis();
 		resetWaveTrackedState();
 		sharedState.startWave(waveNumber);
-		ttkTracker.startWave(client.getTickCount());
+		ttkTracker.startWave(client.getTickCount(), waveNumber);
 
 		log.debug("Starting new BA wave {}", waveNumber);
 	}
@@ -1181,11 +1182,13 @@ public class HealerController
 				currentWave,
 				npcIndex,
 				healerOrder,
+				sharedState.getSpawnTick(healerOrder),
 				currentCallIndex,
 				predictedDeathTick == null ? -1 : predictedDeathTick,
 				localTtk.hasValue() && predictedDeathTick == null && sharedState.hasUnknownTtk(healerOrder),
 				actualDeathTick == null ? -1 : actualDeathTick,
-				getCurrentWaveTick()
+				getCurrentWaveTick(),
+				sharedState.getLocalFoodTicks(healerOrder)
 		);
 	}
 
@@ -1194,10 +1197,42 @@ public class HealerController
 		return message.getWave()
 				+ ":" + message.getNpcIndex()
 				+ ":" + message.getHealerOrder()
+				+ ":" + message.getSpawnTick()
 				+ ":" + message.getCurrentCallIndex()
 				+ ":" + message.getPredictedDeathTick()
 				+ ":" + message.isUnknownTtk()
-				+ ":" + message.getActualDeathTick();
+				+ ":" + message.getActualDeathTick()
+				+ ":" + Arrays.toString(message.getFoodTicks());
+	}
+
+	private void recordPartyHealerFood(BaHealerSyncMessage event)
+	{
+		if (event.getNpcIndex() < 0 || event.getSpawnTick() < 0) return;
+
+		int waveStartTick = ttkTracker.getWaveStartTick();
+		if (waveStartTick < 0) return;
+
+		ttkTracker.onHealerSpawned(
+				event.getNpcIndex(),
+				event.getHealerOrder(),
+				waveStartTick + event.getSpawnTick()
+		);
+
+		List<Integer> newFoodTicks = sharedState.recordPartyFoodTicks(
+				event.getMemberId(),
+				event.getHealerOrder(),
+				event.getFoodTicks()
+		);
+
+		for (int foodTick : newFoodTicks)
+		{
+			ttkTracker.onFoodConsumedForHealer(event.getNpcIndex(), waveStartTick + foodTick);
+		}
+
+		if (!newFoodTicks.isEmpty())
+		{
+			updateHealerTtkState(event.getHealerOrder());
+		}
 	}
 
 	private LocalTtkSync getLocalTtkSync(int healerOrder)
@@ -2059,7 +2094,7 @@ public class HealerController
 
 		if (currentOrder != null)
 		{
-			sharedState.recordLocalFood(currentOrder, currentCallIndex, Math.round(getCurrentWaveElapsedSeconds()));
+			sharedState.recordLocalFood(currentOrder, currentCallIndex, Math.round(getCurrentWaveElapsedSeconds()), getCurrentWaveTick());
 			updateHealerTtkState(currentOrder);
 			sendHealerSyncForOrder(currentOrder);
 		}

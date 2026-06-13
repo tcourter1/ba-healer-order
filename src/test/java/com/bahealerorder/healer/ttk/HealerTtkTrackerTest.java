@@ -3,167 +3,124 @@ package com.bahealerorder.healer.ttk;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 public class HealerTtkTrackerTest
 {
 	@Test
-	public void foodDoesNotDisplayTtkBeforeCurrentHpIsKnown()
+	public void waveOneSingleFoodDiesFromKnownMaxHp()
 	{
-		HealerTtkTracker tracker = new HealerTtkTracker(new HealerPoisonModel());
-		tracker.startWave(0);
+		HealerTtkTracker tracker = new HealerTtkTracker();
+		tracker.startWave(0, 1);
 		tracker.onHealerSpawned(10, 1, 0);
-		tracker.onFoodConsumedForHealer(10, 100);
+		tracker.onFoodConsumedForHealer(10, 0);
 
-		assertFalse(tracker.getTtk(10, 100).isPresent());
-		assertEquals(1, tracker.getState(10).getConfirmedFoodCount());
-	}
-
-	@Test
-	public void firstFoodUsesObservedCurrentHp()
-	{
-		HealerTtkTracker tracker = new HealerTtkTracker(new HealerPoisonModel());
-		tracker.startWave(0);
-		tracker.onHealerSpawned(10, 1, 0);
-		tracker.onFoodConsumedForHealer(10, 100);
-		tracker.observeHp(10, 100, new ObservedHealerHp(46, 50));
-
-		HealerTtkResult result = tracker.getTtk(10, 100).orElse(null);
+		HealerTtkResult result = tracker.getTtk(10, 0).orElse(null);
 
 		assertNotNull(result);
-		assertEquals(Integer.valueOf(46), tracker.getState(10).getCurrentHp());
-		assertEquals(180, result.getDeathTick());
+		assertEquals(27, tracker.getState(10).getMaxHp().intValue());
+		assertEquals(30, result.getDeathTick());
 	}
 
 	@Test
-	public void confirmedFoodDoesNotDisplayWhenCurrentHpCannotBeKilledByRemainingPoison()
+	public void waveTenSingleFoodCannotKillHealer()
 	{
-		HealerTtkTracker tracker = new HealerTtkTracker(new HealerPoisonModel());
-		tracker.startWave(0);
+		HealerTtkTracker tracker = new HealerTtkTracker();
+		tracker.startWave(0, 10);
 		tracker.onHealerSpawned(10, 1, 0);
-		tracker.onFoodConsumedForHealer(10, 100);
-		tracker.observeHp(10, 100, new ObservedHealerHp(51, 60));
+		tracker.onFoodConsumedForHealer(10, 0);
 
-		assertFalse(tracker.getTtk(10, 100).isPresent());
+		assertFalse(tracker.getTtk(10, 0).isPresent());
+		assertTrue(tracker.hasPoisonedHealerWithUnknownTtk(10));
 	}
 
 	@Test
-	public void repeatedFoodRefreshesDamageWithoutChangingCurrentHp()
+	public void repeatedFoodRefreshesDamageAndSubtractsFoodDamage()
 	{
-		HealerTtkTracker tracker = new HealerTtkTracker(new HealerPoisonModel());
-		tracker.startWave(0);
+		HealerTtkTracker tracker = new HealerTtkTracker();
+		tracker.startWave(0, 10);
 		tracker.onHealerSpawned(10, 1, 0);
-		tracker.onFoodConsumedForHealer(10, 100);
-		tracker.onFoodConsumedForHealer(10, 119);
-		tracker.observeHp(10, 119, new ObservedHealerHp(4, 24));
+		tracker.onFoodConsumedForHealer(10, 0);
+		tracker.onFoodConsumedForHealer(10, 25);
 
-		HealerTtkResult result = tracker.getTtk(10, 119).orElse(null);
+		HealerTtkResult result = tracker.getTtk(10, 25).orElse(null);
 
 		assertNotNull(result);
 		assertEquals(2, tracker.getState(10).getConfirmedFoodCount());
-		assertEquals(Integer.valueOf(4), tracker.getState(10).getCurrentHp());
-		assertEquals(120, result.getDeathTick());
+		assertEquals(70, result.getDeathTick());
 	}
 
 	@Test
-	public void repeatedFoodImmediatelySubtractsFoodDamageFromObservedHp()
+	public void outOfOrderFoodEventsReplayChronologically()
 	{
-		HealerTtkTracker tracker = new HealerTtkTracker(new HealerPoisonModel());
-		tracker.startWave(0);
+		HealerTtkTracker tracker = new HealerTtkTracker();
+		tracker.startWave(0, 10);
 		tracker.onHealerSpawned(10, 1, 0);
-		tracker.onFoodConsumedForHealer(10, 100);
-		tracker.observeHp(10, 118, new ObservedHealerHp(8, 24));
+		tracker.onFoodConsumedForHealer(10, 25);
+		tracker.onFoodConsumedForHealer(10, 0);
 
-		tracker.onFoodConsumedForHealer(10, 119);
-
-		assertEquals(Integer.valueOf(4), tracker.getState(10).getCurrentHp());
-		assertEquals(120, tracker.getTtk(10, 119).get().getDeathTick());
+		assertEquals(70, tracker.getTtk(10, 25).get().getDeathTick());
 	}
 
 	@Test
-	public void staleHigherHpEstimateDoesNotUndoCountedFoodDamage()
+	public void sameTickFoodEventsBothCount()
 	{
-		HealerTtkTracker tracker = new HealerTtkTracker(new HealerPoisonModel());
-		tracker.startWave(0);
+		HealerTtkTracker tracker = new HealerTtkTracker();
+		tracker.startWave(0, 1);
 		tracker.onHealerSpawned(10, 1, 0);
-		tracker.onFoodConsumedForHealer(10, 100);
-		tracker.observeHp(10, 118, new ObservedHealerHp(8, 24));
-		tracker.onFoodConsumedForHealer(10, 119);
+		tracker.onFoodConsumedForHealer(10, 0);
+		tracker.onFoodConsumedForHealer(10, 0);
 
-		tracker.observeHp(10, 119, new ObservedHealerHp(8, 24));
-
-		assertEquals(Integer.valueOf(4), tracker.getState(10).getCurrentHp());
-		assertEquals(120, tracker.getTtk(10, 119).get().getDeathTick());
+		assertEquals(25, tracker.getTtk(10, 0).get().getDeathTick());
 	}
 
 	@Test
-	public void currentHpCanArriveAfterFoodHasBeenCounted()
+	public void sameTickRepoisonDoesNotEraseExistingPoisonHit()
 	{
-		HealerTtkTracker tracker = new HealerTtkTracker(new HealerPoisonModel());
-		tracker.startWave(0);
+		HealerTtkTracker tracker = new HealerTtkTracker();
+		tracker.startWave(0, 2);
 		tracker.onHealerSpawned(10, 1, 0);
-		tracker.onFoodConsumedForHealer(10, 100);
-		tracker.observeHp(10, 100, new ObservedHealerHp(46, 50));
+		tracker.onFoodConsumedForHealer(10, 0);
+		tracker.onFoodConsumedForHealer(10, 25);
 
-		assertEquals(180, tracker.getTtk(10, 100).get().getDeathTick());
-	}
-
-	@Test
-	public void sameHpObservedLaterDoesNotMoveDeathTick()
-	{
-		HealerTtkTracker tracker = new HealerTtkTracker(new HealerPoisonModel());
-		tracker.startWave(0);
-		tracker.onHealerSpawned(10, 1, 0);
-		tracker.onFoodConsumedForHealer(10, 100);
-		tracker.observeHp(10, 119, new ObservedHealerHp(4, 50));
-
-		assertEquals(120, tracker.getTtk(10, 119).get().getDeathTick());
-
-		tracker.observeHp(10, 120, new ObservedHealerHp(4, 50));
-
-		assertEquals(120, tracker.getTtk(10, 120).get().getDeathTick());
-	}
-
-	@Test
-	public void changedHpMovesDeathTick()
-	{
-		HealerTtkTracker tracker = new HealerTtkTracker(new HealerPoisonModel());
-		tracker.startWave(0);
-		tracker.onHealerSpawned(10, 1, 0);
-		tracker.onFoodConsumedForHealer(10, 100);
-		tracker.observeHp(10, 119, new ObservedHealerHp(8, 50));
-
-		assertEquals(125, tracker.getTtk(10, 119).get().getDeathTick());
-
-		tracker.observeHp(10, 120, new ObservedHealerHp(4, 50));
-
-		assertEquals(125, tracker.getTtk(10, 120).get().getDeathTick());
+		assertEquals(30, tracker.getTtk(10, 25).get().getDeathTick());
 	}
 
 	@Test
 	public void earlyFoodUsesGlobalWaveCadence()
 	{
-		HealerTtkTracker tracker = new HealerTtkTracker(new HealerPoisonModel());
-		tracker.startWave(0);
+		HealerTtkTracker tracker = new HealerTtkTracker();
+		tracker.startWave(0, 1);
 		tracker.onHealerSpawned(10, 2, 20);
 		tracker.onFoodConsumedForHealer(10, 24);
-		tracker.observeHp(10, 24, new ObservedHealerHp(4, 24));
 
 		assertEquals(25, tracker.getState(10).getFirstPoisonTick());
-		assertEquals(25, tracker.getTtk(10, 24).get().getDeathTick());
+		assertEquals(50, tracker.getTtk(10, 24).get().getDeathTick());
 	}
 
 	@Test
 	public void lateFoodUsesFoodRelativeCadence()
 	{
-		HealerTtkTracker tracker = new HealerTtkTracker(new HealerPoisonModel());
-		tracker.startWave(0);
+		HealerTtkTracker tracker = new HealerTtkTracker();
+		tracker.startWave(0, 1);
 		tracker.onHealerSpawned(10, 2, 20);
 		tracker.onFoodConsumedForHealer(10, 26);
-		tracker.observeHp(10, 26, new ObservedHealerHp(4, 24));
 
 		assertEquals(31, tracker.getState(10).getFirstPoisonTick());
-		assertEquals(31, tracker.getTtk(10, 26).get().getDeathTick());
+		assertEquals(56, tracker.getTtk(10, 26).get().getDeathTick());
+	}
+
+	@Test
+	public void invalidWaveDoesNotDisplayTtk()
+	{
+		HealerTtkTracker tracker = new HealerTtkTracker();
+		tracker.startWave(0, 0);
+		tracker.onHealerSpawned(10, 1, 0);
+		tracker.onFoodConsumedForHealer(10, 0);
+
+		assertFalse(tracker.getTtk(10, 0).isPresent());
+		assertFalse(tracker.hasPoisonedHealerWithUnknownTtk(10));
 	}
 }

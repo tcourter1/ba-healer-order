@@ -4,9 +4,12 @@ import com.bahealerorder.common.BaHealerSyncMessage;
 import com.bahealerorder.healer.codes.FeedEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 class HealerSharedState
 {
@@ -32,15 +35,19 @@ class HealerSharedState
 		this.wave = wave;
 	}
 
-	void recordLocalSpawn(int healerOrder, int npcIndex)
+	void recordLocalSpawn(int healerOrder, int npcIndex, int spawnTick)
 	{
-		recordSpawn(healerOrder, npcIndex);
+		recordSpawn(healerOrder, npcIndex, spawnTick);
 	}
 
-	private void recordSpawn(int healerOrder, int npcIndex)
+	private void recordSpawn(int healerOrder, int npcIndex, int spawnTick)
 	{
 		State state = state(healerOrder);
 		state.spawned = true;
+		if (spawnTick >= 0)
+		{
+			state.spawnTick = state.spawnTick < 0 ? spawnTick : Math.min(state.spawnTick, spawnTick);
+		}
 
 		if (npcIndex >= 0)
 		{
@@ -54,12 +61,17 @@ class HealerSharedState
 		currentCallIndex = Math.max(currentCallIndex, callIndex);
 	}
 
-	void recordLocalFood(int healerOrder, int callIndex, int elapsedSeconds)
+	void recordLocalFood(int healerOrder, int callIndex, int elapsedSeconds, int foodTick)
 	{
 		State state = state(healerOrder);
 		state.ensureCallCapacity(callIndex + 1);
 		state.localFoodFedByCall[callIndex]++;
 		state.localLastFoodElapsedByCall[callIndex] = Math.max(state.localLastFoodElapsedByCall[callIndex], elapsedSeconds);
+		if (foodTick >= 0)
+		{
+			state.localFoodTicks.add(foodTick);
+			Collections.sort(state.localFoodTicks);
+		}
 	}
 
 	void recordPrediction(int healerOrder, int predictedDeathTick, boolean unknownTtk, int observedTick)
@@ -94,7 +106,7 @@ class HealerSharedState
 		startWave(message.getWave());
 		currentCallIndex = Math.max(currentCallIndex, message.getCurrentCallIndex());
 
-		recordSpawn(message.getHealerOrder(), message.getNpcIndex());
+		recordSpawn(message.getHealerOrder(), message.getNpcIndex(), message.getSpawnTick());
 		State state = state(message.getHealerOrder());
 
 		if (message.getActualDeathTick() >= 0)
@@ -141,6 +153,12 @@ class HealerSharedState
 	{
 		State state = stateOrNull(healerOrder);
 		return state == null ? UNKNOWN_TICK : state.npcIndex;
+	}
+
+	int getSpawnTick(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state == null ? UNKNOWN_TICK : state.spawnTick;
 	}
 
 	boolean isDead(int healerOrder)
@@ -215,6 +233,40 @@ class HealerSharedState
 		return feedEvents;
 	}
 
+	int[] getLocalFoodTicks(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		if (state == null || state.localFoodTicks.isEmpty()) return new int[0];
+
+		int[] ticks = new int[state.localFoodTicks.size()];
+		for (int i = 0; i < state.localFoodTicks.size(); i++)
+		{
+			ticks[i] = state.localFoodTicks.get(i);
+		}
+
+		return ticks;
+	}
+
+	List<Integer> recordPartyFoodTicks(long memberId, int healerOrder, int[] foodTicks)
+	{
+		List<Integer> newFoodTicks = new ArrayList<>();
+		if (foodTicks == null || foodTicks.length == 0) return newFoodTicks;
+
+		State state = state(healerOrder);
+		Set<Integer> memberTicks = state.partyFoodTicksByMember.computeIfAbsent(memberId, ignored -> new HashSet<>());
+
+		for (int foodTick : foodTicks)
+		{
+			if (foodTick >= 0 && memberTicks.add(foodTick))
+			{
+				newFoodTicks.add(foodTick);
+			}
+		}
+
+		Collections.sort(newFoodTicks);
+		return newFoodTicks;
+	}
+
 	private State state(int healerOrder)
 	{
 		return statesByOrder.computeIfAbsent(healerOrder, State::new);
@@ -250,8 +302,11 @@ class HealerSharedState
 		private final int healerOrder;
 		private boolean spawned;
 		private int npcIndex = UNKNOWN_TICK;
+		private int spawnTick = UNKNOWN_TICK;
 		private int[] localFoodFedByCall = new int[SYNC_CALL_COUNT];
 		private int[] localLastFoodElapsedByCall = filledArray(SYNC_CALL_COUNT, UNKNOWN_TICK);
+		private final List<Integer> localFoodTicks = new ArrayList<>();
+		private final Map<Long, Set<Integer>> partyFoodTicksByMember = new HashMap<>();
 		private int predictedDeathTick = UNKNOWN_TICK;
 		private boolean unknownTtk;
 		private int actualDeathTick = UNKNOWN_TICK;
