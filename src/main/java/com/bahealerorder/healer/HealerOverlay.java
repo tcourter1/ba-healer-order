@@ -34,6 +34,10 @@ public class HealerOverlay extends Overlay
 	private static final float TILE_STROKE_WIDTH = 1.0f;
 	private static final int TILE_ALPHA = 50;
 	private static final int TTK_Y_OFFSET = 33;
+	private static final int HEALER_LABEL_TEXT_SIZE = 16;
+	private static final int STACKED_LABEL_SPACING = 28;
+	private static final int FOOD_COUNT_TEXT_SIZE = 16;
+	private static final int FOOD_COUNT_Z_OFFSET = 35;
 
 	private HealerController controller;
 	private final BaUtilitiesConfig config;
@@ -159,7 +163,7 @@ public class HealerOverlay extends Overlay
 
 	private int getStackedLabelXOffset(int stackIndex, int stackSize)
 	{
-		return (int) Math.round((stackIndex - ((stackSize - 1) / 2.0)) * config.stackedLabelSpacing());
+		return (int) Math.round((stackIndex - ((stackSize - 1) / 2.0)) * STACKED_LABEL_SPACING);
 	}
 
 	private void renderHighlight(Graphics2D graphics, NPC npc)
@@ -274,8 +278,8 @@ public class HealerOverlay extends Overlay
 
 		Font originalFont = graphics.getFont();
 
-		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.textSize()));
-		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, config.textColor());
+		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) HEALER_LABEL_TEXT_SIZE));
+		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, config.hullColor());
 		graphics.setFont(originalFont);
 	}
 
@@ -286,7 +290,7 @@ public class HealerOverlay extends Overlay
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,
 				text,
-				(npc.getLogicalHeight() / 2) + config.foodCountZOffset()
+				(npc.getLogicalHeight() / 2) + FOOD_COUNT_Z_OFFSET
 		);
 
 		if (textLocation == null)
@@ -296,18 +300,18 @@ public class HealerOverlay extends Overlay
 
 		Font originalFont = graphics.getFont();
 
-		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.foodCountTextSize()));
+		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) FOOD_COUNT_TEXT_SIZE));
 		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, controller.getFoodCountColor(healerOrder, foodFed));
 		graphics.setFont(originalFont);
 	}
 
 	private void renderHealerTtk(Graphics2D graphics, NPC npc, String text, int xOffset, boolean hasFoodCount)
 	{
-		int zOffset = (npc.getLogicalHeight() / 2) + config.foodCountZOffset();
+		int zOffset = (npc.getLogicalHeight() / 2) + FOOD_COUNT_Z_OFFSET;
 
 		if (hasFoodCount)
 		{
-			zOffset -= config.foodCountTextSize() + 4;
+			zOffset -= FOOD_COUNT_TEXT_SIZE + 4;
 		}
 
 		Point textLocation = npc.getCanvasTextLocation(graphics, text, zOffset);
@@ -319,7 +323,7 @@ public class HealerOverlay extends Overlay
 
 		Font originalFont = graphics.getFont();
 
-		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) config.foodCountTextSize()));
+		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) FOOD_COUNT_TEXT_SIZE));
 		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset, TTK_Y_OFFSET), text, controller.getHealerTtkColor());
 		graphics.setFont(originalFont);
 	}

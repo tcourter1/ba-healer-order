@@ -156,6 +156,7 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onConfigChanged(ConfigChanged event)
 	{
 		partySyncService.onConfigChanged(event);
+		healerController.onConfigChanged(event);
 	}
 
 	@Subscribe

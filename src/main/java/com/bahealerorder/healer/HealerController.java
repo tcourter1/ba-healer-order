@@ -62,6 +62,7 @@ import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.Hooks;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.NpcUtil;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.ui.ClientToolbar;
@@ -95,6 +96,10 @@ public class HealerController
 	private static final int BA_HORN_OF_GLORY_DEFENDER_CHILD_ID = 6;
 
 	private static final Color CALLED_FOOD_MENU_COLOR = Color.GREEN;
+	private static final Color NOT_STARTED_CODE_COLOR = new Color(255, 60, 60);
+	private static final Color IN_PROGRESS_CODE_COLOR = new Color(255, 150, 0);
+	private static final Color COMPLETE_CODE_COLOR = new Color(0, 220, 0);
+	private static final Color PREVIOUS_CODE_COLOR = new Color(150, 150, 150);
 
 	private static final Pattern WAVE_START_PATTERN = Pattern.compile(".*\\bwave:\\s*(\\d+)\\b.*");
 	private static final Pattern WAVE_PATTERN = Pattern.compile(".*----\\s*wave:\\s*(10|[1-9])\\s*----.*", Pattern.CASE_INSENSITIVE);
@@ -196,26 +201,26 @@ public class HealerController
 		mouseManager.registerMouseListener(foodOverlay);
 		overlayManager.add(overlay);
 		overlayManager.add(foodOverlay);
-		navigationButton = NavigationButton.builder()
-				.tooltip("BA Healer Utilities")
-				.icon(createPanelIcon())
-				.priority(10)
-				.panel(panel)
-				.build();
-		clientToolbar.addNavigation(navigationButton);
+		updateNavigationButton();
 	}
 	public void shutDown()
 	{
-		if (navigationButton != null)
-		{
-			clientToolbar.removeNavigation(navigationButton);
-			navigationButton = null;
-		}
+		removeNavigationButton();
 		overlayManager.remove(foodOverlay);
 		overlayManager.remove(overlay);
 		mouseManager.unregisterMouseListener(foodOverlay);
 		hooks.unregisterRenderableDrawListener(drawListener);
 		resetAllState();
+	}
+
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (!BaUtilitiesConfig.GROUP_NAME.equals(event.getGroup())) return;
+
+		if ("hideSidePanelButton".equals(event.getKey()))
+		{
+			updateNavigationButton();
+		}
 	}
 	public void onNpcSpawned(NpcSpawned event)
 	{
@@ -818,7 +823,7 @@ public class HealerController
 
 	private Color getFoodPanelCodeStatusColor(CodeDisplayState state)
 	{
-		return state == CodeDisplayState.PREVIOUS ? config.completeCodeColor() : getCodeStatusColor(state);
+		return state == CodeDisplayState.PREVIOUS ? COMPLETE_CODE_COLOR : getCodeStatusColor(state);
 	}
 
 	public boolean hasHealerSpawned(int healerOrder)
@@ -948,20 +953,20 @@ public class HealerController
 	{
 		if (state == CodeDisplayState.COMPLETE)
 		{
-			return config.completeCodeColor();
+			return COMPLETE_CODE_COLOR;
 		}
 
 		if (state == CodeDisplayState.PREVIOUS)
 		{
-			return config.previousCodeColor();
+			return PREVIOUS_CODE_COLOR;
 		}
 
 		if (state == CodeDisplayState.IN_PROGRESS)
 		{
-			return config.inProgressCodeColor();
+			return IN_PROGRESS_CODE_COLOR;
 		}
 
-		return config.notStartedCodeColor();
+		return NOT_STARTED_CODE_COLOR;
 	}
 
 	private CodeDisplayState getFallbackCodeState(int foodFed, int expected)
@@ -1018,7 +1023,7 @@ public class HealerController
 		if (shouldShowMenuLabel()
 				&& config.healerLabelStyle() != BaUtilitiesConfig.HealerLabelStyle.NONE)
 		{
-			parts.add(ColorUtil.wrapWithColorTag("(" + getHealerLabel(healerOrder) + ")", config.textColor()));
+			parts.add(ColorUtil.wrapWithColorTag("(" + getHealerLabel(healerOrder) + ")", config.hullColor()));
 		}
 
 		if (shouldShowMenuCode())
@@ -1260,7 +1265,7 @@ public class HealerController
 
 	private boolean shouldShowMenuCode()
 	{
-		return config.showMenuCode() && isHealerRole();
+		return config.showMenuLabel() && isHealerRole();
 	}
 
 	private boolean shouldDrawRenderable(Renderable renderable, boolean drawingUi)
@@ -1515,9 +1520,11 @@ public class HealerController
 
 	private void applyDispenserMenuOptions(boolean forceHighlightTopEntry)
 	{
+		BaUtilitiesConfig.DispenserOptions dispenserOptions = config.dispenserOptions();
+
 		if (!config.highlightCalledDispenserFood()
-				&& !config.removeTakeVial()
-				&& !config.moveTakeMeatUp()) return;
+				&& !dispenserOptions.removeTakeVial()
+				&& !dispenserOptions.moveTakeMeatUp()) return;
 
 		if (!isHealerRole()) return;
 
@@ -1553,7 +1560,7 @@ public class HealerController
 				continue;
 			}
 
-			if (config.removeTakeVial() && TAKE_VIAL_OPTION.equals(optionText))
+			if (dispenserOptions.removeTakeVial() && TAKE_VIAL_OPTION.equals(optionText))
 			{
 				changed = true;
 				continue;
@@ -1564,7 +1571,7 @@ public class HealerController
 
 		MenuEntry[] updatedEntries = nextEntries.toArray(new MenuEntry[0]);
 
-		if (config.moveTakeMeatUp())
+		if (dispenserOptions.moveTakeMeatUp())
 		{
 			MenuEntry[] movedEntries = moveTakeMeatUp(updatedEntries);
 
@@ -2287,6 +2294,33 @@ public class HealerController
 		resetWaveState();
 		currentWave = -1;
 		inGameBit = 0;
+	}
+
+	private void updateNavigationButton()
+	{
+		if (config.hideSidePanelButton())
+		{
+			removeNavigationButton();
+			return;
+		}
+
+		if (navigationButton != null) return;
+
+		navigationButton = NavigationButton.builder()
+				.tooltip("BA Utilities")
+				.icon(createPanelIcon())
+				.priority(10)
+				.panel(panel)
+				.build();
+		clientToolbar.addNavigation(navigationButton);
+	}
+
+	private void removeNavigationButton()
+	{
+		if (navigationButton == null) return;
+
+		clientToolbar.removeNavigation(navigationButton);
+		navigationButton = null;
 	}
 
 	private BufferedImage createPanelIcon()

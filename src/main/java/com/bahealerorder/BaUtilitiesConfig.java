@@ -8,9 +8,11 @@ import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
 
-@ConfigGroup("bahealerorder")
+@ConfigGroup(BaUtilitiesConfig.GROUP_NAME)
 public interface BaUtilitiesConfig extends Config
 {
+	String GROUP_NAME = "bahealerorder";
+
 	@ConfigSection(
 			name = "General",
 			description = "General settings and settings that can apply to any BA role",
@@ -19,30 +21,16 @@ public interface BaUtilitiesConfig extends Config
 	String generalSection = "general";
 
 	@ConfigSection(
-			name = "Healer Highlight",
-			description = "Settings for healer highlighting and labels",
+			name = "Healer",
+			description = "Settings for healer highlighting, labels, food counts, and dispenser options",
 			position = 2
 	)
-	String healerHighlightSection = "healerHighlight";
-
-	@ConfigSection(
-			name = "Food Count",
-			description = "Settings for poisoned-food count tracking and display",
-			position = 3
-	)
-	String foodCountSection = "foodCount";
-
-	@ConfigSection(
-			name = "Dispenser Options",
-			description = "Utility helpers for the BA healer role",
-			position = 4
-	)
-	String dispenserOptionsSection = "dispenserOptions";
+	String healerSection = "healer";
 
 	@ConfigSection(
 			name = "Attacker",
 			description = "Utility helpers for the BA attacker role",
-			position = 5
+			position = 3
 	)
 	String attackerSection = "attacker";
 
@@ -169,6 +157,41 @@ public interface BaUtilitiesConfig extends Config
 		}
 	}
 
+	enum DispenserOptions
+	{
+		NONE("None", false, false),
+		REMOVE_TAKE_VIAL("Hide Vial", true, false),
+		MOVE_TAKE_MEAT_UP("Move Meat Up", false, true),
+		BOTH("Both", true, true);
+
+		private final String name;
+		private final boolean removeTakeVial;
+		private final boolean moveTakeMeatUp;
+
+		DispenserOptions(String name, boolean removeTakeVial, boolean moveTakeMeatUp)
+		{
+			this.name = name;
+			this.removeTakeVial = removeTakeVial;
+			this.moveTakeMeatUp = moveTakeMeatUp;
+		}
+
+		public boolean removeTakeVial()
+		{
+			return removeTakeVial;
+		}
+
+		public boolean moveTakeMeatUp()
+		{
+			return moveTakeMeatUp;
+		}
+
+		@Override
+		public String toString()
+		{
+			return name;
+		}
+	}
+
 	@ConfigItem(
 			keyName = "showAttackerSpawnCountOverlay",
 			name = "Show Spawn Count Overlay",
@@ -245,7 +268,7 @@ public interface BaUtilitiesConfig extends Config
 			keyName = "highlightStyle",
 			name = "Highlight Style",
 			description = "Choose how tracked Penance Healers are highlighted",
-			section = healerHighlightSection,
+			section = healerSection,
 			position = 1
 	)
 	default HighlightStyle highlightStyle()
@@ -257,8 +280,8 @@ public interface BaUtilitiesConfig extends Config
 	@ConfigItem(
 			keyName = "hullColor",
 			name = "Highlight Color",
-			description = "Color used for the Penance Healer hull or tile highlight",
-			section = healerHighlightSection,
+			description = "Color used for Penance Healer highlights and labels",
+			section = healerSection,
 			position = 2
 	)
 	default Color hullColor()
@@ -266,41 +289,12 @@ public interface BaUtilitiesConfig extends Config
 		return new Color(0, 200, 200);
 	}
 
-	@Alpha
-	@ConfigItem(
-			keyName = "textColor",
-			name = "Text Color",
-			description = "Color used for the healer label above each Penance Healer",
-			section = healerHighlightSection,
-			position = 3
-	)
-	default Color textColor()
-	{
-		return new Color(0, 200, 200);
-	}
-
-	@Range(
-			min = 12,
-			max = 48
-	)
-	@ConfigItem(
-			keyName = "textSize",
-			name = "Text Size",
-			description = "Font size used for the healer label above each Penance Healer",
-			section = healerHighlightSection,
-			position = 4
-	)
-	default int textSize()
-	{
-		return 20;
-	}
-
 	@ConfigItem(
 			keyName = "healerLabelStyle",
 			name = "Label Style",
 			description = "Choose whether healer labels are hidden, spawn order, or time-based BA labels",
-			section = healerHighlightSection,
-			position = 5
+			section = healerSection,
+			position = 3
 	)
 	default HealerLabelStyle healerLabelStyle()
 	{
@@ -311,8 +305,8 @@ public interface BaUtilitiesConfig extends Config
 			keyName = "showLabelsAsHealerOnly",
 			name = "Show Labels as Healer Only",
 			description = "Only shows Penance Healer labels while playing the Healer role",
-			section = healerHighlightSection,
-			position = 6
+			section = healerSection,
+			position = 4
 	)
 	default boolean showLabelsAsHealerOnly()
 	{
@@ -323,8 +317,8 @@ public interface BaUtilitiesConfig extends Config
 			keyName = "hideDeadNpcs",
 			name = "Hide Dead NPCs",
 			description = "Hides selected BA NPCs immediately when they begin dying instead of waiting for their death animation to finish",
-			section = healerHighlightSection,
-			position = 7
+			section = generalSection,
+			position = 4
 	)
 	default HideDeadNpcMode hideDeadNpcs()
 	{
@@ -335,36 +329,20 @@ public interface BaUtilitiesConfig extends Config
 			keyName = "spreadStackedLabels",
 			name = "Spread Stacked Labels",
 			description = "Horizontally separates healer labels when multiple Penance Healers occupy the same tile",
-			section = healerHighlightSection,
-			position = 8
+			section = healerSection,
+			position = 6
 	)
 	default boolean spreadStackedLabels()
 	{
 		return true;
 	}
 
-	@Range(
-			min = 12,
-			max = 64
-	)
-	@ConfigItem(
-			keyName = "stackedLabelSpacing",
-			name = "Stacked Label Spacing",
-			description = "Horizontal pixel spacing used when spreading labels for stacked Penance Healers",
-			section = healerHighlightSection,
-			position = 9
-	)
-	default int stackedLabelSpacing()
-	{
-		return 28;
-	}
-
 	@ConfigItem(
 			keyName = "showMenuLabel",
 			name = "Show Menu Label",
-			description = "Adds the tracked healer label next to Penance Healers in the right-click menu",
-			section = healerHighlightSection,
-			position = 10
+			description = "Adds the tracked healer label and current healer code next to Penance Healers in the right-click menu",
+			section = healerSection,
+			position = 7
 	)
 	default boolean showMenuLabel()
 	{
@@ -372,23 +350,11 @@ public interface BaUtilitiesConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "showMenuCode",
-			name = "Show Menu Code",
-			description = "Adds the current healer code next to Penance Healers in the right-click menu",
-			section = healerHighlightSection,
-			position = 11
-	)
-	default boolean showMenuCode()
-	{
-		return false;
-	}
-
-	@ConfigItem(
 			keyName = "healerFoodOnly",
-			name = "Healer Food Only",
+			name = "Use-Food on Healers Only",
 			description = "When poisoned food is selected, only Penance Healer Use entries remain clickable",
-			section = healerHighlightSection,
-			position = 12
+			section = healerSection,
+			position = 8
 	)
 	default boolean healerFoodOnly()
 	{
@@ -397,10 +363,10 @@ public interface BaUtilitiesConfig extends Config
 
 	@ConfigItem(
 			keyName = "highlightCalledDispenserFood",
-			name = "Highlight Called Food",
+			name = "Dispenser Food Highlight",
 			description = "Highlights the correct Take option on the healer dispenser for the current food call",
-			section = dispenserOptionsSection,
-			position = 1
+			section = healerSection,
+			position = 9
 	)
 	default boolean highlightCalledDispenserFood()
 	{
@@ -408,47 +374,23 @@ public interface BaUtilitiesConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "removeTakeVial",
-			name = "Remove Take-Vial",
-			description = "Removes the Take-Vial option from the healer dispenser menu",
-			section = dispenserOptionsSection,
-			position = 2
+			keyName = "dispenserOptions",
+			name = "Dispenser Options",
+			description = "Optional healer dispenser menu cleanup",
+			section = healerSection,
+			position = 10
 	)
-	default boolean removeTakeVial()
+	default DispenserOptions dispenserOptions()
 	{
-		return false;
-	}
-
-	@ConfigItem(
-			keyName = "moveTakeMeatUp",
-			name = "Move Take-Meat up",
-			description = "Moves Take-Meat closer to the other healer food options",
-			section = dispenserOptionsSection,
-			position = 3
-	)
-	default boolean moveTakeMeatUp()
-	{
-		return false;
-	}
-
-	@ConfigItem(
-			keyName = "deprioritizeOtherDispensers",
-			name = "Deprioritize Other Dispensers",
-			description = "Removes interaction options from non-Healer dispensers while playing the Healer role",
-			section = dispenserOptionsSection,
-			position = 4
-	)
-	default boolean deprioritizeOtherDispensers()
-	{
-		return false;
+		return DispenserOptions.NONE;
 	}
 
 	@ConfigItem(
 			keyName = "foodPanelStyle",
 			name = "Food Panel Style",
 			description = "Choose how the food panel displays tracked healer food",
-			section = foodCountSection,
-			position = 1
+			section = healerSection,
+			position = 11
 	)
 	default FoodPanelStyle foodPanelStyle()
 	{
@@ -459,8 +401,8 @@ public interface BaUtilitiesConfig extends Config
 			keyName = "showFoodPanelAsHealerOnly",
 			name = "Show Food Panel as Healer Only",
 			description = "Only shows the food panel while playing the Healer role",
-			section = foodCountSection,
-			position = 2
+			section = healerSection,
+			position = 12
 	)
 	default boolean showFoodPanelAsHealerOnly()
 	{
@@ -471,8 +413,8 @@ public interface BaUtilitiesConfig extends Config
 			keyName = "showFoodCountOnNpc",
 			name = "Show Food Count on NPC",
 			description = "Displays the number of food fed directly on each Penance Healer",
-			section = foodCountSection,
-			position = 3
+			section = healerSection,
+			position = 13
 	)
 	default boolean showFoodCountOnNpc()
 	{
@@ -480,107 +422,11 @@ public interface BaUtilitiesConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "showPreviousCallCode",
-			name = "Show Previous Call Code",
-			description = "Shows the previous call's completed code in gray above the active code",
-			section = foodCountSection,
-			position = 4
-	)
-	default boolean showPreviousCallCode()
-	{
-		return true;
-	}
-
-	@Alpha
-	@ConfigItem(
-			keyName = "notStartedCodeColor",
-			name = "Not Started Code Color",
-			description = "Color used when a selected healer code has not received any food yet",
-			section = foodCountSection,
-			position = 5
-	)
-	default Color notStartedCodeColor()
-	{
-		return new Color(255, 60, 60);
-	}
-
-	@Alpha
-	@ConfigItem(
-			keyName = "inProgressCodeColor",
-			name = "In Progress Code Color",
-			description = "Color used when a selected healer code has started but is not complete",
-			section = foodCountSection,
-			position = 6
-	)
-	default Color inProgressCodeColor()
-	{
-		return new Color(255, 150, 0);
-	}
-
-	@Alpha
-	@ConfigItem(
-			keyName = "completeCodeColor",
-			name = "Complete Code Color",
-			description = "Color used when a selected healer code is complete, including any timing requirement",
-			section = foodCountSection,
-			position = 7
-	)
-	default Color completeCodeColor()
-	{
-		return new Color(0, 220, 0);
-	}
-
-	@Alpha
-	@ConfigItem(
-			keyName = "previousCodeColor",
-			name = "Previous Call Code Color",
-			description = "Color used for completed code text from a previous call when that healer has no active incomplete code",
-			section = foodCountSection,
-			position = 8
-	)
-	default Color previousCodeColor()
-	{
-		return new Color(150, 150, 150);
-	}
-
-	@Range(
-			min = 10,
-			max = 48
-	)
-	@ConfigItem(
-			keyName = "foodCountTextSize",
-			name = "Food Count Text Size",
-			description = "Font size used for the food count displayed on each Penance Healer",
-			section = foodCountSection,
-			position = 9
-	)
-	default int foodCountTextSize()
-	{
-		return 16;
-	}
-
-	@Range(
-			min = -100,
-			max = 150
-	)
-	@ConfigItem(
-			keyName = "foodCountZOffset",
-			name = "Food Count Height",
-			description = "Adjusts the vertical position of the food count on each Penance Healer. Higher values move it upward.",
-			section = foodCountSection,
-			position = 10
-	)
-	default int foodCountZOffset()
-	{
-		return 35;
-	}
-
-	@ConfigItem(
 			keyName = "foodCountType",
 			name = "Food Count Type",
 			description = "Choose whether NPC food displays count up or count down when a selected code has an expected count",
-			section = foodCountSection,
-			position = 11
+			section = healerSection,
+			position = 14
 	)
 	default FoodCountType foodCountType()
 	{
@@ -592,8 +438,8 @@ public interface BaUtilitiesConfig extends Config
 			keyName = "foodCountColor",
 			name = "Food Count Color",
 			description = "Fallback color used only when no selected code status applies and the NPC is showing the plain food count",
-			section = foodCountSection,
-			position = 12
+			section = healerSection,
+			position = 15
 	)
 	default Color foodCountColor()
 	{
@@ -604,8 +450,8 @@ public interface BaUtilitiesConfig extends Config
 			keyName = "healerTtkDisplay",
 			name = "Healer TTK",
 			description = "Shows when currently poisoned Penance Healers are expected to die",
-			section = foodCountSection,
-			position = 13
+			section = healerSection,
+			position = 16
 	)
 	default HealerTtkDisplayMode healerTtkDisplay()
 	{
@@ -620,6 +466,30 @@ public interface BaUtilitiesConfig extends Config
 			position = 1
 	)
 	default boolean enableBaPartySync()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "hideSidePanelButton",
+			name = "Hide Side Panel Button",
+			description = "Allows you to hide the side panel button to reduce clutter when not changing codes frequently",
+			section = generalSection,
+			position = 2
+	)
+	default boolean hideSidePanelButton()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "deprioritizeOtherDispensers",
+			name = "Deprioritize Other Dispensers",
+			description = "Removes interaction options from dispensers that do not match your current BA role",
+			section = generalSection,
+			position = 3
+	)
+	default boolean deprioritizeOtherDispensers()
 	{
 		return false;
 	}
