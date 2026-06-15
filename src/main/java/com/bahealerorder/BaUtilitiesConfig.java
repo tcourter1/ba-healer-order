@@ -39,6 +39,13 @@ public interface BaUtilitiesConfig extends Config
 	)
 	String dispenserOptionsSection = "dispenserOptions";
 
+	@ConfigSection(
+			name = "Attacker",
+			description = "Utility helpers for the BA attacker role",
+			position = 5
+	)
+	String attackerSection = "attacker";
+
 	enum HighlightStyle
 	{
 		NONE("None"),
@@ -160,6 +167,78 @@ public interface BaUtilitiesConfig extends Config
 		{
 			return name;
 		}
+	}
+
+	@ConfigItem(
+			keyName = "showAttackerSpawnCountOverlay",
+			name = "Show Spawn Count Overlay",
+			description = "Shows spawned/total counts above the Ranger and Fighter caves while playing Attacker",
+			section = attackerSection,
+			position = 1
+	)
+	default boolean showAttackerSpawnCountOverlay()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "attackerSpawnCountTextColor",
+			name = "Spawn Count Text Color",
+			description = "Color of the Attacker cave spawn count overlay text",
+			section = attackerSection,
+			position = 2
+	)
+	default Color attackerSpawnCountTextColor()
+	{
+		return Color.YELLOW;
+	}
+
+	@Range(
+			min = 10,
+			max = 40
+	)
+	@ConfigItem(
+			keyName = "attackerSpawnCountTextSize",
+			name = "Spawn Count Text Size",
+			description = "Font size of the Attacker cave spawn count overlay text",
+			section = attackerSection,
+			position = 3
+	)
+	default int attackerSpawnCountTextSize()
+	{
+		return 18;
+	}
+
+	@Range(
+			min = -10,
+			max = 10
+	)
+	@ConfigItem(
+			keyName = "attackerSpawnCountHorizontalOffset",
+			name = "Spawn Count Horizontal Offset",
+			description = "Moves the Attacker cave spawn count overlay left or right in scene tiles",
+			section = attackerSection,
+			position = 4
+	)
+	default int attackerSpawnCountHorizontalOffset()
+	{
+		return 0;
+	}
+
+	@Range(
+			min = 0,
+			max = 200
+	)
+	@ConfigItem(
+			keyName = "attackerSpawnCountHeightOffset",
+			name = "Spawn Count Height Offset",
+			description = "Moves the Attacker cave spawn count overlay higher or lower above the cave",
+			section = attackerSection,
+			position = 5
+	)
+	default int attackerSpawnCountHeightOffset()
+	{
+		return 200;
 	}
 
 	@ConfigItem(
