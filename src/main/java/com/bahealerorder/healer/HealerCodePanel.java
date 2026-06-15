@@ -3,6 +3,7 @@ package com.bahealerorder.healer;
 import com.bahealerorder.common.BaPartySyncMemberStatus;
 import com.bahealerorder.healer.codes.RunPreset;
 import com.bahealerorder.healer.codes.WaveCode;
+import com.formdev.flatlaf.FlatClientProperties;
 import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -614,6 +615,7 @@ public class HealerCodePanel extends PluginPanel
 		section.add(Box.createVerticalStrut(6));
 
 		styleTextField(importName);
+		importName.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Enter new code name...");
 		section.add(label("Name"));
 		section.add(Box.createVerticalStrut(3));
 		section.add(importName);
@@ -685,7 +687,7 @@ public class HealerCodePanel extends PluginPanel
 	{
 		refreshingImport = true;
 		userWaveCodeCombo.removeAllItems();
-		userWaveCodeCombo.addItem(new ComboItem(null, ""));
+		userWaveCodeCombo.addItem(new ComboItem(null, "-- New --"));
 
 		for (WaveCode code : codeManager.getWaveCodesForWave(getImportWave()))
 		{
