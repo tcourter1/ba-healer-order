@@ -28,7 +28,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
 @PluginDescriptor(
-		name = "BA Healer Utilities",
+		name = "BA Utilities",
 		description = "Adds Barbarian Assault helper overlays, menus, and panels.",
 		tags = {"barbarian assault", "ba", "healer", "attacker", "defender", "collector", "penance", "overlay"}
 )
