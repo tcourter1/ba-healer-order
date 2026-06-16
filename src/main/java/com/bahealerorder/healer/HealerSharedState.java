@@ -1,0 +1,369 @@
+package com.bahealerorder.healer;
+
+import com.bahealerorder.common.BaHealerSyncMessage;
+import com.bahealerorder.healer.codes.FeedEvent;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+class HealerSharedState
+{
+	private static final int UNKNOWN_TICK = -1;
+	private static final int SYNC_CALL_COUNT = 3;
+
+	private final Map<Integer, State> statesByOrder = new HashMap<>();
+	private int wave = -1;
+	private int currentCallIndex;
+
+	void reset()
+	{
+		statesByOrder.clear();
+		wave = -1;
+		currentCallIndex = 0;
+	}
+
+	void startWave(int wave)
+	{
+		if (this.wave == wave) return;
+
+		reset();
+		this.wave = wave;
+	}
+
+	void recordLocalSpawn(int healerOrder, int npcIndex, int spawnTick)
+	{
+		recordSpawn(healerOrder, npcIndex, spawnTick);
+	}
+
+	private void recordSpawn(int healerOrder, int npcIndex, int spawnTick)
+	{
+		State state = state(healerOrder);
+		state.spawned = true;
+		if (spawnTick >= 0)
+		{
+			state.spawnTick = state.spawnTick < 0 ? spawnTick : Math.min(state.spawnTick, spawnTick);
+		}
+
+		if (npcIndex >= 0)
+		{
+			clearNpcIndexFromOtherStates(healerOrder, npcIndex);
+			state.npcIndex = npcIndex;
+		}
+	}
+
+	void recordLocalCallIndex(int callIndex)
+	{
+		currentCallIndex = Math.max(currentCallIndex, callIndex);
+	}
+
+	void recordLocalFood(int healerOrder, int callIndex, int elapsedSeconds, int foodTick)
+	{
+		State state = state(healerOrder);
+		state.ensureCallCapacity(callIndex + 1);
+		state.localFoodFedByCall[callIndex]++;
+		state.localLastFoodElapsedByCall[callIndex] = Math.max(state.localLastFoodElapsedByCall[callIndex], elapsedSeconds);
+		if (foodTick >= 0)
+		{
+			state.localFoodTicks.add(foodTick);
+			Collections.sort(state.localFoodTicks);
+		}
+	}
+
+	void recordPrediction(int healerOrder, int predictedDeathTick, boolean unknownTtk, int observedTick)
+	{
+		State state = state(healerOrder);
+
+		if (state.actualDeathTick >= 0) return;
+
+		if (predictedDeathTick >= 0)
+		{
+			state.predictedDeathTick = predictedDeathTick;
+			state.unknownTtk = false;
+			state.observedTick = Math.max(state.observedTick, observedTick);
+			return;
+		}
+
+		state.unknownTtk = unknownTtk;
+		state.observedTick = Math.max(state.observedTick, observedTick);
+	}
+
+	void recordDeath(int healerOrder, int deathTick)
+	{
+		State state = state(healerOrder);
+		recordDeath(state, deathTick);
+		state.unknownTtk = false;
+	}
+
+	void updateFromParty(BaHealerSyncMessage message, boolean acceptPrediction)
+	{
+		if (message.getWave() <= 0 || message.getHealerOrder() <= 0) return;
+
+		startWave(message.getWave());
+		currentCallIndex = Math.max(currentCallIndex, message.getCurrentCallIndex());
+
+		recordSpawn(message.getHealerOrder(), message.getNpcIndex(), message.getSpawnTick());
+		State state = state(message.getHealerOrder());
+
+		if (message.getActualDeathTick() >= 0)
+		{
+			recordDeath(state, message.getActualDeathTick());
+		}
+
+		boolean hasPrediction = message.getPredictedDeathTick() >= 0 || message.isUnknownTtk();
+		boolean newerObservation = message.getObservedTick() >= state.observedTick;
+		if (acceptPrediction && hasPrediction && state.actualDeathTick < 0 && newerObservation)
+		{
+			state.predictedDeathTick = message.getPredictedDeathTick();
+			state.unknownTtk = message.getPredictedDeathTick() < 0 && message.isUnknownTtk();
+			state.observedTick = Math.max(state.observedTick, message.getObservedTick());
+		}
+	}
+
+	boolean hasSpawned(int healerOrder)
+	{
+		return stateOrNull(healerOrder) != null && state(healerOrder).spawned;
+	}
+
+	Integer getHealerOrderForNpcIndex(int npcIndex)
+	{
+		return getHealerOrdersByNpcIndex().get(npcIndex);
+	}
+
+	Map<Integer, Integer> getHealerOrdersByNpcIndex()
+	{
+		Map<Integer, Integer> orderByNpcIndex = new HashMap<>();
+
+		for (State state : statesByOrder.values())
+		{
+			if (state.npcIndex >= 0)
+			{
+				orderByNpcIndex.put(state.npcIndex, state.healerOrder);
+			}
+		}
+
+		return orderByNpcIndex;
+	}
+
+	int getNpcIndex(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state == null ? UNKNOWN_TICK : state.npcIndex;
+	}
+
+	int getSpawnTick(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state == null ? UNKNOWN_TICK : state.spawnTick;
+	}
+
+	boolean isDead(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state != null && state.actualDeathTick >= 0;
+	}
+
+	Integer getActualDeathTick(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state == null || state.actualDeathTick < 0 ? null : state.actualDeathTick;
+	}
+
+	Integer getPredictedDeathTick(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state == null || state.predictedDeathTick < 0 ? null : state.predictedDeathTick;
+	}
+
+	boolean hasTtk(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state != null && (state.predictedDeathTick >= 0 || state.unknownTtk || state.actualDeathTick >= 0);
+	}
+
+	boolean hasUnknownTtk(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state != null && state.unknownTtk;
+	}
+
+	int getCurrentCallIndex()
+	{
+		return currentCallIndex;
+	}
+
+	Map<Integer, Integer> getFoodFedByHealerOrder()
+	{
+		Map<Integer, Integer> foodFedByHealerOrder = new HashMap<>();
+
+		for (State state : statesByOrder.values())
+		{
+			int foodFed = state.totalFoodFed();
+			if (foodFed > 0)
+			{
+				foodFedByHealerOrder.put(state.healerOrder, foodFed);
+			}
+		}
+
+		return foodFedByHealerOrder;
+	}
+
+	List<FeedEvent> getFeedEvents()
+	{
+		List<FeedEvent> feedEvents = new ArrayList<>();
+
+		for (State state : statesByOrder.values())
+		{
+			for (int callIndex = 0; callIndex < state.callCount(); callIndex++)
+			{
+				int count = state.foodFed(callIndex);
+				int elapsed = Math.max(state.lastFoodElapsed(callIndex), 0);
+
+				for (int i = 0; i < count; i++)
+				{
+					feedEvents.add(new FeedEvent(state.healerOrder, elapsed, callIndex));
+				}
+			}
+		}
+
+		return feedEvents;
+	}
+
+	int[] getLocalFoodTicks(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		if (state == null || state.localFoodTicks.isEmpty()) return new int[0];
+
+		int[] ticks = new int[state.localFoodTicks.size()];
+		for (int i = 0; i < state.localFoodTicks.size(); i++)
+		{
+			ticks[i] = state.localFoodTicks.get(i);
+		}
+
+		return ticks;
+	}
+
+	List<Integer> recordPartyFoodTicks(long memberId, int healerOrder, int[] foodTicks)
+	{
+		List<Integer> newFoodTicks = new ArrayList<>();
+		if (foodTicks == null || foodTicks.length == 0) return newFoodTicks;
+
+		State state = state(healerOrder);
+		Set<Integer> memberTicks = state.partyFoodTicksByMember.computeIfAbsent(memberId, ignored -> new HashSet<>());
+
+		for (int foodTick : foodTicks)
+		{
+			if (foodTick >= 0 && memberTicks.add(foodTick))
+			{
+				newFoodTicks.add(foodTick);
+			}
+		}
+
+		Collections.sort(newFoodTicks);
+		return newFoodTicks;
+	}
+
+	private State state(int healerOrder)
+	{
+		return statesByOrder.computeIfAbsent(healerOrder, State::new);
+	}
+
+	private State stateOrNull(int healerOrder)
+	{
+		return statesByOrder.get(healerOrder);
+	}
+
+	private void clearNpcIndexFromOtherStates(int healerOrder, int npcIndex)
+	{
+		for (State state : statesByOrder.values())
+		{
+			if (state.healerOrder != healerOrder && state.npcIndex == npcIndex)
+			{
+				state.npcIndex = UNKNOWN_TICK;
+			}
+		}
+	}
+
+	private void recordDeath(State state, int deathTick)
+	{
+		if (deathTick < 0) return;
+
+		state.actualDeathTick = state.actualDeathTick < 0
+				? deathTick
+				: Math.min(state.actualDeathTick, deathTick);
+	}
+
+	private static class State
+	{
+		private final int healerOrder;
+		private boolean spawned;
+		private int npcIndex = UNKNOWN_TICK;
+		private int spawnTick = UNKNOWN_TICK;
+		private int[] localFoodFedByCall = new int[SYNC_CALL_COUNT];
+		private int[] localLastFoodElapsedByCall = filledArray(SYNC_CALL_COUNT, UNKNOWN_TICK);
+		private final List<Integer> localFoodTicks = new ArrayList<>();
+		private final Map<Long, Set<Integer>> partyFoodTicksByMember = new HashMap<>();
+		private int predictedDeathTick = UNKNOWN_TICK;
+		private boolean unknownTtk;
+		private int actualDeathTick = UNKNOWN_TICK;
+		private int observedTick = UNKNOWN_TICK;
+
+		private State(int healerOrder)
+		{
+			this.healerOrder = healerOrder;
+		}
+
+		private int callCount()
+		{
+			return localFoodFedByCall.length;
+		}
+
+		private int foodFed(int callIndex)
+		{
+			return callIndex < localFoodFedByCall.length ? localFoodFedByCall[callIndex] : 0;
+		}
+
+		private int lastFoodElapsed(int callIndex)
+		{
+			return callIndex < localLastFoodElapsedByCall.length ? localLastFoodElapsedByCall[callIndex] : UNKNOWN_TICK;
+		}
+
+		private int totalFoodFed()
+		{
+			int total = 0;
+
+			for (int callIndex = 0; callIndex < callCount(); callIndex++)
+			{
+				total += foodFed(callIndex);
+			}
+
+			return total;
+		}
+
+		private void ensureCallCapacity(int size)
+		{
+			if (size <= localFoodFedByCall.length) return;
+
+			localFoodFedByCall = Arrays.copyOf(localFoodFedByCall, size);
+			localLastFoodElapsedByCall = copyAndFill(localLastFoodElapsedByCall, size, UNKNOWN_TICK);
+		}
+
+		private static int[] filledArray(int size, int value)
+		{
+			int[] values = new int[size];
+			Arrays.fill(values, value);
+			return values;
+		}
+
+		private static int[] copyAndFill(int[] source, int size, int fillValue)
+		{
+			int[] values = Arrays.copyOf(source, size);
+			Arrays.fill(values, source.length, values.length, fillValue);
+			return values;
+		}
+	}
+}
