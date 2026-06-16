@@ -1,0 +1,707 @@
+package com.bahealerorder.common;
+
+import com.bahealerorder.BaUtilitiesConfig;
+import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JTextPane;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
+import net.runelite.api.gameval.SpriteID;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.game.SpriteManager;
+import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.DynamicGridLayout;
+import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.util.SwingUtil;
+
+@Singleton
+public class WaveOverviewPanel extends JPanel
+{
+	private static final int CONTROL_HEIGHT = 24;
+	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
+	private static final int OVERVIEW_ICON_SIZE = 28;
+	private static final int OVERVIEW_SKULL_ICON_SIZE = 14;
+	private static final int OVERVIEW_CELL_HEIGHT = 50;
+	private static final int OVERVIEW_CELL_GAP = 7;
+	private static final int OVERVIEW_HEADER_GAP = 10;
+	private static final int OVERVIEW_COLUMN_GAP = 4;
+	private static final String OVERVIEW_ICON_RESOURCE_PATH = "/com/bahealerorder/overview/";
+	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
+	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
+	private static final BaOverviewNpcType[] COLUMNS = {
+			BaOverviewNpcType.RANGER,
+			BaOverviewNpcType.FIGHTER,
+			BaOverviewNpcType.RUNNER,
+			BaOverviewNpcType.HEALER
+	};
+
+	private final SpriteManager spriteManager;
+	private final BaUtilitiesConfig config;
+	private final ConfigManager configManager;
+	private final BaWaveOverviewStore store;
+	private final JComboBox<RunItem> runCombo = new JComboBox<>();
+	private final JComboBox<WaveItem> waveCombo = new JComboBox<>();
+	private final Map<BaOverviewNpcType, ImageIcon> overviewIcons = new EnumMap<>(BaOverviewNpcType.class);
+	private final JLabel titleLabel = label("Wave Overview", true);
+	private final JPanel contentPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+
+	private boolean refreshingControls;
+	private boolean loadingSkullIcon;
+	private ImageIcon skullIcon;
+	private String lastRenderSignature;
+
+	@Inject
+	public WaveOverviewPanel(
+			SpriteManager spriteManager,
+			BaUtilitiesConfig config,
+			ConfigManager configManager,
+			BaWaveOverviewStore store)
+	{
+		this.spriteManager = spriteManager;
+		this.config = config;
+		this.configManager = configManager;
+		this.store = store;
+
+		setBackground(ColorScheme.DARK_GRAY_COLOR);
+		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+		setAlignmentX(LEFT_ALIGNMENT);
+		setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
+
+		runCombo.addActionListener(event ->
+		{
+			if (refreshingControls) return;
+
+			RunItem item = (RunItem) runCombo.getSelectedItem();
+			store.setSelectedRunId(item == null ? null : item.id);
+			lastRenderSignature = null;
+			refreshAll();
+		});
+		waveCombo.addActionListener(event ->
+		{
+			if (refreshingControls) return;
+
+			WaveItem item = (WaveItem) waveCombo.getSelectedItem();
+			store.setSelectedWave(item == null ? -1 : item.wave);
+			lastRenderSignature = null;
+			refreshAll();
+		});
+		add(createWaveOverviewSection());
+		refreshAll();
+	}
+
+	public void refreshAll()
+	{
+		refreshSelectors();
+		BaWaveOverviewSnapshot snapshot = store.getSelectedSnapshot();
+		String signature = buildRenderSignature(snapshot);
+
+		if (signature.equals(lastRenderSignature))
+		{
+			return;
+		}
+
+		lastRenderSignature = signature;
+		titleLabel.setText(BaWaveInfo.isValidWave(snapshot == null ? -1 : snapshot.getWave())
+				? "Wave " + snapshot.getWave() + " Overview"
+				: "Wave Overview");
+
+		contentPanel.removeAll();
+		populateWaveOverviewContent(contentPanel, snapshot);
+		revalidate();
+		repaint();
+	}
+
+	private JPanel createWaveOverviewSection()
+	{
+		JPanel section = section();
+		section.add(createSelectorPanel());
+		section.add(Box.createVerticalStrut(6));
+		section.add(contentPanel);
+		return section;
+	}
+
+	private void populateWaveOverviewContent(JPanel section, BaWaveOverviewSnapshot snapshot)
+	{
+		List<BaOverviewNpcType> columns = getVisibleColumns();
+
+		if (snapshot == null)
+		{
+			String message = store.getSelectedRunId() == null ? "Recent runs will appear here" : "Select a wave to view.";
+			section.add(centeredMessage(message));
+			return;
+		}
+
+		if (columns.isEmpty())
+		{
+			section.add(centeredMessage("Use the menu above to choose which NPCs appear here."));
+			return;
+		}
+
+		JPanel table = new JPanel(new DynamicGridLayout(1, columns.size(), OVERVIEW_COLUMN_GAP, 0));
+		int tableHeight = getWaveOverviewTableHeight(snapshot.getWave(), columns);
+		table.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		table.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, tableHeight));
+		table.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, tableHeight));
+		table.setAlignmentX(LEFT_ALIGNMENT);
+
+		for (BaOverviewNpcType type : columns)
+		{
+			table.add(createWaveOverviewColumn(snapshot, type, columns.size()));
+		}
+
+		section.add(table);
+
+		if (snapshot.getDuration() != null)
+		{
+			section.add(Box.createVerticalStrut(6));
+			section.add(centeredLabelRow("Duration: " + snapshot.getDuration(), false, ColorScheme.DARKER_GRAY_COLOR));
+		}
+	}
+
+	private JPanel createWaveOverviewColumn(BaWaveOverviewSnapshot snapshot, BaOverviewNpcType type, int columnCount)
+	{
+		int columnWidth = getWaveOverviewColumnWidth(columnCount);
+		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR.darker());
+		panel.setBorder(new EmptyBorder(4, 2, 4, 2));
+
+		JLabel icon = new JLabel(loadOverviewIcon(type));
+		icon.setHorizontalAlignment(SwingConstants.CENTER);
+		icon.setAlignmentX(LEFT_ALIGNMENT);
+		icon.setPreferredSize(new Dimension(columnWidth, OVERVIEW_ICON_SIZE));
+		icon.setMaximumSize(new Dimension(columnWidth, OVERVIEW_ICON_SIZE));
+		panel.add(icon);
+		panel.add(Box.createVerticalStrut(OVERVIEW_HEADER_GAP));
+
+		List<String> labels = BaWaveInfo.getLabels(snapshot.getWave(), type);
+		for (int i = 0; i < labels.size(); i++)
+		{
+			panel.add(createWaveOverviewEntry(snapshot, type, i + 1, labels.get(i), columnCount));
+			panel.add(Box.createVerticalStrut(OVERVIEW_CELL_GAP));
+		}
+
+		return panel;
+	}
+
+	private JPanel createWaveOverviewEntry(BaWaveOverviewSnapshot snapshot, BaOverviewNpcType type, int order, String label, int columnCount)
+	{
+		EntryState entry = getEntryState(snapshot, type, order);
+		int width = getWaveOverviewColumnWidth(columnCount);
+		Color background = entry.spawned || entry.dead
+				? ColorScheme.DARKER_GRAY_COLOR.darker()
+				: ColorScheme.DARKER_GRAY_COLOR.darker().darker();
+
+		JPanel content = verticalPanel(background);
+		content.setBorder(new EmptyBorder(4, 0, 2, 0));
+		content.setPreferredSize(new Dimension(width, OVERVIEW_CELL_HEIGHT));
+		content.setMaximumSize(new Dimension(width, OVERVIEW_CELL_HEIGHT));
+
+		if (entry.dead)
+		{
+			JLabel skull = centeredOverviewLabel("", entry.color, false, CONTROL_HEIGHT - 6, width);
+			loadSkullIcon(skull);
+			content.add(skull);
+			content.add(Box.createVerticalStrut(4));
+		}
+		else
+		{
+			content.add(centeredOverviewLabel(label, entry.labelColor, true, CONTROL_HEIGHT - 6, width));
+		}
+
+		if (entry.text != null && !entry.text.isEmpty())
+		{
+			content.add(centeredOverviewLabel(entry.text, entry.color, false, CONTROL_HEIGHT - 8, width));
+		}
+
+		return content;
+	}
+
+	private EntryState getEntryState(BaWaveOverviewSnapshot snapshot, BaOverviewNpcType type, int order)
+	{
+		Integer deathTick = snapshot.getDeathTick(type, order);
+		if (deathTick != null)
+		{
+			return EntryState.dead(formatWaveTick(deathTick));
+		}
+
+		Integer predictedDeathTick = snapshot.getPredictedDeathTick(type, order);
+		if (predictedDeathTick != null)
+		{
+			return EntryState.predicted(formatWaveTick(predictedDeathTick));
+		}
+
+		if (snapshot.hasUnknownTtk(type, order))
+		{
+			return EntryState.predicted("?");
+		}
+
+		return snapshot.hasSpawned(type, order) ? EntryState.spawned() : EntryState.pending();
+	}
+
+	private String formatWaveTick(int waveTick)
+	{
+		return String.format(java.util.Locale.ROOT, "%.1f", Math.max(0, waveTick) * 0.6d);
+	}
+
+	private JLabel centeredOverviewLabel(String text, Color color, boolean bold, int height, int width)
+	{
+		JLabel label = label(text, bold);
+		label.setForeground(color);
+		label.setHorizontalAlignment(SwingConstants.CENTER);
+		label.setPreferredSize(new Dimension(width, height));
+		label.setMinimumSize(new Dimension(width, height));
+		label.setMaximumSize(new Dimension(width, height));
+		return label;
+	}
+
+	private JButton createColumnMenuButton()
+	{
+		JButton menuButton = new JButton(createHamburgerIcon());
+		menuButton.setToolTipText("Choose NPC columns");
+		SwingUtil.removeButtonDecorations(menuButton);
+		fixedSize(menuButton, CONTROL_HEIGHT + 4, CONTROL_HEIGHT);
+		menuButton.addActionListener(event -> createColumnMenu().show(menuButton, 0, menuButton.getHeight()));
+		return menuButton;
+	}
+
+	private ImageIcon createHamburgerIcon()
+	{
+		int size = 14;
+		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		graphics.setColor(ColorScheme.TEXT_COLOR);
+		graphics.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		graphics.drawLine(2, 3, 12, 3);
+		graphics.drawLine(2, 7, 12, 7);
+		graphics.drawLine(2, 11, 12, 11);
+		graphics.dispose();
+		return new ImageIcon(image);
+	}
+
+	private JPanel createSelectorPanel()
+	{
+		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2 + 6));
+		panel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2 + 6));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		panel.add(createRunSelectorRow());
+		panel.add(Box.createVerticalStrut(6));
+		panel.add(createWaveSelectorRow());
+		return panel;
+	}
+
+	private JPanel createRunSelectorRow()
+	{
+		JPanel row = new JPanel(new BorderLayout());
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setAlignmentX(LEFT_ALIGNMENT);
+		row.add(runCombo, BorderLayout.CENTER);
+		return row;
+	}
+
+	private JPanel createWaveSelectorRow()
+	{
+		JPanel row = new JPanel(new BorderLayout(6, 0));
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setAlignmentX(LEFT_ALIGNMENT);
+		row.add(waveCombo, BorderLayout.CENTER);
+		row.add(createColumnMenuButton(), BorderLayout.EAST);
+		return row;
+	}
+
+	private void refreshSelectors()
+	{
+		refreshingControls = true;
+
+		DefaultComboBoxModel<RunItem> runModel = new DefaultComboBoxModel<>();
+		runModel.addElement(new RunItem(null, ""));
+		for (BaWaveOverviewRun run : store.getRuns())
+		{
+			runModel.addElement(new RunItem(run.getId(), run.getName()));
+		}
+
+		runCombo.setModel(runModel);
+		runCombo.setSelectedItem(new RunItem(store.getSelectedRunId(), ""));
+		styleCombo(runCombo, CONTENT_WIDTH - 16);
+
+		DefaultComboBoxModel<WaveItem> waveModel = new DefaultComboBoxModel<>();
+		waveModel.addElement(new WaveItem(-1));
+		for (int wave = 1; wave <= 10; wave++)
+		{
+			waveModel.addElement(new WaveItem(wave));
+		}
+
+		waveCombo.setModel(waveModel);
+		waveCombo.setSelectedItem(new WaveItem(store.getSelectedWave()));
+		styleCombo(waveCombo, CONTENT_WIDTH - 16 - CONTROL_HEIGHT - 10);
+
+		refreshingControls = false;
+	}
+
+	private JPopupMenu createColumnMenu()
+	{
+		JPopupMenu menu = new JPopupMenu();
+		menu.add(columnMenuItem("Show Rangers", BaUtilitiesConfig.SHOW_OVERVIEW_RANGERS_KEY, config.showOverviewRangers()));
+		menu.add(columnMenuItem("Show Fighters", BaUtilitiesConfig.SHOW_OVERVIEW_FIGHTERS_KEY, config.showOverviewFighters()));
+		menu.add(columnMenuItem("Show Runners", BaUtilitiesConfig.SHOW_OVERVIEW_RUNNERS_KEY, config.showOverviewRunners()));
+		menu.add(columnMenuItem("Show Healers", BaUtilitiesConfig.SHOW_OVERVIEW_HEALERS_KEY, config.showOverviewHealers()));
+		return menu;
+	}
+
+	private JCheckBoxMenuItem columnMenuItem(String label, String key, boolean selected)
+	{
+		JCheckBoxMenuItem item = new JCheckBoxMenuItem(label, selected);
+		item.addActionListener(event ->
+		{
+			configManager.setConfiguration(BaUtilitiesConfig.GROUP_NAME, key, item.isSelected());
+			refreshAll();
+		});
+		return item;
+	}
+
+	private ImageIcon loadOverviewIcon(BaOverviewNpcType type)
+	{
+		ImageIcon icon = overviewIcons.get(type);
+
+		if (icon != null)
+		{
+			return icon;
+		}
+
+		icon = new ImageIcon(new ImageIcon(getClass().getResource(OVERVIEW_ICON_RESOURCE_PATH + getIconResource(type)))
+				.getImage()
+				.getScaledInstance(OVERVIEW_ICON_SIZE, OVERVIEW_ICON_SIZE, Image.SCALE_SMOOTH));
+		overviewIcons.put(type, icon);
+		return icon;
+	}
+
+	private String getIconResource(BaOverviewNpcType type)
+	{
+		switch (type)
+		{
+			case RANGER:
+				return "penance_ranger.png";
+			case FIGHTER:
+				return "penance_fighter.png";
+			case RUNNER:
+				return "penance_runner.png";
+			case HEALER:
+				return "penance_healer.png";
+			default:
+				throw new IllegalArgumentException("Unsupported NPC type " + type);
+		}
+	}
+
+	private void loadSkullIcon(JLabel label)
+	{
+		if (skullIcon != null)
+		{
+			label.setIcon(skullIcon);
+			return;
+		}
+
+		if (loadingSkullIcon)
+		{
+			return;
+		}
+
+		loadingSkullIcon = true;
+		spriteManager.getSpriteAsync(SpriteID.HEADICONS_PK, 0, image ->
+				SwingUtilities.invokeLater(() ->
+				{
+					skullIcon = transparentIcon(image, OVERVIEW_SKULL_ICON_SIZE, 0.45f);
+					lastRenderSignature = null;
+					refreshAll();
+				})
+		);
+	}
+
+	private ImageIcon transparentIcon(BufferedImage image, int size, float alpha)
+	{
+		BufferedImage transparent = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = transparent.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+		graphics.setComposite(AlphaComposite.SrcOver.derive(alpha));
+		graphics.drawImage(image, 0, 0, size, size, null);
+		graphics.dispose();
+		return new ImageIcon(transparent);
+	}
+
+	private int getWaveOverviewColumnWidth(int columnCount)
+	{
+		return (CONTENT_WIDTH - 16 - OVERVIEW_COLUMN_GAP * (columnCount - 1)) / columnCount;
+	}
+
+	private int getWaveOverviewTableHeight(int wave, List<BaOverviewNpcType> columns)
+	{
+		int maxRows = 0;
+
+		for (BaOverviewNpcType type : columns)
+		{
+			maxRows = Math.max(maxRows, BaWaveInfo.getExpectedCount(wave, type));
+		}
+
+		return OVERVIEW_ICON_SIZE + OVERVIEW_HEADER_GAP + (OVERVIEW_CELL_HEIGHT + OVERVIEW_CELL_GAP) * maxRows + 8;
+	}
+
+	private List<BaOverviewNpcType> getVisibleColumns()
+	{
+		List<BaOverviewNpcType> columns = new ArrayList<>();
+
+		for (BaOverviewNpcType type : COLUMNS)
+		{
+			if (isColumnVisible(type))
+			{
+				columns.add(type);
+			}
+		}
+
+		return columns;
+	}
+
+	private boolean isColumnVisible(BaOverviewNpcType type)
+	{
+		switch (type)
+		{
+			case RANGER:
+				return config.showOverviewRangers();
+			case FIGHTER:
+				return config.showOverviewFighters();
+			case RUNNER:
+				return config.showOverviewRunners();
+			case HEALER:
+				return config.showOverviewHealers();
+			default:
+				return false;
+		}
+	}
+
+	private String buildRenderSignature(BaWaveOverviewSnapshot snapshot)
+	{
+		return store.getSelectedRunId()
+				+ ":" + store.getSelectedWave()
+				+ ":" + getVisibleColumns()
+				+ ":" + (skullIcon != null)
+				+ ":" + (snapshot == null ? "none" : snapshot.signature());
+	}
+
+	private JPanel section()
+	{
+		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setBorder(new EmptyBorder(8, 8, 8, 8));
+		panel.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		panel.add(centeredLabelRow(titleLabel, ColorScheme.DARKER_GRAY_COLOR));
+		panel.add(Box.createVerticalStrut(6));
+		return panel;
+	}
+
+	private JPanel centeredLabelRow(String text, boolean bold, Color background)
+	{
+		JLabel label = label(text, bold);
+		return centeredLabelRow(label, background);
+	}
+
+	private JPanel centeredLabelRow(JLabel label, Color background)
+	{
+		label.setHorizontalAlignment(SwingConstants.CENTER);
+
+		JPanel row = new JPanel(new BorderLayout());
+		row.setBackground(background);
+		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setAlignmentX(LEFT_ALIGNMENT);
+		row.add(label, BorderLayout.CENTER);
+		return row;
+	}
+
+	private JPanel centeredMessage(String text)
+	{
+		JTextPane message = new JTextPane();
+		message.setText(text);
+		message.setForeground(ColorScheme.TEXT_COLOR);
+		message.setFont(LABEL_FONT);
+		message.setEditable(false);
+		message.setFocusable(false);
+		message.setOpaque(false);
+
+		StyledDocument document = message.getStyledDocument();
+		SimpleAttributeSet center = new SimpleAttributeSet();
+		StyleConstants.setAlignment(center, StyleConstants.ALIGN_CENTER);
+		document.setParagraphAttributes(0, document.getLength(), center, false);
+
+		JPanel panel = new JPanel(new BorderLayout());
+		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2));
+		panel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+		panel.add(message, BorderLayout.CENTER);
+		return panel;
+	}
+
+	private JLabel label(String text, boolean bold)
+	{
+		JLabel label = new JLabel(text);
+		label.setForeground(ColorScheme.TEXT_COLOR);
+		label.setFont(bold ? TITLE_FONT : LABEL_FONT);
+		label.setAlignmentX(LEFT_ALIGNMENT);
+		return label;
+	}
+
+	private static JPanel verticalPanel(Color background)
+	{
+		JPanel panel = new JPanel();
+		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+		panel.setBackground(background);
+		return panel;
+	}
+
+	private static void styleCombo(JComboBox<?> comboBox, int width)
+	{
+		comboBox.setFocusable(false);
+		fixedSize(comboBox, width, CONTROL_HEIGHT);
+	}
+
+	private static void fixedSize(JComponent component, int width, int height)
+	{
+		Dimension size = new Dimension(width, height);
+		component.setPreferredSize(size);
+		component.setMinimumSize(size);
+		component.setMaximumSize(size);
+		component.setAlignmentX(Component.LEFT_ALIGNMENT);
+	}
+
+	private static class RunItem
+	{
+		private final String id;
+		private final String label;
+
+		private RunItem(String id, String label)
+		{
+			this.id = id;
+			this.label = label;
+		}
+
+		@Override
+		public String toString()
+		{
+			return label;
+		}
+
+		@Override
+		public boolean equals(Object other)
+		{
+			if (!(other instanceof RunItem)) return false;
+
+			RunItem item = (RunItem) other;
+			return id == null ? item.id == null : id.equals(item.id);
+		}
+
+		@Override
+		public int hashCode()
+		{
+			return id == null ? 0 : id.hashCode();
+		}
+	}
+
+	private static class WaveItem
+	{
+		private final int wave;
+
+		private WaveItem(int wave)
+		{
+			this.wave = wave;
+		}
+
+		@Override
+		public String toString()
+		{
+			return BaWaveInfo.isValidWave(wave) ? "Wave " + wave : "";
+		}
+
+		@Override
+		public boolean equals(Object other)
+		{
+			return other instanceof WaveItem && wave == ((WaveItem) other).wave;
+		}
+
+		@Override
+		public int hashCode()
+		{
+			return wave;
+		}
+	}
+
+	private static class EntryState
+	{
+		private final boolean spawned;
+		private final boolean dead;
+		private final Color labelColor;
+		private final Color color;
+		private final String text;
+
+		private static EntryState pending()
+		{
+			return new EntryState(false, false, new Color(90, 90, 90), new Color(90, 90, 90), "");
+		}
+
+		private static EntryState spawned()
+		{
+			return new EntryState(true, false, ColorScheme.TEXT_COLOR, ColorScheme.TEXT_COLOR, "");
+		}
+
+		private static EntryState dead(String text)
+		{
+			return new EntryState(true, true, new Color(150, 150, 150), new Color(150, 150, 150), text);
+		}
+
+		private static EntryState predicted(String text)
+		{
+			return new EntryState(true, false, ColorScheme.TEXT_COLOR, Color.ORANGE, text);
+		}
+
+		private EntryState(boolean spawned, boolean dead, Color labelColor, Color color, String text)
+		{
+			this.spawned = spawned;
+			this.dead = dead;
+			this.labelColor = labelColor;
+			this.color = color;
+			this.text = text;
+		}
+	}
+}

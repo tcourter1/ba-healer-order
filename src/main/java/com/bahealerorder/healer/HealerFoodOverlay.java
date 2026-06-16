@@ -10,6 +10,7 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.input.MouseListener;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -32,8 +33,13 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
     private static final int MAX_CELL_CHARS = 11;
     private static final int TOGGLE_BUTTON_WIDTH = 24;
 
+    @Inject
+    private BaUtilitiesConfig config;
+
+    @Inject
+    private ConfigManager configManager;
+
     private HealerController controller;
-    private boolean codeCollapsed;
     private boolean codeTogglePressed;
     private final Rectangle codeToggleBounds = new Rectangle();
     private LineComponent codeToggleLine;
@@ -413,7 +419,7 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
     private boolean shouldDisplayHealerDead(int healerOrder)
     {
-        return controller.isHealerDead(healerOrder) || controller.isHealerPresumedDead(healerOrder);
+        return controller.isHealerDead(healerOrder);
     }
 
     private Color getHealerColor(boolean spawned, boolean dead)
@@ -494,13 +500,13 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
         if (collapsible)
         {
             codeToggleLine = LineComponent.builder()
-                    .left(codeCollapsed ? "Show Code" : "Hide Code")
+                    .left(isCodeCollapsed() ? "Show Code" : "Hide Code")
                     .leftColor(TITLE_COLOR)
                     .build();
 
             panelComponent.getChildren().add(codeToggleLine);
 
-            if (codeCollapsed)
+            if (isCodeCollapsed())
             {
                 return;
             }
@@ -544,7 +550,11 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
         if (isCodeToggleClick(mouseEvent))
         {
             codeTogglePressed = true;
-            codeCollapsed = !codeCollapsed;
+            configManager.setConfiguration(
+                    BaUtilitiesConfig.GROUP_NAME,
+                    BaUtilitiesConfig.FOOD_PANEL_CODE_COLLAPSED_KEY,
+                    !isCodeCollapsed()
+            );
             mouseEvent.consume();
             return null;
         }
@@ -568,6 +578,11 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
     private boolean isCodeToggleClick(MouseEvent mouseEvent)
     {
         return mouseEvent.getButton() == MouseEvent.BUTTON1 && codeToggleBounds.contains(mouseEvent.getPoint());
+    }
+
+    private boolean isCodeCollapsed()
+    {
+        return config.foodPanelCodeCollapsed();
     }
 
     @Override

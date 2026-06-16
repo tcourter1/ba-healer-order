@@ -1,7 +1,7 @@
 package com.bahealerorder.common;
 
 import com.bahealerorder.BaUtilitiesConfig;
-import com.bahealerorder.healer.HealerCodePanel;
+import com.bahealerorder.BaUtilitiesPanel;
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -66,7 +66,7 @@ public class BaPartySyncService
 	private final PluginManager pluginManager;
 	private final WSClient wsClient;
 	private final BaUtilitiesConfig config;
-	private final HealerCodePanel panel;
+	private final BaUtilitiesPanel panel;
 
 	private int currentWave = -1;
 	private long waveStartTimeMs = -1;
@@ -84,7 +84,7 @@ public class BaPartySyncService
 	private boolean baSyncManagedParty;
 
 	@Inject
-	private BaPartySyncService(Client client, PartyService partyService, PluginManager pluginManager, WSClient wsClient, BaUtilitiesConfig config, HealerCodePanel panel)
+	private BaPartySyncService(Client client, PartyService partyService, PluginManager pluginManager, WSClient wsClient, BaUtilitiesConfig config, BaUtilitiesPanel panel)
 	{
 		this.client = client;
 		this.partyService = partyService;
@@ -102,6 +102,7 @@ public class BaPartySyncService
 		}
 
 		wsClient.registerMessage(BaHealerSyncMessage.class);
+		wsClient.registerMessage(BaWaveOverviewSyncMessage.class);
 		updateBaPartySyncPanelStatus();
 	}
 
@@ -109,6 +110,7 @@ public class BaPartySyncService
 	{
 		leaveBaSyncParty("plugin shutdown");
 		wsClient.unregisterMessage(BaHealerSyncMessage.class);
+		wsClient.unregisterMessage(BaWaveOverviewSyncMessage.class);
 	}
 
 	public boolean isBaPartySyncConnected()
@@ -133,6 +135,20 @@ public class BaPartySyncService
 		catch (RuntimeException ex)
 		{
 			log.debug("Failed to send BA healer sync message", ex);
+		}
+	}
+
+	public void sendWaveOverviewSync(BaWaveOverviewSyncMessage message)
+	{
+		if (!isBaPartySyncConnected() || message == null) return;
+
+		try
+		{
+			partyService.send(message);
+		}
+		catch (RuntimeException ex)
+		{
+			log.debug("Failed to send BA wave overview sync message", ex);
 		}
 	}
 

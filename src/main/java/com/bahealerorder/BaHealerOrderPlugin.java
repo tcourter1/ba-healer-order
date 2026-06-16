@@ -5,9 +5,14 @@ import com.bahealerorder.common.BaDispenserMenuService;
 import com.bahealerorder.common.BaHealerSyncMessage;
 import com.bahealerorder.common.BaPartySyncService;
 import com.bahealerorder.common.BaRoleDetector;
+import com.bahealerorder.common.BaWaveOverviewService;
+import com.bahealerorder.common.BaWaveOverviewSyncMessage;
+import com.bahealerorder.defender.DefenderController;
 import com.bahealerorder.healer.HealerController;
 import com.google.inject.Provides;
 import javax.inject.Inject;
+import net.runelite.api.events.ActorDeath;
+import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
@@ -42,6 +47,9 @@ public class BaHealerOrderPlugin extends Plugin
 	private HealerController healerController;
 
 	@Inject
+	private DefenderController defenderController;
+
+	@Inject
 	private BaRoleDetector roleDetector;
 
 	@Inject
@@ -50,11 +58,15 @@ public class BaHealerOrderPlugin extends Plugin
 	@Inject
 	private BaPartySyncService partySyncService;
 
+	@Inject
+	private BaWaveOverviewService waveOverviewService;
+
 	@Override
 	protected void startUp()
 	{
 		partySyncService.startUp();
 		attackerController.startUp();
+		defenderController.startUp();
 		healerController.startUp();
 	}
 
@@ -62,6 +74,7 @@ public class BaHealerOrderPlugin extends Plugin
 	protected void shutDown()
 	{
 		healerController.shutDown();
+		defenderController.shutDown();
 		attackerController.shutDown();
 		partySyncService.shutDown();
 	}
@@ -70,13 +83,29 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onNpcSpawned(NpcSpawned event)
 	{
 		attackerController.onNpcSpawned(event);
+		defenderController.onNpcSpawned(event);
 		healerController.onNpcSpawned(event);
 	}
 
 	@Subscribe
 	public void onNpcDespawned(NpcDespawned event)
 	{
+		attackerController.onNpcDespawned(event);
+		defenderController.onNpcDespawned(event);
 		healerController.onNpcDespawned(event);
+	}
+
+	@Subscribe
+	public void onActorDeath(ActorDeath event)
+	{
+		attackerController.onActorDeath(event);
+		defenderController.onActorDeath(event);
+	}
+
+	@Subscribe
+	public void onAnimationChanged(AnimationChanged event)
+	{
+		defenderController.onAnimationChanged(event);
 	}
 
 	@Subscribe
@@ -117,6 +146,8 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		roleDetector.onGameTick(event);
 		partySyncService.onGameTick(event);
+		attackerController.onGameTick(event);
+		defenderController.onGameTick(event);
 		healerController.onGameTick(event);
 	}
 
@@ -129,6 +160,7 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		waveOverviewService.onChatMessage(event);
 		partySyncService.onChatMessage(event);
 		attackerController.onChatMessage(event);
 		healerController.onChatMessage(event);
@@ -138,8 +170,10 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onVarbitChanged(VarbitChanged event)
 	{
 		roleDetector.onVarbitChanged(event);
+		waveOverviewService.onVarbitChanged(event);
 		partySyncService.onVarbitChanged(event);
 		attackerController.onVarbitChanged(event);
+		defenderController.onVarbitChanged(event);
 		healerController.onVarbitChanged(event);
 	}
 
@@ -147,8 +181,10 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		roleDetector.onGameStateChanged(event);
+		waveOverviewService.onGameStateChanged(event);
 		partySyncService.onGameStateChanged(event);
 		attackerController.onGameStateChanged(event);
+		defenderController.onGameStateChanged(event);
 		healerController.onGameStateChanged(event);
 	}
 
@@ -166,8 +202,15 @@ public class BaHealerOrderPlugin extends Plugin
 	}
 
 	@Subscribe
+	public void onBaWaveOverviewSyncMessage(BaWaveOverviewSyncMessage event)
+	{
+		waveOverviewService.onBaWaveOverviewSyncMessage(event);
+	}
+
+	@Subscribe
 	public void onUserJoin(UserJoin event)
 	{
+		waveOverviewService.onPartyUserJoin(event);
 		healerController.onPartyUserJoin(event);
 	}
 
