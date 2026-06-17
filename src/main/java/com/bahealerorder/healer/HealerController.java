@@ -1245,7 +1245,7 @@ public class HealerController
 
 	private boolean shouldShowMenuCode()
 	{
-		return config.showMenuLabel() && isHealerRole();
+		return config.showMenuCode() && isHealerRole();
 	}
 
 	private boolean shouldDrawRenderable(Renderable renderable, boolean drawingUi)

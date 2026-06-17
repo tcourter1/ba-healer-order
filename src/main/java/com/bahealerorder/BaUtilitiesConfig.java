@@ -346,7 +346,7 @@ public interface BaUtilitiesConfig extends Config
 	@ConfigItem(
 			keyName = "showMenuLabel",
 			name = "Show Menu Label",
-			description = "Adds the tracked healer label and current healer code next to Penance Healers in the right-click menu",
+			description = "Adds the tracked healer label next to Penance Healers in the right-click menu",
 			section = healerSection,
 			position = 7
 	)
@@ -356,11 +356,23 @@ public interface BaUtilitiesConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "showMenuCode",
+			name = "Show Menu Code",
+			description = "Adds the current healer code next to Penance Healers in the right-click menu",
+			section = healerSection,
+			position = 8
+	)
+	default boolean showMenuCode()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 			keyName = "healerFoodOnly",
 			name = "Use-Food on Healers Only",
 			description = "When poisoned food is selected, only Penance Healer Use entries remain clickable",
 			section = healerSection,
-			position = 8
+			position = 9
 	)
 	default boolean healerFoodOnly()
 	{
@@ -372,7 +384,7 @@ public interface BaUtilitiesConfig extends Config
 			name = "Dispenser Food Highlight",
 			description = "Highlights the correct Take option on the healer dispenser for the current food call",
 			section = healerSection,
-			position = 9
+			position = 10
 	)
 	default boolean highlightCalledDispenserFood()
 	{
@@ -384,7 +396,7 @@ public interface BaUtilitiesConfig extends Config
 			name = "Dispenser Options",
 			description = "Optional healer dispenser menu cleanup",
 			section = healerSection,
-			position = 10
+			position = 11
 	)
 	default DispenserOptions dispenserOptions()
 	{
@@ -396,7 +408,7 @@ public interface BaUtilitiesConfig extends Config
 			name = "Food Panel Style",
 			description = "Choose how the food panel displays tracked healer food",
 			section = healerSection,
-			position = 11
+			position = 12
 	)
 	default FoodPanelStyle foodPanelStyle()
 	{
@@ -408,7 +420,7 @@ public interface BaUtilitiesConfig extends Config
 			name = "Show Food Panel as Healer Only",
 			description = "Only shows the food panel while playing the Healer role",
 			section = healerSection,
-			position = 12
+			position = 13
 	)
 	default boolean showFoodPanelAsHealerOnly()
 	{
@@ -420,7 +432,7 @@ public interface BaUtilitiesConfig extends Config
 			name = "Show Food Count on NPC",
 			description = "Displays the number of food fed directly on each Penance Healer",
 			section = healerSection,
-			position = 13
+			position = 14
 	)
 	default boolean showFoodCountOnNpc()
 	{
@@ -432,7 +444,7 @@ public interface BaUtilitiesConfig extends Config
 			name = "Food Count Type",
 			description = "Choose whether NPC food displays count up or count down when a selected code has an expected count",
 			section = healerSection,
-			position = 14
+			position = 15
 	)
 	default FoodCountType foodCountType()
 	{
@@ -445,7 +457,7 @@ public interface BaUtilitiesConfig extends Config
 			name = "Food Count Color",
 			description = "Fallback color used only when no selected code status applies and the NPC is showing the plain food count",
 			section = healerSection,
-			position = 15
+			position = 16
 	)
 	default Color foodCountColor()
 	{
@@ -457,7 +469,7 @@ public interface BaUtilitiesConfig extends Config
 			name = "Healer TTK",
 			description = "Shows when currently poisoned Penance Healers are expected to die",
 			section = healerSection,
-			position = 16
+			position = 17
 	)
 	default HealerTtkDisplayMode healerTtkDisplay()
 	{
