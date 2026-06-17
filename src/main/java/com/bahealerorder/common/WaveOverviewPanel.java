@@ -12,6 +12,10 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -38,11 +42,13 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.SwingUtil;
 
 @Singleton
@@ -52,10 +58,14 @@ public class WaveOverviewPanel extends JPanel
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
 	private static final int OVERVIEW_ICON_SIZE = 28;
 	private static final int OVERVIEW_SKULL_ICON_SIZE = 14;
+	private static final int OVERVIEW_MAX_SKULL_ICON_SIZE = 24;
+	private static final int ROLE_ICON_SIZE = 18;
 	private static final int OVERVIEW_CELL_HEIGHT = 50;
 	private static final int OVERVIEW_CELL_GAP = 7;
 	private static final int OVERVIEW_HEADER_GAP = 10;
 	private static final int OVERVIEW_COLUMN_GAP = 4;
+	private static final int RUN_DROPDOWN_LIMIT = 10;
+	private static final DateTimeFormatter RUN_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 	private static final String OVERVIEW_ICON_RESOURCE_PATH = "/com/bahealerorder/overview/";
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
@@ -67,6 +77,7 @@ public class WaveOverviewPanel extends JPanel
 	};
 
 	private final SpriteManager spriteManager;
+	private final ItemManager itemManager;
 	private final BaUtilitiesConfig config;
 	private final ConfigManager configManager;
 	private final BaWaveOverviewStore store;
@@ -84,11 +95,13 @@ public class WaveOverviewPanel extends JPanel
 	@Inject
 	public WaveOverviewPanel(
 			SpriteManager spriteManager,
+			ItemManager itemManager,
 			BaUtilitiesConfig config,
 			ConfigManager configManager,
 			BaWaveOverviewStore store)
 	{
 		this.spriteManager = spriteManager;
+		this.itemManager = itemManager;
 		this.config = config;
 		this.configManager = configManager;
 		this.store = store;
@@ -157,8 +170,9 @@ public class WaveOverviewPanel extends JPanel
 
 		if (snapshot == null)
 		{
-			String message = store.getSelectedRunId() == null ? "Recent runs will appear here" : "Select a wave to view.";
-			section.add(centeredMessage(message));
+			section.add(store.getSelectedRunId() == null
+					? centeredMessage("Recent runs will appear here")
+					: createRunMetadataPanel(store.getSelectedRun(), true));
 			return;
 		}
 
@@ -186,6 +200,13 @@ public class WaveOverviewPanel extends JPanel
 		{
 			section.add(Box.createVerticalStrut(6));
 			section.add(centeredLabelRow("Duration: " + snapshot.getDuration(), false, ColorScheme.DARKER_GRAY_COLOR));
+		}
+
+		BaWaveOverviewRun selectedRun = store.getSelectedRun();
+		if (selectedRun != null && selectedRun.getRoundDuration() != null)
+		{
+			section.add(Box.createVerticalStrut(12));
+			section.add(createRunMetadataPanel(selectedRun, false));
 		}
 	}
 
@@ -228,8 +249,9 @@ public class WaveOverviewPanel extends JPanel
 
 		if (entry.dead)
 		{
-			JLabel skull = centeredOverviewLabel("", entry.color, false, CONTROL_HEIGHT - 6, width);
-			loadSkullIcon(skull);
+			int skullSize = getOverviewSkullIconSize(width);
+			JLabel skull = centeredOverviewLabel("", entry.color, false, Math.max(CONTROL_HEIGHT - 6, skullSize), width);
+			loadSkullIcon(skull, skullSize);
 			content.add(skull);
 			content.add(Box.createVerticalStrut(4));
 		}
@@ -240,7 +262,12 @@ public class WaveOverviewPanel extends JPanel
 
 		if (entry.text != null && !entry.text.isEmpty())
 		{
-			content.add(centeredOverviewLabel(entry.text, entry.color, false, CONTROL_HEIGHT - 8, width));
+			JLabel text = centeredOverviewLabel(entry.text, entry.color, false, CONTROL_HEIGHT - 8, width);
+			if (entry.dead)
+			{
+				text.setFont(getOverviewDeathFont(width));
+			}
+			content.add(text);
 		}
 
 		return content;
@@ -350,13 +377,20 @@ public class WaveOverviewPanel extends JPanel
 
 		DefaultComboBoxModel<RunItem> runModel = new DefaultComboBoxModel<>();
 		runModel.addElement(new RunItem(null, ""));
-		for (BaWaveOverviewRun run : store.getRuns())
+		List<BaWaveOverviewRun> runs = store.getRuns();
+		for (int i = 0; i < Math.min(RUN_DROPDOWN_LIMIT, runs.size()); i++)
 		{
-			runModel.addElement(new RunItem(run.getId(), run.getName()));
+			BaWaveOverviewRun run = runs.get(i);
+			runModel.addElement(new RunItem(run.getId(), formatRunDropdownLabel(run.getName())));
 		}
 
 		runCombo.setModel(runModel);
-		runCombo.setSelectedItem(new RunItem(store.getSelectedRunId(), ""));
+		RunItem selectedRunItem = getSelectedRunItem(runModel, store.getSelectedRunId());
+		if (selectedRunItem.id == null && store.getSelectedRunId() != null)
+		{
+			store.setSelectedRunId(null);
+		}
+		runCombo.setSelectedItem(selectedRunItem);
 		styleCombo(runCombo, CONTENT_WIDTH - 16);
 
 		DefaultComboBoxModel<WaveItem> waveModel = new DefaultComboBoxModel<>();
@@ -371,6 +405,54 @@ public class WaveOverviewPanel extends JPanel
 		styleCombo(waveCombo, CONTENT_WIDTH - 16 - CONTROL_HEIGHT - 10);
 
 		refreshingControls = false;
+	}
+
+	private RunItem getSelectedRunItem(DefaultComboBoxModel<RunItem> model, String selectedRunId)
+	{
+		RunItem fallback = model.getElementAt(0);
+
+		for (int i = 0; i < model.getSize(); i++)
+		{
+			RunItem item = model.getElementAt(i);
+			if (selectedRunId == null ? item.id == null : selectedRunId.equals(item.id))
+			{
+				return item;
+			}
+		}
+
+		return fallback;
+	}
+
+	private String formatRunDropdownLabel(String runName)
+	{
+		if (runName == null || runName.isEmpty()) return "";
+
+		try
+		{
+			Duration age = Duration.between(LocalDateTime.parse(runName, RUN_TIME_FORMAT), LocalDateTime.now());
+
+			if (age.isNegative())
+			{
+				return runName;
+			}
+
+			long minutes = age.toMinutes();
+			if (minutes < 1) return "Just now...";
+			if (minutes == 1) return "1 min. ago";
+
+			long hours = age.toHours();
+			if (hours < 1) return minutes + " min. ago";
+			if (hours < 24) return hours + "h ago";
+
+			long days = age.toDays();
+			if (days < 7) return days + "d ago";
+		}
+		catch (DateTimeParseException ex)
+		{
+			return runName;
+		}
+
+		return runName;
 	}
 
 	private JPopupMenu createColumnMenu()
@@ -427,11 +509,22 @@ public class WaveOverviewPanel extends JPanel
 		}
 	}
 
-	private void loadSkullIcon(JLabel label)
+	private int getOverviewSkullIconSize(int columnWidth)
+	{
+		return Math.max(OVERVIEW_SKULL_ICON_SIZE, Math.min(OVERVIEW_MAX_SKULL_ICON_SIZE, columnWidth / 4));
+	}
+
+	private Font getOverviewDeathFont(int columnWidth)
+	{
+		float extraSize = Math.max(0f, Math.min(4f, (columnWidth - getWaveOverviewColumnWidth(COLUMNS.length)) / 18f));
+		return LABEL_FONT.deriveFont(LABEL_FONT.getSize2D() + extraSize);
+	}
+
+	private void loadSkullIcon(JLabel label, int size)
 	{
 		if (skullIcon != null)
 		{
-			label.setIcon(skullIcon);
+			label.setIcon(getScaledSkullIcon(size));
 			return;
 		}
 
@@ -444,11 +537,21 @@ public class WaveOverviewPanel extends JPanel
 		spriteManager.getSpriteAsync(SpriteID.HEADICONS_PK, 0, image ->
 				SwingUtilities.invokeLater(() ->
 				{
-					skullIcon = transparentIcon(image, OVERVIEW_SKULL_ICON_SIZE, 0.45f);
+					skullIcon = transparentIcon(image, OVERVIEW_MAX_SKULL_ICON_SIZE, 0.45f);
 					lastRenderSignature = null;
 					refreshAll();
 				})
 		);
+	}
+
+	private ImageIcon getScaledSkullIcon(int size)
+	{
+		if (skullIcon == null || size == OVERVIEW_MAX_SKULL_ICON_SIZE)
+		{
+			return skullIcon;
+		}
+
+		return new ImageIcon(skullIcon.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH));
 	}
 
 	private ImageIcon transparentIcon(BufferedImage image, int size, float alpha)
@@ -513,10 +616,13 @@ public class WaveOverviewPanel extends JPanel
 
 	private String buildRenderSignature(BaWaveOverviewSnapshot snapshot)
 	{
+		BaWaveOverviewRun selectedRun = store.getSelectedRun();
+
 		return store.getSelectedRunId()
 				+ ":" + store.getSelectedWave()
 				+ ":" + getVisibleColumns()
 				+ ":" + (skullIcon != null)
+				+ ":" + (selectedRun == null ? "none" : selectedRun.metadataSignature())
 				+ ":" + (snapshot == null ? "none" : snapshot.signature());
 	}
 
@@ -567,11 +673,113 @@ public class WaveOverviewPanel extends JPanel
 
 		JPanel panel = new JPanel(new BorderLayout());
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2));
-		panel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2));
+		int height = getMessageHeight(text);
+		panel.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, height));
+		panel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, height));
 		panel.setAlignmentX(LEFT_ALIGNMENT);
 		panel.add(message, BorderLayout.CENTER);
 		return panel;
+	}
+
+	private JPanel createRunMetadataPanel(BaWaveOverviewRun run, boolean showMissingDuration)
+	{
+		if (run == null)
+		{
+			return centeredMessage("Select a wave to view.");
+		}
+
+		if (!showMissingDuration && run.getRoundDuration() == null)
+		{
+			return verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		}
+
+		List<BaTeamMember> members = run.getTeamMembers();
+		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		int height = Math.max(CONTROL_HEIGHT * 2, CONTROL_HEIGHT * (members.size() + 1) + (members.isEmpty() ? 0 : 10));
+		panel.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, height));
+		panel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, height));
+		panel.setAlignmentX(LEFT_ALIGNMENT);
+
+		for (BaTeamMember member : members)
+		{
+			panel.add(metadataMemberRow(member));
+		}
+
+		if (!members.isEmpty())
+		{
+			panel.add(Box.createVerticalStrut(10));
+		}
+
+		panel.add(roundDurationRow(run.getRoundDuration() == null ? "-" : run.getRoundDuration()));
+		return panel;
+	}
+
+	private int getMessageHeight(String text)
+	{
+		int lines = text == null || text.isEmpty() ? 1 : text.split("\\R", -1).length;
+		return Math.max(CONTROL_HEIGHT * 2, CONTROL_HEIGHT * lines);
+	}
+
+	private JPanel metadataMemberRow(BaTeamMember member)
+	{
+		JLabel nameLabel = label(member.getName(), false);
+		nameLabel.setHorizontalAlignment(SwingConstants.LEFT);
+
+		JPanel namePanel = new JPanel();
+		namePanel.setLayout(new BoxLayout(namePanel, BoxLayout.X_AXIS));
+		namePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		namePanel.add(roleIconLabel(member.getRole()));
+		namePanel.add(Box.createHorizontalStrut(5));
+		namePanel.add(nameLabel);
+
+		JPanel row = new JPanel(new BorderLayout());
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setAlignmentX(LEFT_ALIGNMENT);
+		row.add(namePanel, BorderLayout.CENTER);
+
+		return row;
+	}
+
+	private JLabel roleIconLabel(String roleName)
+	{
+		JLabel iconLabel = new JLabel();
+		iconLabel.setPreferredSize(new Dimension(ROLE_ICON_SIZE, CONTROL_HEIGHT));
+		iconLabel.setMaximumSize(new Dimension(ROLE_ICON_SIZE, CONTROL_HEIGHT));
+		iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+		BaRole role = BaRole.fromDisplayName(roleName);
+
+		if (role != null)
+		{
+			AsyncBufferedImage icon = itemManager.getImage(role.getPlayerIconItemId());
+			icon.onLoaded(() -> SwingUtilities.invokeLater(() -> iconLabel.setIcon(scaledRoleIcon(icon))));
+		}
+
+		return iconLabel;
+	}
+
+	private ImageIcon scaledRoleIcon(BufferedImage image)
+	{
+		return new ImageIcon(image.getScaledInstance(ROLE_ICON_SIZE, ROLE_ICON_SIZE, Image.SCALE_SMOOTH));
+	}
+
+	private JPanel roundDurationRow(String duration)
+	{
+		JLabel label = label("Round duration: ", true);
+		JLabel value = label(duration, true);
+		value.setForeground(Color.ORANGE);
+
+		JPanel row = new JPanel();
+		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		row.setAlignmentX(LEFT_ALIGNMENT);
+		row.add(label);
+		row.add(value);
+		return row;
 	}
 
 	private JLabel label(String text, boolean bold)

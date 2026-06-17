@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -47,6 +48,11 @@ public class BaPartySyncService
 	private static final int BA_TEAM_WIDGET_DEBUG_INTERVAL_TICKS = 10;
 	private static final int CHATBOX_GROUP_ID = 162;
 	private static final int BA_TEAM_GROUP_ID = 256;
+	private static final int BA_TEAM_PLAYER1_ROLE_CHILD_ID = 18;
+	private static final int BA_ATTACKER_ROLE_MODEL_ID = 20561;
+	private static final int BA_COLLECTOR_ROLE_MODEL_ID = 20563;
+	private static final int BA_DEFENDER_ROLE_MODEL_ID = 20566;
+	private static final int BA_HEALER_ROLE_MODEL_ID = 20569;
 
 	private static final int[][] BA_WAVE_DOOR_EXIT_TILES = {
 			{2579, 5299, 0},
@@ -81,6 +87,7 @@ public class BaPartySyncService
 	private String lastDisplayedBaPartySyncStatus;
 	private List<BaPartySyncMemberStatus> lastDisplayedBaPartySyncMemberStatuses = new ArrayList<>();
 	private List<String> baPartySyncTeamNames = new ArrayList<>();
+	private List<BaTeamMember> baPartySyncTeamMembers = new ArrayList<>();
 	private boolean baSyncManagedParty;
 
 	@Inject
@@ -122,6 +129,16 @@ public class BaPartySyncService
 	{
 		PartyMember localMember = partyService.getLocalMember();
 		return localMember != null && localMember.getMemberId() == memberId;
+	}
+
+	public List<String> getBaPartySyncTeamNames()
+	{
+		return new ArrayList<>(baPartySyncTeamNames);
+	}
+
+	public List<BaTeamMember> getBaPartySyncTeamMembers()
+	{
+		return new ArrayList<>(baPartySyncTeamMembers);
 	}
 
 	public void sendHealerSync(BaHealerSyncMessage message)
@@ -274,7 +291,7 @@ public class BaPartySyncService
 		if (partyService.isInParty())
 		{
 			String currentPassphrase = partyService.getPartyPassphrase();
-			teamRoster.ifPresent(roster -> baPartySyncTeamNames = roster.names);
+			teamRoster.ifPresent(this::setBaPartySyncTeam);
 
 			if (baSyncManagedParty && baPartySyncPassphrase != null && !baPartySyncPassphrase.equals(currentPassphrase))
 			{
@@ -329,7 +346,7 @@ public class BaPartySyncService
 		}
 
 		baPartySyncProgenitorName = progenitorName;
-		baPartySyncTeamNames = teamRoster.get().names;
+		setBaPartySyncTeam(teamRoster.get());
 		String passphrase = buildBaPartySyncPassphrase(progenitorName);
 
 		if (baSyncManagedParty && passphrase.equals(baPartySyncPassphrase))
@@ -354,7 +371,7 @@ public class BaPartySyncService
 					"Joined or created BA sync party using progenitor {} and passphrase {}. Team roster: {}",
 					progenitorName,
 					passphrase,
-					teamRoster.get().names
+					teamRoster.get().members
 			);
 		}
 		catch (RuntimeException ex)
@@ -494,6 +511,7 @@ public class BaPartySyncService
 			baPartySyncPassphrase = null;
 			baPartySyncProgenitorName = null;
 			baPartySyncTeamNames = new ArrayList<>();
+			baPartySyncTeamMembers = new ArrayList<>();
 			baPartySyncJoinAttemptTick = -1;
 			clearBaPartySyncPendingDoorExit();
 			updateBaPartySyncPanelStatus();
@@ -518,6 +536,7 @@ public class BaPartySyncService
 			baPartySyncPassphrase = null;
 			baPartySyncProgenitorName = null;
 			baPartySyncTeamNames = new ArrayList<>();
+			baPartySyncTeamMembers = new ArrayList<>();
 			baPartySyncJoinAttemptTick = -1;
 			clearBaPartySyncPendingDoorExit();
 			setBaPartySyncStatus(config.enableBaPartySync() ? "Waiting for Team" : "Off", null);
@@ -558,7 +577,11 @@ public class BaPartySyncService
 
 		for (String name : baPartySyncTeamNames)
 		{
-			statuses.add(new BaPartySyncMemberStatus(name, partyService.getMemberByDisplayName(name) != null));
+			BaTeamMember member = getBaPartySyncTeamMember(name);
+			statuses.add(new BaPartySyncMemberStatus(
+					name,
+					member == null ? null : member.getRole(),
+					partyService.getMemberByDisplayName(name) != null));
 		}
 
 		return statuses;
@@ -577,6 +600,7 @@ public class BaPartySyncService
 			BaPartySyncMemberStatus rightStatus = right.get(i);
 
 			if (!leftStatus.getName().equals(rightStatus.getName())
+					|| !Objects.equals(leftStatus.getRole(), rightStatus.getRole())
 					|| leftStatus.isInParty() != rightStatus.isInParty())
 			{
 				return false;
@@ -661,13 +685,12 @@ public class BaPartySyncService
 		if (!hasCurrentTeamText) return Optional.empty();
 
 		List<WidgetTextCandidate> teamCandidates = new ArrayList<>();
-		LinkedHashSet<String> names = new LinkedHashSet<>();
 
 		for (WidgetTextCandidate candidate : candidates)
 		{
-			if ((candidate.widgetId >>> 16) != BA_TEAM_GROUP_ID || !isLikelyBaTeamPlayerName(candidate.text)) continue;
+			if ((candidate.widgetId >>> 16) != BA_TEAM_GROUP_ID) continue;
 
-			if (names.add(candidate.text))
+			if (isLikelyBaTeamPlayerName(candidate.text))
 			{
 				teamCandidates.add(candidate);
 			}
@@ -680,7 +703,18 @@ public class BaPartySyncService
 		}
 
 		teamCandidates.sort(Comparator.comparingInt(candidate -> candidate.bounds.y));
-		return Optional.of(new BaTeamRoster(new ArrayList<>(names), teamCandidates));
+		List<BaTeamMember> members = new ArrayList<>();
+		LinkedHashSet<String> names = new LinkedHashSet<>();
+
+		for (WidgetTextCandidate candidate : teamCandidates)
+		{
+			if (names.add(candidate.text))
+			{
+				members.add(new BaTeamMember(candidate.text, getBaTeamRole(members.size())));
+			}
+		}
+
+		return Optional.of(new BaTeamRoster(members, teamCandidates));
 	}
 
 	private boolean isIgnoredWidgetForBaTeamScan(Widget widget)
@@ -753,6 +787,13 @@ public class BaPartySyncService
 		candidates.add(new WidgetTextCandidate(text, bounds, widget.getId()));
 	}
 
+	private String getBaTeamRole(int playerIndex)
+	{
+		Widget roleWidget = client.getWidget(BA_TEAM_GROUP_ID, BA_TEAM_PLAYER1_ROLE_CHILD_ID + playerIndex);
+
+		return roleWidget == null ? null : getBaTeamRoleForModelId(roleWidget.getModelId());
+	}
+
 	private boolean isLikelyBaTeamPlayerName(String text)
 	{
 		if (text == null || text.length() < 1 || text.length() > 12) return false;
@@ -782,6 +823,23 @@ public class BaPartySyncService
 		}
 
 		return !text.matches("\\d+");
+	}
+
+	private String getBaTeamRoleForModelId(int modelId)
+	{
+		switch (modelId)
+		{
+			case BA_ATTACKER_ROLE_MODEL_ID:
+				return BaRole.ATTACKER.getDisplayName();
+			case BA_COLLECTOR_ROLE_MODEL_ID:
+				return BaRole.COLLECTOR.getDisplayName();
+			case BA_DEFENDER_ROLE_MODEL_ID:
+				return BaRole.DEFENDER.getDisplayName();
+			case BA_HEALER_ROLE_MODEL_ID:
+				return BaRole.HEALER.getDisplayName();
+			default:
+				return null;
+		}
 	}
 
 	private String cleanWidgetText(String text)
@@ -838,7 +896,7 @@ public class BaPartySyncService
 		log.debug(
 				"BA party sync widget scan: {}. Roster: {}. Candidates: {}. Context: {}",
 				message,
-				roster == null ? null : roster.names,
+				roster == null ? null : roster.members,
 				candidateTexts,
 				interestingContextTexts
 		);
@@ -866,6 +924,25 @@ public class BaPartySyncService
 		waveStartTimeMs = System.currentTimeMillis();
 	}
 
+	private void setBaPartySyncTeam(BaTeamRoster roster)
+	{
+		baPartySyncTeamMembers = new ArrayList<>(roster.members);
+		baPartySyncTeamNames = new ArrayList<>(roster.names);
+	}
+
+	private BaTeamMember getBaPartySyncTeamMember(String name)
+	{
+		for (BaTeamMember member : baPartySyncTeamMembers)
+		{
+			if (member.getName().equals(name))
+			{
+				return member;
+			}
+		}
+
+		return null;
+	}
+
 	private boolean isWaveActive()
 	{
 		return waveStartTimeMs > 0 && currentWave > 0;
@@ -885,12 +962,18 @@ public class BaPartySyncService
 
 	private static class BaTeamRoster
 	{
+		private final List<BaTeamMember> members;
 		private final List<String> names;
 		private final List<WidgetTextCandidate> candidates;
 
-		private BaTeamRoster(List<String> names, List<WidgetTextCandidate> candidates)
+		private BaTeamRoster(List<BaTeamMember> members, List<WidgetTextCandidate> candidates)
 		{
-			this.names = names;
+			this.members = members;
+			this.names = new ArrayList<>();
+			for (BaTeamMember member : members)
+			{
+				this.names.add(member.getName());
+			}
 			this.candidates = candidates;
 		}
 

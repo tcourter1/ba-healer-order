@@ -1,6 +1,7 @@
 package com.bahealerorder;
 
 import com.bahealerorder.common.BaPartySyncMemberStatus;
+import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.WaveOverviewPanel;
 import com.bahealerorder.healer.HealerCodePanel;
 import java.awt.BorderLayout;
@@ -43,6 +44,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
 	private static final int TAB_ICON_SIZE = 24;
+	private static final int ROLE_ICON_SIZE = 18;
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
 	private static final String OVERVIEW_TAB = "overview";
@@ -124,7 +126,7 @@ public class BaUtilitiesPanel extends PluginPanel
 				{
 					String statusText = memberStatus.isInParty() ? "In Party" : "Not In Party";
 					partySyncMembersPanel.add(partySyncMemberRow(
-							memberStatus.getName(),
+							memberStatus,
 							statusText,
 							memberStatus.isInParty() ? Color.GREEN : Color.RED
 					));
@@ -173,21 +175,46 @@ public class BaUtilitiesPanel extends PluginPanel
 		return row;
 	}
 
-	private JPanel partySyncMemberRow(String name, String status, Color statusColor)
+	private JPanel partySyncMemberRow(BaPartySyncMemberStatus memberStatus, String status, Color statusColor)
 	{
-		JLabel nameLabel = label(name);
+		JLabel nameLabel = label(memberStatus.getName());
 		JLabel statusLabel = label(status);
 		statusLabel.setForeground(statusColor);
 		statusLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+
+		JPanel namePanel = new JPanel();
+		namePanel.setLayout(new BoxLayout(namePanel, BoxLayout.X_AXIS));
+		namePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		namePanel.add(roleIconLabel(memberStatus.getRole()));
+		namePanel.add(Box.createHorizontalStrut(5));
+		namePanel.add(nameLabel);
 
 		JPanel row = new JPanel(new BorderLayout(6, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
 		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
 		row.setAlignmentX(LEFT_ALIGNMENT);
-		row.add(nameLabel, BorderLayout.CENTER);
+		row.add(namePanel, BorderLayout.CENTER);
 		row.add(statusLabel, BorderLayout.EAST);
 		return row;
+	}
+
+	private JLabel roleIconLabel(String roleName)
+	{
+		JLabel iconLabel = new JLabel();
+		iconLabel.setPreferredSize(new Dimension(ROLE_ICON_SIZE, CONTROL_HEIGHT));
+		iconLabel.setMaximumSize(new Dimension(ROLE_ICON_SIZE, CONTROL_HEIGHT));
+		iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+		BaRole role = BaRole.fromDisplayName(roleName);
+
+		if (role != null)
+		{
+			AsyncBufferedImage icon = itemManager.getImage(role.getPlayerIconItemId());
+			icon.onLoaded(() -> SwingUtilities.invokeLater(() -> iconLabel.setIcon(scaledRoleIcon(icon))));
+		}
+
+		return iconLabel;
 	}
 
 	private JPanel createTabSection()
@@ -315,6 +342,11 @@ public class BaUtilitiesPanel extends PluginPanel
 	private ImageIcon scaledIcon(BufferedImage image)
 	{
 		return new ImageIcon(image.getScaledInstance(TAB_ICON_SIZE, TAB_ICON_SIZE, Image.SCALE_SMOOTH));
+	}
+
+	private ImageIcon scaledRoleIcon(BufferedImage image)
+	{
+		return new ImageIcon(image.getScaledInstance(ROLE_ICON_SIZE, ROLE_ICON_SIZE, Image.SCALE_SMOOTH));
 	}
 
 	private Color getPartySyncStatusColor(String status)

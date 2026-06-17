@@ -2,15 +2,17 @@ package com.bahealerorder.common;
 
 import com.bahealerorder.BaUtilitiesPanel;
 import com.bahealerorder.healer.HealerSharedState;
+import java.util.Map;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import net.runelite.api.ChatLineBuffer;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.MessageNode;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.VarbitChanged;
@@ -23,7 +25,9 @@ import net.runelite.client.util.Text;
 public class BaWaveOverviewService
 {
 	private static final Pattern WAVE_PATTERN = Pattern.compile(".*----\\s*wave:\\s*(10|[1-9])\\s*----.*", Pattern.CASE_INSENSITIVE);
+	private static final Pattern WAVE_START_PATTERN = Pattern.compile(".*\\bwave:\\s*(10|[1-9])\\b.*", Pattern.CASE_INSENSITIVE);
 	private static final Pattern WAVE_DURATION_PATTERN = Pattern.compile(".*wave\\s+(10|[1-9])\\s+duration:\\s*([0-9]+:[0-5][0-9](?:\\.\\d+)?).*", Pattern.CASE_INSENSITIVE);
+	private static final Pattern ROUND_DURATION_PATTERN = Pattern.compile(".*round\\s+duration:\\s*([0-9]+:[0-5][0-9](?:\\.\\d+)?).*", Pattern.CASE_INSENSITIVE);
 
 	private final Client client;
 	private final BaPartySyncService partySyncService;
@@ -59,14 +63,30 @@ public class BaWaveOverviewService
 
 	public void onChatMessage(ChatMessage event)
 	{
-		if (event.getType() != ChatMessageType.GAMEMESSAGE) return;
+		String roundDuration = parseRoundDurationFromMessage(event.getMessage());
+		if (roundDuration != null)
+		{
+			log.debug("Parsed BA wave overview round duration: duration={}, type={}, message={}",
+					roundDuration,
+					event.getType(),
+					event.getMessage());
+			recordRoundDuration(roundDuration);
+			return;
+		}
 
 		WaveDuration duration = parseWaveDurationFromMessage(event.getMessage());
 		if (duration != null)
 		{
+			log.debug("Parsed BA wave overview duration: wave={}, duration={}, type={}, message={}",
+					duration.wave,
+					duration.duration,
+					event.getType(),
+					event.getMessage());
 			recordWaveDuration(duration);
 			return;
 		}
+
+		logUnparsedDurationLikeMessage(event);
 
 		Integer wave = parseWaveFromMessage(event.getMessage());
 		if (wave != null)
@@ -86,6 +106,17 @@ public class BaWaveOverviewService
 		if (currentInGameBit == 0)
 		{
 			finishWave();
+			return;
+		}
+
+		if (currentInGameBit == 1 && !state.isWaveActive())
+		{
+			Integer wave = getLatestWaveFromChatHistory();
+
+			if (wave != null)
+			{
+				startWave(wave);
+			}
 		}
 	}
 
@@ -124,9 +155,21 @@ public class BaWaveOverviewService
 
 	public void startWave(int wave)
 	{
-		clearPendingCompletion();
+		if (shouldFallbackCompletePendingWave(wave))
+		{
+			log.debug("Saving pending BA wave overview snapshot for wave {} without duration because wave {} started",
+					pendingCompletionWave,
+					wave);
+			completePendingWave(null);
+		}
+		else if (pendingCompletionWave == wave || pendingCompletionWave > wave)
+		{
+			clearPendingCompletion();
+		}
+
 		boolean stateChanged = state.startWave(wave);
 		store.startWave(wave);
+		boolean metadataChanged = saveCurrentTeamNames();
 
 		if (stateChanged)
 		{
@@ -139,7 +182,7 @@ public class BaWaveOverviewService
 			waveStartTick = client.getTickCount();
 		}
 
-		if (saveCurrentSnapshot() || stateChanged)
+		if (saveCurrentSnapshot() || stateChanged || metadataChanged)
 		{
 			refreshPanel();
 		}
@@ -160,13 +203,7 @@ public class BaWaveOverviewService
 	{
 		if (!state.isWaveActive()) return;
 
-		int wave = state.getWave();
-		pendingCompletionSnapshot = BaWaveOverviewSnapshot.fromStates(wave, state, healerState);
-		pendingCompletionWave = wave;
-		store.leaveWave(wave);
-		state.reset();
-		waveStartTick = -1;
-		lastSentSignature = null;
+		int wave = capturePendingCompletionSnapshot();
 
 		if (pendingDurationWave == wave)
 		{
@@ -245,8 +282,28 @@ public class BaWaveOverviewService
 			return;
 		}
 
+		if (state.isWaveActive() && state.getWave() == duration.wave)
+		{
+			capturePendingCompletionSnapshot();
+			completePendingWave(duration.duration);
+			return;
+		}
+
 		pendingDurationWave = duration.wave;
 		pendingDuration = duration.duration;
+	}
+
+	private int capturePendingCompletionSnapshot()
+	{
+		int wave = state.getWave();
+		pendingCompletionSnapshot = BaWaveOverviewSnapshot.fromStates(wave, state, healerState);
+		pendingCompletionWave = wave;
+		saveCurrentTeamNames();
+		store.leaveWave(wave);
+		state.reset();
+		waveStartTick = -1;
+		lastSentSignature = null;
+		return wave;
 	}
 
 	private void completePendingWave(String duration)
@@ -258,6 +315,19 @@ public class BaWaveOverviewService
 		refreshPanel();
 	}
 
+	private void recordRoundDuration(String duration)
+	{
+		if (store.updateLatestCompletedRunRoundDuration(duration))
+		{
+			refreshPanel();
+		}
+	}
+
+	private boolean saveCurrentTeamNames()
+	{
+		return store.updateCurrentRunTeamMembers(partySyncService.getBaPartySyncTeamMembers());
+	}
+
 	private void clearPendingCompletion()
 	{
 		pendingCompletionSnapshot = null;
@@ -266,10 +336,23 @@ public class BaWaveOverviewService
 		pendingDuration = null;
 	}
 
+	private boolean shouldFallbackCompletePendingWave(int nextWave)
+	{
+		if (pendingCompletionSnapshot == null || !BaWaveInfo.isValidWave(pendingCompletionWave)) return false;
+
+		return nextWave == pendingCompletionWave + 1
+				|| pendingCompletionWave == 10 && nextWave == 1;
+	}
+
 	private Integer parseWaveFromMessage(String message)
 	{
-		String normalized = Text.removeTags(message == null ? "" : message).toLowerCase(Locale.ROOT);
+		String normalized = normalizeMessage(message);
 		Matcher matcher = WAVE_PATTERN.matcher(normalized);
+
+		if (!matcher.matches())
+		{
+			matcher = WAVE_START_PATTERN.matcher(normalized);
+		}
 
 		if (!matcher.matches()) return null;
 
@@ -287,7 +370,7 @@ public class BaWaveOverviewService
 
 	private WaveDuration parseWaveDurationFromMessage(String message)
 	{
-		String normalized = Text.removeTags(message == null ? "" : message).toLowerCase(Locale.ROOT);
+		String normalized = normalizeMessage(message);
 		Matcher matcher = WAVE_DURATION_PATTERN.matcher(normalized);
 
 		if (!matcher.matches()) return null;
@@ -302,6 +385,55 @@ public class BaWaveOverviewService
 			log.debug("Failed to parse BA wave duration from message: {}", message, ex);
 			return null;
 		}
+	}
+
+	private String parseRoundDurationFromMessage(String message)
+	{
+		String normalized = normalizeMessage(message);
+		Matcher matcher = ROUND_DURATION_PATTERN.matcher(normalized);
+		return matcher.matches() ? matcher.group(1) : null;
+	}
+
+	private void logUnparsedDurationLikeMessage(ChatMessage event)
+	{
+		String normalized = normalizeMessage(event.getMessage());
+
+		if (!normalized.contains("wave") || !normalized.contains("duration")) return;
+
+		log.debug("Saw BA wave overview duration-like message but could not parse it: type={}, message={}, normalized={}",
+				event.getType(),
+				event.getMessage(),
+				normalized);
+	}
+
+	private String normalizeMessage(String message)
+	{
+		return Text.removeTags(message == null ? "" : message).toLowerCase(Locale.ROOT);
+	}
+
+	private Integer getLatestWaveFromChatHistory()
+	{
+		MessageNode latestWaveMessage = null;
+		Map<Integer, ChatLineBuffer> chatLineMap = client.getChatLineMap();
+
+		if (chatLineMap == null) return null;
+
+		for (ChatLineBuffer buffer : chatLineMap.values())
+		{
+			if (buffer == null || buffer.getLines() == null) continue;
+
+			for (MessageNode messageNode : buffer.getLines())
+			{
+				if (messageNode == null || parseWaveFromMessage(messageNode.getValue()) == null) continue;
+
+				if (latestWaveMessage == null || messageNode.getTimestamp() > latestWaveMessage.getTimestamp())
+				{
+					latestWaveMessage = messageNode;
+				}
+			}
+		}
+
+		return latestWaveMessage == null ? null : parseWaveFromMessage(latestWaveMessage.getValue());
 	}
 
 	private String buildSignature(BaWaveOverviewSyncMessage message)
