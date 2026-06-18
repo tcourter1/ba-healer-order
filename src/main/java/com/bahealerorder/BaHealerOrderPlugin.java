@@ -16,6 +16,7 @@ import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOpened;
@@ -93,6 +94,12 @@ public class BaHealerOrderPlugin extends Plugin
 		attackerController.onNpcDespawned(event);
 		defenderController.onNpcDespawned(event);
 		healerController.onNpcDespawned(event);
+	}
+
+	@Subscribe
+	public void onHitsplatApplied(HitsplatApplied event)
+	{
+		healerController.onHitsplatApplied(event);
 	}
 
 	@Subscribe

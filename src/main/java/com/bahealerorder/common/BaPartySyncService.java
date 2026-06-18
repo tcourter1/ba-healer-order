@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
@@ -141,6 +142,33 @@ public class BaPartySyncService
 		return new ArrayList<>(baPartySyncTeamMembers);
 	}
 
+	public boolean hasIncompleteDuoHealerParty()
+	{
+		return hasIncompleteDuoHealerParty(
+				baPartySyncTeamMembers,
+				name -> partyService.getMemberByDisplayName(name) != null
+		);
+	}
+
+	static boolean hasIncompleteDuoHealerParty(List<BaTeamMember> teamMembers, Predicate<String> isInParty)
+	{
+		int healerCount = 0;
+		int healersInParty = 0;
+
+		for (BaTeamMember member : teamMembers)
+		{
+			if (!BaRole.HEALER.getDisplayName().equals(member.getRole())) continue;
+
+			healerCount++;
+			if (isInParty.test(member.getName()))
+			{
+				healersInParty++;
+			}
+		}
+
+		return healerCount >= 2 && healersInParty < healerCount;
+	}
+
 	public void sendHealerSync(BaHealerSyncMessage message)
 	{
 		if (!isBaPartySyncConnected() || message == null) return;
@@ -269,6 +297,11 @@ public class BaPartySyncService
 
 	private void updateBaPartySync()
 	{
+		Optional<BaTeamRoster> teamRoster = isWaveActive()
+				? Optional.empty()
+				: getBaTeamRosterFromWidgetScanner();
+		teamRoster.ifPresent(this::setBaPartySyncTeam);
+
 		if (!config.enableBaPartySync())
 		{
 			if (baSyncManagedParty)
@@ -286,12 +319,9 @@ public class BaPartySyncService
 			return;
 		}
 
-		Optional<BaTeamRoster> teamRoster = getBaTeamRosterFromWidgetScanner();
-
 		if (partyService.isInParty())
 		{
 			String currentPassphrase = partyService.getPartyPassphrase();
-			teamRoster.ifPresent(this::setBaPartySyncTeam);
 
 			if (baSyncManagedParty && baPartySyncPassphrase != null && !baPartySyncPassphrase.equals(currentPassphrase))
 			{
