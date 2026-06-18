@@ -1,15 +1,14 @@
 package com.bahealerorder.defender;
 
 import com.bahealerorder.common.BaOverviewNpcType;
+import com.bahealerorder.common.BaWaveLifecycleService;
 import com.bahealerorder.common.BaWaveOverviewService;
-import com.bahealerorder.common.BaWaveOverviewState;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Actor;
-import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.NPC;
 import net.runelite.api.events.ActorDeath;
@@ -18,9 +17,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
-import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.AnimationID;
-import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.util.Text;
 
 @Singleton
@@ -28,22 +25,17 @@ public class DefenderController
 {
 	private static final String PENANCE_RUNNER_NAME = "Penance Runner";
 
-	private final Client client;
 	private final BaWaveOverviewService waveOverviewService;
-	private final BaWaveOverviewState waveOverviewState;
+	private final BaWaveLifecycleService waveLifecycleService;
 	private final Map<NPC, BaOverviewNpcType> visibleRunnerNpcs = new HashMap<>();
-
-	private int inGameBit;
 
 	@Inject
 	private DefenderController(
-			Client client,
 			BaWaveOverviewService waveOverviewService,
-			BaWaveOverviewState waveOverviewState)
+			BaWaveLifecycleService waveLifecycleService)
 	{
-		this.client = client;
 		this.waveOverviewService = waveOverviewService;
-		this.waveOverviewState = waveOverviewState;
+		this.waveLifecycleService = waveLifecycleService;
 	}
 
 	public void startUp()
@@ -58,7 +50,7 @@ public class DefenderController
 
 	public void onNpcSpawned(NpcSpawned event)
 	{
-		if (!waveOverviewState.isWaveActive()) return;
+		if (!waveLifecycleService.isWaveActive()) return;
 
 		NPC npc = event.getNpc();
 		if (npc == null || npc.getName() == null) return;
@@ -92,7 +84,7 @@ public class DefenderController
 
 	public void onGameTick(GameTick event)
 	{
-		if (!waveOverviewState.isWaveActive()) return;
+		if (!waveLifecycleService.isWaveActive()) return;
 
 		for (Map.Entry<NPC, BaOverviewNpcType> entry : visibleRunnerNpcs.entrySet())
 		{
@@ -104,18 +96,9 @@ public class DefenderController
 		}
 	}
 
-	public void onVarbitChanged(VarbitChanged event)
+	public void onWaveEnded()
 	{
-		int currentInGameBit = client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING);
-
-		if (inGameBit == currentInGameBit) return;
-
-		inGameBit = currentInGameBit;
-
-		if (currentInGameBit == 0)
-		{
-			resetWaveState();
-		}
+		resetWaveState();
 	}
 
 	public void onGameStateChanged(GameStateChanged event)
@@ -130,7 +113,7 @@ public class DefenderController
 
 	private void recordRunnerDeath(Actor actor)
 	{
-		if (!waveOverviewState.isWaveActive() || !(actor instanceof NPC)) return;
+		if (!waveLifecycleService.isWaveActive() || !(actor instanceof NPC)) return;
 
 		NPC npc = (NPC) actor;
 		if (visibleRunnerNpcs.containsKey(npc))
@@ -147,6 +130,5 @@ public class DefenderController
 	private void resetState()
 	{
 		resetWaveState();
-		inGameBit = 0;
 	}
 }

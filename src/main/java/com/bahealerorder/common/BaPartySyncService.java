@@ -2,9 +2,7 @@ package com.bahealerorder.common;
 
 import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.BaUtilitiesPanel;
-import java.awt.Rectangle;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -15,16 +13,14 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.MenuAction;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.events.ConfigChanged;
@@ -46,10 +42,11 @@ public class BaPartySyncService
 	private static final int BA_WAVE_DOOR_LAST_ID = 20208;
 	private static final int BA_WAVE_DOOR_EXIT_CONFIRM_TICKS = 10;
 	private static final int BA_LOBBY_REGION_ID = 10322;
-	private static final int BA_TEAM_WIDGET_DEBUG_INTERVAL_TICKS = 10;
-	private static final int CHATBOX_GROUP_ID = 162;
-	private static final int BA_TEAM_GROUP_ID = 256;
-	private static final int BA_TEAM_PLAYER1_ROLE_CHILD_ID = 18;
+	private static final int BA_TEAM_GROUP_ID = InterfaceID.BARBASSAULT_OVER_RECRUIT_PLAYER_NAMES;
+	private static final int BA_TEAM_PLAYER1_NAME_CHILD_ID =
+			InterfaceID.BarbassaultOverRecruitPlayerNames.BARBASSAULT_LEADER_NAME & 0xFFFF;
+	private static final int BA_TEAM_PLAYER1_ROLE_CHILD_ID =
+			InterfaceID.BarbassaultOverRecruitPlayerNames.BARBASSAULT_LEADER_ICON & 0xFFFF;
 	private static final int BA_ATTACKER_ROLE_MODEL_ID = 20561;
 	private static final int BA_COLLECTOR_ROLE_MODEL_ID = 20563;
 	private static final int BA_DEFENDER_ROLE_MODEL_ID = 20566;
@@ -74,11 +71,8 @@ public class BaPartySyncService
 	private final WSClient wsClient;
 	private final BaUtilitiesConfig config;
 	private final BaUtilitiesPanel panel;
+	private final BaWaveLifecycleService waveLifecycleService;
 
-	private int currentWave = -1;
-	private long waveStartTimeMs = -1;
-	private int inGameBit;
-	private int lastBaTeamWidgetDebugTick = -BA_TEAM_WIDGET_DEBUG_INTERVAL_TICKS;
 	private int baPartySyncJoinAttemptTick = -1;
 	private int baPartySyncPendingDoorExitTick = -1;
 	private int baPartySyncPendingDoorExitObjectId = -1;
@@ -92,7 +86,14 @@ public class BaPartySyncService
 	private boolean baSyncManagedParty;
 
 	@Inject
-	private BaPartySyncService(Client client, PartyService partyService, PluginManager pluginManager, WSClient wsClient, BaUtilitiesConfig config, BaUtilitiesPanel panel)
+	private BaPartySyncService(
+			Client client,
+			PartyService partyService,
+			PluginManager pluginManager,
+			WSClient wsClient,
+			BaUtilitiesConfig config,
+			BaUtilitiesPanel panel,
+			BaWaveLifecycleService waveLifecycleService)
 	{
 		this.client = client;
 		this.partyService = partyService;
@@ -100,6 +101,7 @@ public class BaPartySyncService
 		this.wsClient = wsClient;
 		this.config = config;
 		this.panel = panel;
+		this.waveLifecycleService = waveLifecycleService;
 	}
 
 	public void startUp()
@@ -208,36 +210,11 @@ public class BaPartySyncService
 		debugBaDoorClick(event, event.getMenuOption(), event.getMenuTarget());
 	}
 
-	public void onChatMessage(ChatMessage event)
+	public void onWaveEnded(int wave)
 	{
-		if (event.getType() != ChatMessageType.GAMEMESSAGE) return;
-
-		String message = Text.removeTags(event.getMessage()).toLowerCase(Locale.ROOT);
-
-		if (handleWaveStartMessage(message)) return;
-
-		if (message.matches(".*---- wave: (10|[1-9]) ----.*"))
+		if (wave == 10)
 		{
-			startNewWave(Integer.parseInt(message.replaceAll(".*---- wave: (10|[1-9]) ----.*", "$1")));
-		}
-	}
-
-	public void onVarbitChanged(VarbitChanged event)
-	{
-		int currentInGameBit = client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING);
-
-		if (inGameBit == currentInGameBit) return;
-
-		inGameBit = currentInGameBit;
-
-		if (currentInGameBit == 0)
-		{
-			if (currentWave == 10)
-			{
-				leaveBaSyncParty("BA wave 10 ended");
-			}
-
-			resetWaveState();
+			leaveBaSyncParty("BA wave 10 ended");
 		}
 	}
 
@@ -248,7 +225,6 @@ public class BaPartySyncService
 		if (gameState == GameState.LOGIN_SCREEN || gameState == GameState.HOPPING)
 		{
 			leaveBaSyncParty("game state changed to " + gameState);
-			resetAllState();
 		}
 	}
 
@@ -297,11 +273,6 @@ public class BaPartySyncService
 
 	private void updateBaPartySync()
 	{
-		Optional<BaTeamRoster> teamRoster = isWaveActive()
-				? Optional.empty()
-				: getBaTeamRosterFromWidgetScanner();
-		teamRoster.ifPresent(this::setBaPartySyncTeam);
-
 		if (!config.enableBaPartySync())
 		{
 			if (baSyncManagedParty)
@@ -312,6 +283,12 @@ public class BaPartySyncService
 			setBaPartySyncStatus("Off", null);
 			return;
 		}
+
+		Optional<BaTeamRoster> teamRoster = isWaveActive()
+				|| client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING) == 1
+				? Optional.empty()
+				: getBaTeamRosterFromWidgets();
+		teamRoster.ifPresent(this::setBaPartySyncTeam);
 
 		if (isWaveActive())
 		{
@@ -440,7 +417,7 @@ public class BaPartySyncService
 				worldPoint.getRegionX(),
 				worldPoint.getRegionY(),
 				client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING),
-				currentWave,
+				waveLifecycleService.getWave(),
 				baSyncManagedParty,
 				partyService.isInParty()
 		);
@@ -640,181 +617,39 @@ public class BaPartySyncService
 		return true;
 	}
 
-	private Optional<BaTeamRoster> getBaTeamRosterFromWidgetScanner()
+	private Optional<BaTeamRoster> getBaTeamRosterFromWidgets()
 	{
-		Widget[] roots = client.getWidgetRoots();
+		List<BaTeamMember> members = new ArrayList<>();
+		LinkedHashSet<String> names = new LinkedHashSet<>();
+		boolean teamWidgetLoaded = false;
 
-		if (roots == null) return Optional.empty();
-
-		List<WidgetTextCandidate> candidates = new ArrayList<>();
-		List<String> contextTexts = new ArrayList<>();
-
-		for (Widget root : roots)
+		for (int playerIndex = 0; playerIndex < 5; playerIndex++)
 		{
-			collectVisibleWidgetTextCandidates(root, candidates, contextTexts);
-		}
+			Widget nameWidget = client.getWidget(BA_TEAM_GROUP_ID, BA_TEAM_PLAYER1_NAME_CHILD_ID + playerIndex);
+			if (nameWidget == null) continue;
 
-		Optional<BaTeamRoster> directBaTeamRoster = getBaTeamRosterFromKnownWidgetGroup(candidates, contextTexts);
+			teamWidgetLoaded = true;
+			String name = cleanWidgetText(nameWidget.getText());
 
-		if (directBaTeamRoster.isPresent())
-		{
-			debugBaTeamWidgetScan(
-					"Detected BA team roster from known widget group",
-					candidates,
-					contextTexts,
-					directBaTeamRoster.get()
-			);
-
-			return directBaTeamRoster;
-		}
-
-		boolean hasCurrentTeamText = hasCurrentTeamContextText(contextTexts);
-		debugBaTeamWidgetScan(
-				hasCurrentTeamText
-						? "Current team widget detected, but no visible BA team names found"
-						: "No known BA team widget detected",
-				candidates,
-				contextTexts,
-				null
-		);
-
-		if (hasCurrentTeamText && baSyncManagedParty)
-		{
-			leaveBaSyncParty("BA team cleared");
-		}
-
-		return Optional.empty();
-	}
-
-	private boolean hasCurrentTeamContextText(List<String> contextTexts)
-	{
-		for (String text : contextTexts)
-		{
-			if ("current team".equalsIgnoreCase(text))
+			if (isLikelyBaTeamPlayerName(name) && names.add(name))
 			{
-				return true;
+				members.add(new BaTeamMember(name, getBaTeamRole(playerIndex)));
 			}
 		}
 
-		return false;
-	}
+		if (!teamWidgetLoaded) return Optional.empty();
 
-	private Optional<BaTeamRoster> getBaTeamRosterFromKnownWidgetGroup(List<WidgetTextCandidate> candidates, List<String> contextTexts)
-	{
-		boolean hasCurrentTeamText = false;
-
-		for (String text : contextTexts)
+		if (members.isEmpty())
 		{
-			if ("current team".equalsIgnoreCase(text))
+			if (baSyncManagedParty)
 			{
-				hasCurrentTeamText = true;
-				break;
+				leaveBaSyncParty("BA team cleared");
 			}
-		}
 
-		if (!hasCurrentTeamText) return Optional.empty();
-
-		List<WidgetTextCandidate> teamCandidates = new ArrayList<>();
-
-		for (WidgetTextCandidate candidate : candidates)
-		{
-			if ((candidate.widgetId >>> 16) != BA_TEAM_GROUP_ID) continue;
-
-			if (isLikelyBaTeamPlayerName(candidate.text))
-			{
-				teamCandidates.add(candidate);
-			}
-		}
-
-		if (teamCandidates.isEmpty())
-		{
-			log.debug("BA party sync found Current team widget, but no group {} team member names were visible yet", BA_TEAM_GROUP_ID);
 			return Optional.empty();
 		}
 
-		teamCandidates.sort(Comparator.comparingInt(candidate -> candidate.bounds.y));
-		List<BaTeamMember> members = new ArrayList<>();
-		LinkedHashSet<String> names = new LinkedHashSet<>();
-
-		for (WidgetTextCandidate candidate : teamCandidates)
-		{
-			if (names.add(candidate.text))
-			{
-				members.add(new BaTeamMember(candidate.text, getBaTeamRole(members.size())));
-			}
-		}
-
-		return Optional.of(new BaTeamRoster(members, teamCandidates));
-	}
-
-	private boolean isIgnoredWidgetForBaTeamScan(Widget widget)
-	{
-		int groupId = getWidgetGroupId(widget);
-
-		if (groupId == CHATBOX_GROUP_ID) return true;
-
-		Rectangle bounds = widget.getBounds();
-
-		if (bounds == null) return false;
-
-		return bounds.y >= 480;
-	}
-
-	private int getWidgetGroupId(Widget widget)
-	{
-		return widget.getId() >>> 16;
-	}
-
-	private void collectVisibleWidgetTextCandidates(Widget widget, List<WidgetTextCandidate> candidates, List<String> contextTexts)
-	{
-		if (widget == null || widget.isHidden() || isIgnoredWidgetForBaTeamScan(widget)) return;
-
-		collectWidgetTextCandidate(widget, widget.getText(), candidates, contextTexts);
-		collectWidgetTextCandidate(widget, widget.getName(), candidates, contextTexts);
-
-		Widget[] dynamicChildren = widget.getDynamicChildren();
-		if (dynamicChildren != null)
-		{
-			for (Widget child : dynamicChildren)
-			{
-				collectVisibleWidgetTextCandidates(child, candidates, contextTexts);
-			}
-		}
-
-		Widget[] staticChildren = widget.getStaticChildren();
-		if (staticChildren != null)
-		{
-			for (Widget child : staticChildren)
-			{
-				collectVisibleWidgetTextCandidates(child, candidates, contextTexts);
-			}
-		}
-
-		Widget[] nestedChildren = widget.getNestedChildren();
-		if (nestedChildren != null)
-		{
-			for (Widget child : nestedChildren)
-			{
-				collectVisibleWidgetTextCandidates(child, candidates, contextTexts);
-			}
-		}
-	}
-
-	private void collectWidgetTextCandidate(Widget widget, String rawText, List<WidgetTextCandidate> candidates, List<String> contextTexts)
-	{
-		String text = cleanWidgetText(rawText);
-
-		if (text.isEmpty()) return;
-
-		contextTexts.add(text);
-
-		if (!isLikelyBaTeamPlayerName(text)) return;
-
-		Rectangle bounds = widget.getBounds();
-
-		if (bounds == null || bounds.width <= 0 || bounds.height <= 0) return;
-
-		candidates.add(new WidgetTextCandidate(text, bounds, widget.getId()));
+		return Optional.of(new BaTeamRoster(members));
 	}
 
 	private String getBaTeamRole(int playerIndex)
@@ -882,78 +717,6 @@ public class BaPartySyncService
 				.trim();
 	}
 
-	private void debugBaTeamWidgetScan(String message, List<WidgetTextCandidate> candidates, List<String> contextTexts, BaTeamRoster roster)
-	{
-		if (!config.enableBaPartySync()) return;
-
-		int tick = client.getTickCount();
-
-		if (tick - lastBaTeamWidgetDebugTick < BA_TEAM_WIDGET_DEBUG_INTERVAL_TICKS) return;
-
-		lastBaTeamWidgetDebugTick = tick;
-
-		List<String> candidateTexts = new ArrayList<>();
-
-		for (WidgetTextCandidate candidate : candidates)
-		{
-			candidateTexts.add(candidate.text + "@" + candidate.bounds.x + "," + candidate.bounds.y + "#" + candidate.widgetId + "/g" + (candidate.widgetId >>> 16));
-		}
-
-		List<String> interestingContextTexts = new ArrayList<>();
-
-		for (String text : contextTexts)
-		{
-			String lower = text.toLowerCase(Locale.ROOT);
-
-			if (lower.contains("current team")
-					|| lower.contains("leader:")
-					|| lower.contains("player 1:")
-					|| lower.contains("player 2:")
-					|| lower.contains("player 3:")
-					|| lower.contains("player 4:")
-					|| lower.contains("barbarian")
-					|| lower.contains("wave")
-					|| lower.contains("attacker")
-					|| lower.contains("collector")
-					|| lower.contains("defender")
-					|| lower.contains("healer")
-					|| lower.contains("penance"))
-			{
-				interestingContextTexts.add(text);
-			}
-		}
-
-		log.debug(
-				"BA party sync widget scan: {}. Roster: {}. Candidates: {}. Context: {}",
-				message,
-				roster == null ? null : roster.members,
-				candidateTexts,
-				interestingContextTexts
-		);
-	}
-
-	private boolean handleWaveStartMessage(String message)
-	{
-		if (!message.matches(".*\\bwave:\\s*(10|[1-9])\\b.*")) return false;
-
-		try
-		{
-			startNewWave(Integer.parseInt(message.replaceAll(".*\\bwave:\\s*(10|[1-9])\\b.*", "$1")));
-			return true;
-		}
-		catch (NumberFormatException ex)
-		{
-			log.debug("Failed to parse BA wave start message: {}", message, ex);
-			return false;
-		}
-	}
-
-	private void startNewWave(int wave)
-	{
-		currentWave = wave;
-		waveStartTimeMs = System.currentTimeMillis();
-	}
-
 	private void setBaPartySyncTeam(BaTeamRoster roster)
 	{
 		baPartySyncTeamMembers = new ArrayList<>(roster.members);
@@ -975,28 +738,15 @@ public class BaPartySyncService
 
 	private boolean isWaveActive()
 	{
-		return waveStartTimeMs > 0 && currentWave > 0;
-	}
-
-	private void resetWaveState()
-	{
-		waveStartTimeMs = -1;
-	}
-
-	private void resetAllState()
-	{
-		resetWaveState();
-		currentWave = -1;
-		inGameBit = 0;
+		return waveLifecycleService.isWaveActive();
 	}
 
 	private static class BaTeamRoster
 	{
 		private final List<BaTeamMember> members;
 		private final List<String> names;
-		private final List<WidgetTextCandidate> candidates;
 
-		private BaTeamRoster(List<BaTeamMember> members, List<WidgetTextCandidate> candidates)
+		private BaTeamRoster(List<BaTeamMember> members)
 		{
 			this.members = members;
 			this.names = new ArrayList<>();
@@ -1004,41 +754,11 @@ public class BaPartySyncService
 			{
 				this.names.add(member.getName());
 			}
-			this.candidates = candidates;
 		}
 
 		private String getProgenitorName()
 		{
-			if (candidates == null || candidates.isEmpty())
-			{
-				return names.isEmpty() ? null : names.get(0);
-			}
-
-			WidgetTextCandidate topCandidate = candidates.get(0);
-
-			for (WidgetTextCandidate candidate : candidates)
-			{
-				if (candidate.bounds.y < topCandidate.bounds.y)
-				{
-					topCandidate = candidate;
-				}
-			}
-
-			return topCandidate.text;
-		}
-	}
-
-	private static class WidgetTextCandidate
-	{
-		private final String text;
-		private final Rectangle bounds;
-		private final int widgetId;
-
-		private WidgetTextCandidate(String text, Rectangle bounds, int widgetId)
-		{
-			this.text = text;
-			this.bounds = bounds;
-			this.widgetId = widgetId;
+			return names.isEmpty() ? null : names.get(0);
 		}
 	}
 }

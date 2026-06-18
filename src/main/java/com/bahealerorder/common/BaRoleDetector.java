@@ -6,16 +6,13 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
-import net.runelite.api.gameval.VarbitID;
 
 @Singleton
 public class BaRoleDetector
 {
 	private final Client client;
 	private BaRole currentRole;
-	private int inGameBit;
 
 	@Inject
 	private BaRoleDetector(Client client)
@@ -33,6 +30,19 @@ public class BaRoleDetector
 		return currentRole == role;
 	}
 
+	public boolean isRoleInterfaceLoaded()
+	{
+		for (BaRole role : BaRole.values())
+		{
+			if (client.getWidget(role.getInterfaceGroupId(), 0) != null)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public void onGameTick(GameTick event)
 	{
 		if (currentRole == null)
@@ -44,20 +54,6 @@ public class BaRoleDetector
 	public void onWidgetLoaded(WidgetLoaded event)
 	{
 		setRole(BaRole.fromGroupId(event.getGroupId()));
-	}
-
-	public void onVarbitChanged(VarbitChanged event)
-	{
-		int currentInGameBit = client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING);
-
-		if (inGameBit == currentInGameBit) return;
-
-		inGameBit = currentInGameBit;
-
-		if (currentInGameBit == 0)
-		{
-			reset();
-		}
 	}
 
 	public void onGameStateChanged(GameStateChanged event)
@@ -77,8 +73,6 @@ public class BaRoleDetector
 
 	private void detectRoleFromLoadedWidgets()
 	{
-		if (client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING) != 1) return;
-
 		for (BaRole role : BaRole.values())
 		{
 			if (client.getWidget(role.getInterfaceGroupId(), 0) != null)

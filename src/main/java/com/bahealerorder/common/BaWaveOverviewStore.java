@@ -219,13 +219,13 @@ public class BaWaveOverviewStore
 			return BaWaveOverviewSnapshot.blank(selectedWave);
 		}
 
-		BaWaveOverviewSnapshot snapshot = run.completedSnapshotsByWave.get(selectedWave);
+		BaWaveOverviewSnapshot snapshot = run.liveSnapshotsByWave.get(selectedWave);
 		if (snapshot != null)
 		{
 			return snapshot;
 		}
 
-		snapshot = run.liveSnapshotsByWave.get(selectedWave);
+		snapshot = run.completedSnapshotsByWave.get(selectedWave);
 		return snapshot == null ? BaWaveOverviewSnapshot.blank(selectedWave) : snapshot;
 	}
 

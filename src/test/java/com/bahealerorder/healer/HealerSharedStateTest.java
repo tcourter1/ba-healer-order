@@ -6,6 +6,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.bahealerorder.common.BaHealerSyncMessage;
+import com.bahealerorder.common.BaOverviewNpcType;
+import com.bahealerorder.common.BaWaveOverviewSnapshot;
+import com.bahealerorder.common.BaWaveOverviewState;
 import org.junit.Test;
 
 public class HealerSharedStateTest
@@ -63,6 +66,23 @@ public class HealerSharedStateTest
 
 		state.updateFromParty(message(31, false, false), true);
 		assertTrue(state.isHealthRatioMode(1));
+	}
+
+	@Test
+	public void overviewSnapshotIncludesHealerPredictionAndDeath()
+	{
+		HealerSharedState state = new HealerSharedState();
+		state.startWave(1);
+		state.recordLocalSpawn(1, 10, 0);
+		state.recordPrediction(1, 30, false);
+
+		BaWaveOverviewSnapshot predicted = BaWaveOverviewSnapshot.fromStates(1, new BaWaveOverviewState(), state);
+		assertEquals(30, predicted.getPredictedDeathTick(BaOverviewNpcType.HEALER, 1).intValue());
+
+		state.recordDeath(1, 31);
+		BaWaveOverviewSnapshot dead = BaWaveOverviewSnapshot.fromStates(1, new BaWaveOverviewState(), state);
+		assertEquals(31, dead.getDeathTick(BaOverviewNpcType.HEALER, 1).intValue());
+		assertNull(dead.getPredictedDeathTick(BaOverviewNpcType.HEALER, 1));
 	}
 
 	private static BaHealerSyncMessage message(int predictedDeathTick, boolean unknownTtk, boolean healthRatioMode)

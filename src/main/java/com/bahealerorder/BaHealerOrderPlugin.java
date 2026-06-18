@@ -5,12 +5,15 @@ import com.bahealerorder.common.BaDispenserMenuService;
 import com.bahealerorder.common.BaHealerSyncMessage;
 import com.bahealerorder.common.BaPartySyncService;
 import com.bahealerorder.common.BaRoleDetector;
+import com.bahealerorder.common.BaWaveLifecycleService;
+import com.bahealerorder.common.BaWaveLifecycleService.WaveStart;
 import com.bahealerorder.common.BaWaveOverviewService;
 import com.bahealerorder.common.BaWaveOverviewSyncMessage;
 import com.bahealerorder.defender.DefenderController;
 import com.bahealerorder.healer.HealerController;
 import com.google.inject.Provides;
 import javax.inject.Inject;
+import net.runelite.api.GameState;
 import net.runelite.api.events.ActorDeath;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ChatMessage;
@@ -24,8 +27,8 @@ import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.PostMenuSort;
-import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -61,6 +64,9 @@ public class BaHealerOrderPlugin extends Plugin
 
 	@Inject
 	private BaWaveOverviewService waveOverviewService;
+
+	@Inject
+	private BaWaveLifecycleService waveLifecycleService;
 
 	@Override
 	protected void startUp()
@@ -151,42 +157,63 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
+		WaveStart recoveredWave = waveLifecycleService.recoverIfNeeded();
+		if (recoveredWave != null)
+		{
+			startWave(recoveredWave);
+		}
+
+		Integer endedWave = waveLifecycleService.onGameTick();
+		if (endedWave != null)
+		{
+			endWave(endedWave);
+		}
+
 		roleDetector.onGameTick(event);
 		partySyncService.onGameTick(event);
 		attackerController.onGameTick(event);
 		defenderController.onGameTick(event);
 		healerController.onGameTick(event);
+		waveOverviewService.onGameTick();
 	}
 
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded event)
 	{
+		if (event.getGroupId() == InterfaceID.BARBASSAULT_WAVECOMPLETE)
+		{
+			Integer endedWave = waveLifecycleService.endWave();
+			if (endedWave != null)
+			{
+				endWave(endedWave);
+			}
+		}
+
 		roleDetector.onWidgetLoaded(event);
 	}
 
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
-		waveOverviewService.onChatMessage(event);
-		partySyncService.onChatMessage(event);
-		attackerController.onChatMessage(event);
-		healerController.onChatMessage(event);
-	}
+		WaveStart waveStart = waveLifecycleService.onChatMessage(event);
+		if (waveStart != null)
+		{
+			startWave(waveStart);
+		}
 
-	@Subscribe
-	public void onVarbitChanged(VarbitChanged event)
-	{
-		roleDetector.onVarbitChanged(event);
-		waveOverviewService.onVarbitChanged(event);
-		partySyncService.onVarbitChanged(event);
-		attackerController.onVarbitChanged(event);
-		defenderController.onVarbitChanged(event);
-		healerController.onVarbitChanged(event);
+		waveOverviewService.onChatMessage(event);
+		healerController.onChatMessage(event);
 	}
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
+		if (event.getGameState() == GameState.LOGIN_SCREEN
+				|| event.getGameState() == GameState.HOPPING)
+		{
+			waveLifecycleService.reset();
+		}
+
 		roleDetector.onGameStateChanged(event);
 		waveOverviewService.onGameStateChanged(event);
 		partySyncService.onGameStateChanged(event);
@@ -225,5 +252,22 @@ public class BaHealerOrderPlugin extends Plugin
 	BaUtilitiesConfig provideConfig(ConfigManager configManager)
 	{
 		return configManager.getConfig(BaUtilitiesConfig.class);
+	}
+
+	private void startWave(WaveStart waveStart)
+	{
+		waveOverviewService.onWaveStarted(waveStart.getWave());
+		attackerController.onWaveStarted(waveStart.getWave());
+		healerController.onWaveStarted(waveStart);
+	}
+
+	private void endWave(int wave)
+	{
+		roleDetector.reset();
+		waveOverviewService.onWaveEnded();
+		partySyncService.onWaveEnded(wave);
+		attackerController.onWaveEnded();
+		defenderController.onWaveEnded();
+		healerController.onWaveEnded();
 	}
 }

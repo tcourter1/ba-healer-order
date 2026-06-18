@@ -7,6 +7,8 @@ import com.bahealerorder.common.BaOverviewNpcType;
 import com.bahealerorder.common.BaPartySyncService;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.BaRoleDetector;
+import com.bahealerorder.common.BaWaveLifecycleService;
+import com.bahealerorder.common.BaWaveLifecycleService.WaveStart;
 import com.bahealerorder.common.BaWaveInfo;
 import com.bahealerorder.common.BaWaveOverviewService;
 import com.bahealerorder.common.NpcIndexOrderer;
@@ -31,14 +33,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatLineBuffer;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -50,7 +49,6 @@ import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
-import net.runelite.api.MessageNode;
 import net.runelite.api.NPC;
 import net.runelite.api.Renderable;
 import net.runelite.api.events.ChatMessage;
@@ -64,8 +62,6 @@ import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.PostMenuSort;
-import net.runelite.api.events.VarbitChanged;
-import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.Hooks;
 import net.runelite.client.events.ConfigChanged;
@@ -106,8 +102,6 @@ public class HealerController
 	private static final Color COMPLETE_CODE_COLOR = new Color(0, 220, 0);
 	private static final Color PREVIOUS_CODE_COLOR = new Color(150, 150, 150);
 
-	private static final Pattern WAVE_START_PATTERN = Pattern.compile(".*\\bwave:\\s*(\\d+)\\b.*");
-	private static final Pattern WAVE_PATTERN = Pattern.compile(".*----\\s*wave:\\s*(10|[1-9])\\s*----.*", Pattern.CASE_INSENSITIVE);
 
 	@Getter
 	@Inject
@@ -156,6 +150,9 @@ public class HealerController
 	private BaWaveOverviewService waveOverviewService;
 
 	@Inject
+	private BaWaveLifecycleService waveLifecycleService;
+
+	@Inject
 	private HealerSharedState sharedState;
 
 	@Getter
@@ -171,11 +168,8 @@ public class HealerController
 
 	private final Hooks.RenderableDrawListener drawListener = this::shouldDrawRenderable;
 
-	private int currentWave = -1;
 	private int currentCallIndex = 0;
-	private int inGameBit;
 	private int healerIndexBase = -1;
-	private long waveStartTimeMs = -1;
 	private String lastCallText;
 	private String currentCallText;
 	private String currentCallSource;
@@ -246,7 +240,6 @@ public class HealerController
 		{
 			waveOverviewService.recordHealerStateChanged();
 		}
-		sendHealerSyncForOrder(order);
 
 		if (addedNewIndex)
 		{
@@ -411,14 +404,14 @@ public class HealerController
 		if (event == null
 				|| partySyncService.isLocalPartyMember(event.getMemberId())
 				|| event.getWorld() != client.getWorld()
-				|| currentWave > 0 && event.getWave() != currentWave)
+				|| waveLifecycleService.getWave() > 0 && event.getWave() != waveLifecycleService.getWave())
 		{
 			return;
 		}
 
 		if (!isWaveActive())
 		{
-			startNewWave(event.getWave());
+			return;
 		}
 
 		List<Integer> newFoodTicks = recordPartyHealerFood(event);
@@ -448,49 +441,12 @@ public class HealerController
 			return;
 		}
 
-		Integer wave = parseWaveFromMessage(event.getMessage());
-
-		if (wave != null)
-		{
-			startNewWave(wave);
-			return;
-		}
-
 		String message = Text.removeTags(event.getMessage()).toLowerCase(Locale.ROOT);
 
 		if (message.contains(WRONG_FOOD_MESSAGE))
 		{
 			log.debug("Wrong poisoned food detected. Cancelling pending feed attempt.");
 			pendingFeedAttempts.clear();
-		}
-	}
-	public void onVarbitChanged(VarbitChanged event)
-	{
-		int currentInGameBit = client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING);
-
-		if (inGameBit == currentInGameBit) return;
-
-		inGameBit = currentInGameBit;
-
-		if (currentInGameBit == 0)
-		{
-			resetWaveState();
-			return;
-		}
-
-		if (currentInGameBit == 1 && !isWaveActive())
-		{
-			Integer wave = getLatestWaveFromChatHistory();
-
-			if (wave == null && currentWave > 0)
-			{
-				wave = currentWave;
-			}
-
-			if (wave != null)
-			{
-				startNewWave(wave);
-			}
 		}
 	}
 	public void onGameStateChanged(GameStateChanged event)
@@ -506,12 +462,12 @@ public class HealerController
 
 	public int getCurrentWave()
 	{
-		return currentWave;
+		return waveLifecycleService.getWave();
 	}
 
 	public boolean isWaveActive()
 	{
-		return waveStartTimeMs > 0 && currentWave > 0;
+		return waveLifecycleService.isWaveActive();
 	}
 
 	public boolean isHealerRole()
@@ -680,7 +636,7 @@ public class HealerController
 			return 0;
 		}
 
-		return System.currentTimeMillis() - waveStartTimeMs;
+		return waveLifecycleService.getElapsedTimeMs();
 	}
 
 	public float getCurrentWaveElapsedSeconds()
@@ -710,19 +666,19 @@ public class HealerController
 
 	public String getCurrentWaveCodeSource()
 	{
-		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
+		WaveCode waveCode = codeManager.getActiveWaveCode(getCurrentWave());
 		return waveCode == null ? null : waveCode.getSourceText();
 	}
 
 	public String getCurrentWaveCodeName()
 	{
-		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
+		WaveCode waveCode = codeManager.getActiveWaveCode(getCurrentWave());
 		return waveCode == null ? null : waveCode.getName();
 	}
 
 	public boolean hasActiveWaveCode()
 	{
-		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
+		WaveCode waveCode = codeManager.getActiveWaveCode(getCurrentWave());
 		return waveCode != null && !waveCode.getCalls().isEmpty();
 	}
 
@@ -730,7 +686,7 @@ public class HealerController
 	{
 		if (healerOrder <= 0) return 0;
 
-		return codeManager.getExpectedFoodForOrder(currentWave, healerOrder, getEffectiveCurrentCallIndex());
+		return codeManager.getExpectedFoodForOrder(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex());
 	}
 
 	public String getHealerTarget(int healerOrder)
@@ -764,7 +720,7 @@ public class HealerController
 
 	public List<Integer> getHealerOrdersForCurrentWave()
 	{
-		int healerCount = BaWaveInfo.getExpectedCount(currentWave, BaOverviewNpcType.HEALER);
+		int healerCount = BaWaveInfo.getExpectedCount(getCurrentWave(), BaOverviewNpcType.HEALER);
 		if (healerCount <= 0)
 		{
 			return Collections.emptyList();
@@ -782,7 +738,7 @@ public class HealerController
 
 	public List<Integer> getFoodPanelCallIndexes()
 	{
-		WaveCode waveCode = codeManager.getActiveWaveCode(currentWave);
+		WaveCode waveCode = codeManager.getActiveWaveCode(getCurrentWave());
 
 		if (waveCode == null || waveCode.getCalls().isEmpty())
 		{
@@ -834,7 +790,7 @@ public class HealerController
 			return getFoodCountText(healerOrder, foodFed);
 		}
 
-		HealerCodeStatus status = codeManager.getPanelStatusForCall(currentWave, healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
+		HealerCodeStatus status = codeManager.getPanelStatusForCall(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
 		String codeText = formatCodeStatus(status);
 
 		if (codeText != null)
@@ -842,7 +798,7 @@ public class HealerController
 			return codeText;
 		}
 
-		return formatRawFoodCount(codeManager.getPanelFoodCountForCall(currentWave, healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents()));
+		return formatRawFoodCount(codeManager.getPanelFoodCountForCall(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents()));
 	}
 
 	private String formatRawFoodCount(int foodFed)
@@ -858,7 +814,7 @@ public class HealerController
 			return status == null ? null : getFoodPanelCodeStatusColor(status.getState());
 		}
 
-		HealerCodeStatus status = codeManager.getPanelStatusForCall(currentWave, healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
+		HealerCodeStatus status = codeManager.getPanelStatusForCall(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
 
 		return status == null ? null : getFoodPanelCodeStatusColor(status.getState());
 	}
@@ -880,17 +836,17 @@ public class HealerController
 
 	public HealerCodeStatus getCurrentCodeStatus(int healerOrder)
 	{
-		return codeManager.getCurrentStatus(currentWave, healerOrder, getEffectiveCurrentCallIndex(), sharedState.getFeedEvents());
+		return codeManager.getCurrentStatus(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex(), sharedState.getFeedEvents());
 	}
 
 	public HealerCodeStatus getPreviousCodeStatus(int healerOrder)
 	{
-		return codeManager.getPreviousStatus(currentWave, healerOrder, getEffectiveCurrentCallIndex(), sharedState.getFeedEvents());
+		return codeManager.getPreviousStatus(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex(), sharedState.getFeedEvents());
 	}
 
 	public HealerCodeStatus getDisplayCodeStatus(int healerOrder)
 	{
-		return codeManager.getDisplayStatus(currentWave, healerOrder, getEffectiveCurrentCallIndex(), sharedState.getFeedEvents());
+		return codeManager.getDisplayStatus(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex(), sharedState.getFeedEvents());
 	}
 
 	public String formatCodeStatus(HealerCodeStatus status)
@@ -1021,7 +977,7 @@ public class HealerController
 			return String.valueOf(healerOrder);
 		}
 
-		List<String> labelsForWave = BaWaveInfo.getLabels(currentWave, BaOverviewNpcType.HEALER);
+		List<String> labelsForWave = BaWaveInfo.getLabels(getCurrentWave(), BaOverviewNpcType.HEALER);
 
 		if (healerOrder <= 0 || healerOrder > labelsForWave.size())
 		{
@@ -1066,18 +1022,27 @@ public class HealerController
 		return Text.removeTags(target).contains(" (");
 	}
 
-	private void startNewWave(int waveNumber)
+	public void onWaveStarted(WaveStart waveStart)
 	{
+		int waveNumber = waveStart.getWave();
 		if (waveNumber <= 0) return;
 
-		this.currentWave = waveNumber;
-		this.waveStartTimeMs = System.currentTimeMillis();
 		resetWaveTrackedState();
 		sharedState.startWave(waveNumber);
-		waveOverviewService.startWave(waveNumber);
-		ttkTracker.startWave(client.getTickCount(), waveNumber);
+		ttkTracker.startWave(waveStart.getTick(), waveNumber);
 
-		log.debug("Starting new BA wave {}", waveNumber);
+		log.debug(
+				"Starting new BA wave {} at tick {} from {} message node {}",
+				waveNumber,
+				waveStart.getTick(),
+				waveStart.getSource(),
+				waveStart.getMessageNodeId()
+		);
+	}
+
+	public void onWaveEnded()
+	{
+		resetWaveState();
 	}
 
 	private String formatTickCountdownAsSeconds(int ticks)
@@ -1196,7 +1161,7 @@ public class HealerController
 
 	private void sendHealerSyncForOrder(int healerOrder, HealerTtkPrediction prediction, boolean force)
 	{
-		if (!partySyncService.isBaPartySyncConnected() || currentWave <= 0 || healerOrder <= 0) return;
+		if (!partySyncService.isBaPartySyncConnected() || getCurrentWave() <= 0 || healerOrder <= 0) return;
 
 		BaHealerSyncMessage message = buildHealerSyncMessage(healerOrder, prediction);
 		if (message == null) return;
@@ -1222,7 +1187,7 @@ public class HealerController
 
 		return new BaHealerSyncMessage(
 				client.getWorld(),
-				currentWave,
+				getCurrentWave(),
 				npcIndex,
 				healerOrder,
 				sharedState.getSpawnTick(healerOrder),
@@ -1420,7 +1385,7 @@ public class HealerController
 	private void rebuildHealerOrderByNpcIndex()
 	{
 		Map<Integer, Integer> knownOrderByNpcIndex = sharedState.getHealerOrdersByNpcIndex();
-		int expectedHealerCount = BaWaveInfo.getExpectedCount(currentWave, BaOverviewNpcType.HEALER);
+		int expectedHealerCount = BaWaveInfo.getExpectedCount(getCurrentWave(), BaOverviewNpcType.HEALER);
 		int maxHealerOrder = expectedHealerCount > 0
 				? expectedHealerCount
 				: healerIndexesSeenThisWave.size() + knownOrderByNpcIndex.size();
@@ -1488,7 +1453,7 @@ public class HealerController
 
 	private void updateCallIndexFromHealerWidget()
 	{
-		if (currentWave <= 0) return;
+		if (getCurrentWave() <= 0) return;
 
 		String callText = getHealerCallText();
 
@@ -1512,7 +1477,7 @@ public class HealerController
 			currentCallIndex++;
 			sharedState.recordLocalCallIndex(currentCallIndex);
 			lastCallText = callText;
-			log.debug("BA healer call changed to {} at wave {} call {}", callText, currentWave, currentCallIndex);
+			log.debug("BA healer call changed to {} at wave {} call {}", callText, getCurrentWave(), currentCallIndex);
 		}
 	}
 
@@ -2243,65 +2208,9 @@ public class HealerController
 				|| action == MenuAction.EXAMINE_NPC;
 	}
 
-	private Integer getLatestWaveFromChatHistory()
-	{
-		MessageNode latestWaveMessage = null;
-		Map<Integer, ChatLineBuffer> chatLineMap = client.getChatLineMap();
-
-		if (chatLineMap == null) return null;
-
-		for (ChatLineBuffer buffer : chatLineMap.values())
-		{
-			if (buffer == null || buffer.getLines() == null) continue;
-
-			for (MessageNode messageNode : buffer.getLines())
-			{
-				if (messageNode == null || parseWaveFromMessage(messageNode.getValue()) == null) continue;
-
-				if (latestWaveMessage == null || messageNode.getTimestamp() > latestWaveMessage.getTimestamp())
-				{
-					latestWaveMessage = messageNode;
-				}
-			}
-		}
-
-		return latestWaveMessage == null ? null : parseWaveFromMessage(latestWaveMessage.getValue());
-	}
-
-	private Integer parseWaveFromMessage(String rawMessage)
-	{
-		if (rawMessage == null) return null;
-
-		String message = Text.removeTags(rawMessage);
-		Matcher waveMatcher = WAVE_PATTERN.matcher(message);
-
-		if (waveMatcher.matches())
-		{
-			return parseWaveNumber(waveMatcher.group(1), rawMessage);
-		}
-
-		Matcher waveStartMatcher = WAVE_START_PATTERN.matcher(message.toLowerCase(Locale.ROOT));
-		return waveStartMatcher.matches() ? parseWaveNumber(waveStartMatcher.group(1), rawMessage) : null;
-	}
-
-	private Integer parseWaveNumber(String waveText, String sourceMessage)
-	{
-		try
-		{
-			int wave = Integer.parseInt(waveText);
-			return wave >= 1 && wave <= 10 ? wave : null;
-		}
-		catch (NumberFormatException ex)
-		{
-			log.debug("Failed to parse BA wave number from message: {}", sourceMessage, ex);
-			return null;
-		}
-	}
-
 	private void resetWaveState()
 	{
 		resetWaveTrackedState();
-		waveStartTimeMs = -1;
 	}
 
 	private void resetWaveTrackedState()
@@ -2327,8 +2236,6 @@ public class HealerController
 	private void resetAllState()
 	{
 		resetWaveState();
-		currentWave = -1;
-		inGameBit = 0;
 	}
 
 	private void updateNavigationButton()

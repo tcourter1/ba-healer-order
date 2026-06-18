@@ -4,31 +4,26 @@ import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.common.BaOverviewNpcType;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.BaRoleDetector;
+import com.bahealerorder.common.BaWaveLifecycleService;
 import com.bahealerorder.common.BaWaveInfo;
 import com.bahealerorder.common.BaWaveOverviewService;
 import com.bahealerorder.common.BaWaveOverviewState;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.NPC;
 import net.runelite.api.events.ActorDeath;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
-import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Text;
@@ -39,9 +34,6 @@ public class AttackerController
 {
     private static final String PENANCE_RANGER_NAME = "Penance Ranger";
     private static final String PENANCE_FIGHTER_NAME = "Penance Fighter";
-
-    private static final Pattern WAVE_START_PATTERN = Pattern.compile(".*\\bwave:\\s*(\\d+)\\b.*");
-    private static final Pattern WAVE_PATTERN = Pattern.compile(".*---- Wave: (10|[1-9]) ----.*");
 
     /*
      * Normal waves 1-9. Captured from Block -> Penance cave debug.
@@ -59,16 +51,13 @@ public class AttackerController
     private final Client client;
     private final BaUtilitiesConfig config;
     private final BaRoleDetector roleDetector;
+    private final BaWaveLifecycleService waveLifecycleService;
     private final OverlayManager overlayManager;
     private final AttackerCaveOverlay caveOverlay;
     private final BaWaveOverviewService waveOverviewService;
     private final BaWaveOverviewState waveOverviewState;
 
-    @Getter
-    private int currentWave = -1;
-
     private final Map<NPC, BaOverviewNpcType> visibleAttackableNpcs = new HashMap<>();
-    private int inGameBit;
 
     private int lastSpawnOverlayDebugTick = -100;
 
@@ -77,6 +66,7 @@ public class AttackerController
             Client client,
             BaUtilitiesConfig config,
             BaRoleDetector roleDetector,
+            BaWaveLifecycleService waveLifecycleService,
             OverlayManager overlayManager,
             AttackerCaveOverlay caveOverlay,
             BaWaveOverviewService waveOverviewService,
@@ -85,6 +75,7 @@ public class AttackerController
         this.client = client;
         this.config = config;
         this.roleDetector = roleDetector;
+        this.waveLifecycleService = waveLifecycleService;
         this.overlayManager = overlayManager;
         this.caveOverlay = caveOverlay;
         this.waveOverviewService = waveOverviewService;
@@ -124,13 +115,13 @@ public class AttackerController
         {
             visibleAttackableNpcs.put(npc, BaOverviewNpcType.RANGER);
             waveOverviewService.recordSpawn(BaOverviewNpcType.RANGER, npc.getIndex());
-            log.debug("Attacker spawn counter registered Ranger {}/{} for wave {}", getRangersSpawned(), getRangerTotal(), currentWave);
+            log.debug("Attacker spawn counter registered Ranger {}/{} for wave {}", getRangersSpawned(), getRangerTotal(), getCurrentWave());
         }
         else if (PENANCE_FIGHTER_NAME.equals(npcName))
         {
             visibleAttackableNpcs.put(npc, BaOverviewNpcType.FIGHTER);
             waveOverviewService.recordSpawn(BaOverviewNpcType.FIGHTER, npc.getIndex());
-            log.debug("Attacker spawn counter registered Fighter {}/{} for wave {}", getFightersSpawned(), getFighterTotal(), currentWave);
+            log.debug("Attacker spawn counter registered Fighter {}/{} for wave {}", getFightersSpawned(), getFighterTotal(), getCurrentWave());
         }
     }
 
@@ -162,64 +153,6 @@ public class AttackerController
             {
                 waveOverviewService.recordDeath(entry.getValue(), npc.getIndex());
             }
-        }
-    }
-
-    public void onChatMessage(ChatMessage event)
-    {
-        if (event.getType() != ChatMessageType.GAMEMESSAGE)
-        {
-            return;
-        }
-
-        Matcher waveMatcher = WAVE_PATTERN.matcher(event.getMessage());
-
-        if (waveMatcher.matches())
-        {
-            try
-            {
-                startNewWave(Integer.parseInt(waveMatcher.group(1)));
-            }
-            catch (NumberFormatException ex)
-            {
-                log.debug("Failed to parse attacker wave number from message: {}", event.getMessage());
-            }
-
-            return;
-        }
-
-        String message = Text.removeTags(event.getMessage()).toLowerCase(Locale.ROOT);
-        Matcher waveStartMatcher = WAVE_START_PATTERN.matcher(message);
-
-        if (!waveStartMatcher.matches())
-        {
-            return;
-        }
-
-        try
-        {
-            startNewWave(Integer.parseInt(waveStartMatcher.group(1)));
-        }
-        catch (NumberFormatException ex)
-        {
-            log.debug("Failed to parse attacker wave start message: {}", message, ex);
-        }
-    }
-
-    public void onVarbitChanged(VarbitChanged event)
-    {
-        int currentInGameBit = client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING);
-
-        if (inGameBit == currentInGameBit)
-        {
-            return;
-        }
-
-        inGameBit = currentInGameBit;
-
-        if (currentInGameBit == 0)
-        {
-            resetWaveState();
         }
     }
 
@@ -265,7 +198,7 @@ public class AttackerController
                     attackerRole,
                     roleDetector.getCurrentRole(),
                     waveActive,
-                    currentWave,
+                    getCurrentWave(),
                     getRangersSpawned(),
                     rangerTotal,
                     getFightersSpawned(),
@@ -283,17 +216,22 @@ public class AttackerController
 
     public boolean isWaveActive()
     {
-        return currentWave >= 1 && currentWave <= 10;
+        return waveLifecycleService.isWaveActive();
+    }
+
+    public int getCurrentWave()
+    {
+        return waveLifecycleService.getWave();
     }
 
     public int getRangerTotal()
     {
-        return BaWaveInfo.getExpectedCount(currentWave, BaOverviewNpcType.RANGER);
+        return BaWaveInfo.getExpectedCount(getCurrentWave(), BaOverviewNpcType.RANGER);
     }
 
     public int getFighterTotal()
     {
-        return BaWaveInfo.getExpectedCount(currentWave, BaOverviewNpcType.FIGHTER);
+        return BaWaveInfo.getExpectedCount(getCurrentWave(), BaOverviewNpcType.FIGHTER);
     }
 
     public int getRangersSpawned()
@@ -308,43 +246,44 @@ public class AttackerController
 
     public WorldPoint getRangerCaveLabelTile()
     {
-        return currentWave == 10 ? WAVE_10_RANGER_CAVE_LABEL_TILE : NORMAL_RANGER_CAVE_LABEL_TILE;
+        return getCurrentWave() == 10 ? WAVE_10_RANGER_CAVE_LABEL_TILE : NORMAL_RANGER_CAVE_LABEL_TILE;
     }
 
     public WorldPoint getFighterCaveLabelTile()
     {
-        return currentWave == 10 ? WAVE_10_FIGHTER_CAVE_LABEL_TILE : NORMAL_FIGHTER_CAVE_LABEL_TILE;
+        return getCurrentWave() == 10 ? WAVE_10_FIGHTER_CAVE_LABEL_TILE : NORMAL_FIGHTER_CAVE_LABEL_TILE;
     }
 
-    private void startNewWave(int wave)
+    public void onWaveStarted(int wave)
     {
         if (wave < 1 || wave > 10)
         {
             return;
         }
 
-        currentWave = wave;
         visibleAttackableNpcs.clear();
-        waveOverviewService.startWave(wave);
 
         log.debug(
                 "Starting attacker spawn counter for wave {}. Rangers total={}, Fighters total={}",
-                currentWave,
+                getCurrentWave(),
                 getRangerTotal(),
                 getFighterTotal()
         );
     }
 
+    public void onWaveEnded()
+    {
+        resetWaveState();
+    }
+
     private void resetWaveState()
     {
-        currentWave = -1;
         visibleAttackableNpcs.clear();
     }
 
     private void resetAllState()
     {
         resetWaveState();
-        inGameBit = 0;
     }
 
     private void debugAttackerCaveClick(MenuOptionClicked event)

@@ -250,4 +250,23 @@ public class BaWaveOverviewStoreTest
 
 		assertTrue(store.getSelectedSnapshot().hasSpawned(BaOverviewNpcType.RUNNER, 1));
 	}
+
+	@Test
+	public void restartedWaveShowsLiveSnapshotInsteadOfPreviousCompletion()
+	{
+		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewState state = new BaWaveOverviewState();
+
+		store.startWave(1);
+		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1).withDuration("0:00.6"));
+
+		store.startWave(1);
+		state.startWave(1);
+		state.recordSpawn(BaOverviewNpcType.RUNNER, 100);
+		store.saveSnapshot(BaWaveOverviewSnapshot.fromStates(1, state, new HealerSharedState()));
+
+		BaWaveOverviewSnapshot snapshot = store.getSelectedSnapshot();
+		assertTrue(snapshot.hasSpawned(BaOverviewNpcType.RUNNER, 1));
+		assertNull(snapshot.getDuration());
+	}
 }
