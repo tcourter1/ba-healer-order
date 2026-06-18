@@ -6,7 +6,6 @@ class HealerTtkState
 {
 	private final DeterministicHealerTtk deterministicTtk;
 	private HealthRatioHealerTtk healthRatioTtk;
-	private boolean publishable;
 
 	HealerTtkState(int spawnTick, int maxHp)
 	{
@@ -18,10 +17,9 @@ class HealerTtkState
 		deterministicTtk.updateSpawn(spawnTick, maxHp);
 	}
 
-	void recordFoodConsumed(int tick, int waveStartTick, boolean publishable)
+	void recordFoodConsumed(int tick, int waveStartTick)
 	{
 		deterministicTtk.recordFoodConsumed(tick, waveStartTick);
-		this.publishable |= publishable;
 
 		if (healthRatioTtk != null)
 		{
@@ -60,7 +58,6 @@ class HealerTtkState
 			healthRatioTtk.observeHp(tick, estimatedHp.getAsInt());
 		}
 
-		publishable = true;
 		return !previous.equals(getPrediction());
 	}
 
@@ -71,13 +68,14 @@ class HealerTtkState
 		OptionalInt deathTick = healthRatioTtk == null
 				? deterministicTtk.calculateDeathTick()
 				: healthRatioTtk.calculateDeathTick();
-		int observedTick = healthRatioTtk == null
-				? deterministicTtk.getLastFoodTick()
-				: healthRatioTtk.getObservedTick();
-
 		return deathTick.isPresent()
-				? HealerTtkPrediction.known(deathTick.getAsInt(), observedTick, publishable)
-				: HealerTtkPrediction.unknown(observedTick, publishable);
+				? HealerTtkPrediction.known(deathTick.getAsInt())
+				: HealerTtkPrediction.unknown();
+	}
+
+	boolean isHealthRatioMode()
+	{
+		return healthRatioTtk != null;
 	}
 
 	int getConfirmedFoodCount()

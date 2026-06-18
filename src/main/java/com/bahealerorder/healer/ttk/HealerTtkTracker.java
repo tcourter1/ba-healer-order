@@ -47,16 +47,11 @@ public class HealerTtkTracker
 
 	public void onFoodConsumedForHealer(int npcIndex, int tick)
 	{
-		onFoodConsumedForHealer(npcIndex, tick, true);
-	}
-
-	public void onFoodConsumedForHealer(int npcIndex, int tick, boolean publishTtk)
-	{
 		HealerTtkState state = statesByNpcIndex.get(npcIndex);
 
 		if (state != null)
 		{
-			state.recordFoodConsumed(tick, waveStartTick, publishTtk);
+			state.recordFoodConsumed(tick, waveStartTick);
 		}
 	}
 
@@ -84,6 +79,12 @@ public class HealerTtkTracker
 	{
 		HealerTtkState state = statesByNpcIndex.get(npcIndex);
 		return state == null ? HealerTtkPrediction.empty() : state.getPrediction();
+	}
+
+	public boolean isHealthRatioMode(int npcIndex)
+	{
+		HealerTtkState state = statesByNpcIndex.get(npcIndex);
+		return state != null && state.isHealthRatioMode();
 	}
 
 	public int getWaveStartTick()

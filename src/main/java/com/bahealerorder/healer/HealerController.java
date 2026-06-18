@@ -276,10 +276,12 @@ public class HealerController
 		NPC npc = (NPC) event.getActor();
 		Hitsplat hitsplat = event.getHitsplat();
 
-		if (!isPenanceHealer(npc) || !isNonPoisonDamageHitsplat(hitsplat))
+		if (!isPenanceHealer(npc))
 		{
 			return;
 		}
+
+		if (!isNonPoisonDamageHitsplat(hitsplat)) return;
 
 		int npcIndex = npc.getIndex();
 		Integer healerOrder = getKnownHealerOrder(npcIndex);
@@ -291,13 +293,21 @@ public class HealerController
 
 		visibleHealers.put(npc, healerOrder);
 
-		if (ttkTracker.switchToHealthRatioTtk(
+		boolean predictionChanged = ttkTracker.switchToHealthRatioTtk(
 				npcIndex,
 				client.getTickCount(),
 				npc.getHealthRatio(),
-				npc.getHealthScale()))
+				npc.getHealthScale());
+
+		boolean modeChanged = ttkTracker.isHealthRatioMode(npcIndex)
+				&& sharedState.recordHealthRatioMode(healerOrder);
+
+		if (predictionChanged)
 		{
-			updateHealerTtkState(healerOrder);
+			publishLocalTtkPrediction(healerOrder);
+		}
+		else if (modeChanged)
+		{
 			sendHealerSyncForOrder(healerOrder);
 		}
 	}
@@ -411,8 +421,9 @@ public class HealerController
 			startNewWave(event.getWave());
 		}
 
-		boolean changed = sharedState.updateFromParty(event, true);
-		recordPartyHealerFood(event);
+		List<Integer> newFoodTicks = recordPartyHealerFood(event);
+		boolean acceptPrediction = event.isHealthRatioMode() || !newFoodTicks.isEmpty();
+		boolean changed = sharedState.updateFromParty(event, acceptPrediction);
 		rebuildVisibleHealerOrders();
 		if (changed)
 		{
@@ -1126,24 +1137,43 @@ public class HealerController
 			NPC npc = entry.getKey();
 			Integer healerOrder = entry.getValue();
 
-			if (npc != null
-					&& healerOrder != null
-					&& (incompleteDuoHealerParty
-						? ttkTracker.switchToHealthRatioTtk(npc.getIndex(), client.getTickCount(), npc.getHealthRatio(), npc.getHealthScale())
-						: ttkTracker.observeHp(npc.getIndex(), client.getTickCount(), npc.getHealthRatio(), npc.getHealthScale())))
+			if (npc == null || healerOrder == null) continue;
+
+			int npcIndex = npc.getIndex();
+			boolean shouldUseHealthRatio = incompleteDuoHealerParty || sharedState.isHealthRatioMode(healerOrder);
+			boolean predictionChanged = shouldUseHealthRatio && !ttkTracker.isHealthRatioMode(npcIndex)
+					? ttkTracker.switchToHealthRatioTtk(npcIndex, client.getTickCount(), npc.getHealthRatio(), npc.getHealthScale())
+					: ttkTracker.observeHp(npcIndex, client.getTickCount(), npc.getHealthRatio(), npc.getHealthScale());
+
+			boolean modeChanged = ttkTracker.isHealthRatioMode(npcIndex)
+					&& sharedState.recordHealthRatioMode(healerOrder);
+
+			if (predictionChanged)
 			{
-				updateHealerTtkState(healerOrder);
+				publishLocalTtkPrediction(healerOrder);
+			}
+			else if (modeChanged)
+			{
 				sendHealerSyncForOrder(healerOrder);
 			}
 		}
 	}
 
-	private void updateHealerTtkState(int healerOrder)
+	private void publishLocalTtkPrediction(int healerOrder)
 	{
-		if (recordLocalTtkPrediction(healerOrder))
+		NPC npc = getVisibleHealerByOrder(healerOrder);
+		if (npc == null) return;
+
+		HealerTtkPrediction prediction = ttkTracker.getPrediction(npc.getIndex());
+		if (!prediction.hasValue()) return;
+
+		int deathTick = prediction.hasDeathTick() ? toWaveTick(prediction.getDeathTick()) : -1;
+		if (sharedState.recordPrediction(healerOrder, deathTick, prediction.isUnknown()))
 		{
 			waveOverviewService.recordHealerStateChanged();
 		}
+
+		sendHealerSyncForOrder(healerOrder, prediction, false);
 	}
 
 	private void broadcastHealerSyncState()
@@ -1154,21 +1184,21 @@ public class HealerController
 		{
 			if (hasHealerSpawned(healerOrder) || isHealerDead(healerOrder) || getFoodFedByHealerOrder().containsKey(healerOrder))
 			{
-				sendHealerSyncForOrder(healerOrder, true);
+				sendHealerSyncForOrder(healerOrder, null, true);
 			}
 		}
 	}
 
 	private void sendHealerSyncForOrder(int healerOrder)
 	{
-		sendHealerSyncForOrder(healerOrder, false);
+		sendHealerSyncForOrder(healerOrder, null, false);
 	}
 
-	private void sendHealerSyncForOrder(int healerOrder, boolean force)
+	private void sendHealerSyncForOrder(int healerOrder, HealerTtkPrediction prediction, boolean force)
 	{
 		if (!partySyncService.isBaPartySyncConnected() || currentWave <= 0 || healerOrder <= 0) return;
 
-		BaHealerSyncMessage message = buildHealerSyncMessage(healerOrder);
+		BaHealerSyncMessage message = buildHealerSyncMessage(healerOrder, prediction);
 		if (message == null) return;
 
 		String signature = buildHealerSyncSignature(message);
@@ -1179,16 +1209,16 @@ public class HealerController
 		partySyncService.sendHealerSync(message);
 	}
 
-	private BaHealerSyncMessage buildHealerSyncMessage(int healerOrder)
+	private BaHealerSyncMessage buildHealerSyncMessage(int healerOrder, HealerTtkPrediction prediction)
 	{
 		int npcIndex = sharedState.getNpcIndex(healerOrder);
 		if (npcIndex < 0) return null;
 
-		recordLocalTtkPrediction(healerOrder);
-
 		Integer actualDeathTick = sharedState.getActualDeathTick(healerOrder);
-		Integer predictedDeathTick = sharedState.getPredictedDeathTick(healerOrder);
-		boolean unknownTtk = sharedState.hasUnknownTtk(healerOrder);
+		int predictedDeathTick = prediction != null && prediction.hasDeathTick()
+				? toWaveTick(prediction.getDeathTick())
+				: -1;
+		boolean unknownTtk = prediction != null && prediction.isUnknown();
 
 		return new BaHealerSyncMessage(
 				client.getWorld(),
@@ -1197,11 +1227,11 @@ public class HealerController
 				healerOrder,
 				sharedState.getSpawnTick(healerOrder),
 				currentCallIndex,
-				predictedDeathTick == null ? -1 : predictedDeathTick,
-				predictedDeathTick == null && unknownTtk,
+				predictedDeathTick,
+				unknownTtk,
 				actualDeathTick == null ? -1 : actualDeathTick,
 				actualDeathTick != null && sharedState.isObservedDeath(healerOrder),
-				sharedState.getPredictionObservedTick(healerOrder),
+				ttkTracker.isHealthRatioMode(npcIndex),
 				sharedState.getLocalFoodTicks(healerOrder)
 		);
 	}
@@ -1217,15 +1247,16 @@ public class HealerController
 				+ ":" + message.isUnknownTtk()
 				+ ":" + message.getActualDeathTick()
 				+ ":" + message.isObservedDeath()
+				+ ":" + message.isHealthRatioMode()
 				+ ":" + Arrays.toString(message.getFoodTicks());
 	}
 
-	private void recordPartyHealerFood(BaHealerSyncMessage event)
+	private List<Integer> recordPartyHealerFood(BaHealerSyncMessage event)
 	{
-		if (event.getNpcIndex() < 0 || event.getSpawnTick() < 0) return;
+		if (event.getNpcIndex() < 0 || event.getSpawnTick() < 0) return Collections.emptyList();
 
 		int waveStartTick = ttkTracker.getWaveStartTick();
-		if (waveStartTick < 0) return;
+		if (waveStartTick < 0) return Collections.emptyList();
 
 		ttkTracker.onHealerSpawned(
 				event.getNpcIndex(),
@@ -1240,28 +1271,10 @@ public class HealerController
 
 		for (int foodTick : newFoodTicks)
 		{
-			ttkTracker.onFoodConsumedForHealer(event.getNpcIndex(), waveStartTick + foodTick, false);
+			ttkTracker.onFoodConsumedForHealer(event.getNpcIndex(), waveStartTick + foodTick);
 		}
 
-		if (!newFoodTicks.isEmpty())
-		{
-			updateHealerTtkState(event.getHealerOrder());
-		}
-	}
-
-	private boolean recordLocalTtkPrediction(int healerOrder)
-	{
-		NPC npc = getVisibleHealerByOrder(healerOrder);
-		if (npc == null) return false;
-
-		HealerTtkPrediction prediction = ttkTracker.getPrediction(npc.getIndex());
-		if (!prediction.hasValue() || !prediction.isPublishable()) return false;
-
-		int observedTick = toWaveTick(prediction.getObservedTick());
-		if (observedTick < 0 || observedTick < sharedState.getPredictionObservedTick(healerOrder)) return false;
-
-		int deathTick = prediction.hasDeathTick() ? toWaveTick(prediction.getDeathTick()) : -1;
-		return sharedState.recordPrediction(healerOrder, deathTick, prediction.isUnknown(), observedTick);
+		return newFoodTicks;
 	}
 
 	private boolean shouldShowMenuLabel()
@@ -1316,7 +1329,6 @@ public class HealerController
 	{
 		return hitsplat != null
 				&& hitsplat.getAmount() > 0
-				&& hitsplat.getAmount() != 4
 				&& hitsplat.getHitsplatType() != HitsplatID.HEAL
 				&& hitsplat.getHitsplatType() != HitsplatID.POISON;
 	}
@@ -2127,8 +2139,7 @@ public class HealerController
 		if (currentOrder != null)
 		{
 			sharedState.recordLocalFood(currentOrder, currentCallIndex, Math.round(getCurrentWaveElapsedSeconds()), getCurrentWaveTick());
-			updateHealerTtkState(currentOrder);
-			sendHealerSyncForOrder(currentOrder);
+			publishLocalTtkPrediction(currentOrder);
 		}
 
 		int totalFoodFed = currentOrder == null ? 0 : getFoodFedByHealerOrder().getOrDefault(currentOrder, 0);

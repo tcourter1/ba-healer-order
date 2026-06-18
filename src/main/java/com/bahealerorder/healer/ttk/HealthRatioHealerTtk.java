@@ -41,9 +41,4 @@ final class HealthRatioHealerTtk
 	{
 		return POISON_MODEL.calculateDeathTick(currentHp, firstPoisonTick, lastFoodTick, currentHpTick);
 	}
-
-	int getObservedTick()
-	{
-		return currentHpTick;
-	}
 }

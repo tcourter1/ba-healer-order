@@ -120,27 +120,6 @@ public class HealerTtkTrackerTest
 	}
 
 	@Test
-	public void localFoodPredictionCanBePublished()
-	{
-		HealerTtkTracker tracker = tracker(1);
-		tracker.onHealerSpawned(10, 0);
-		tracker.onFoodConsumedForHealer(10, 0);
-
-		assertTrue(tracker.getPrediction(10).isPublishable());
-	}
-
-	@Test
-	public void partyFoodPredictionIsNotPublishedWithoutLocalObservation()
-	{
-		HealerTtkTracker tracker = tracker(1);
-		tracker.onHealerSpawned(10, 0);
-		tracker.onFoodConsumedForHealer(10, 0, false);
-
-		assertEquals(30, deathTick(tracker, 10));
-		assertFalse(tracker.getPrediction(10).isPublishable());
-	}
-
-	@Test
 	public void explicitSelectionSwitchesToHealthRatioEstimate()
 	{
 		HealerTtkTracker tracker = tracker(1);
@@ -165,14 +144,16 @@ public class HealerTtkTrackerTest
 	}
 
 	@Test
-	public void healthRatioSelectionAfterPartyFoodMakesPredictionPublishable()
+	public void healthRatioModeIsExplicit()
 	{
 		HealerTtkTracker tracker = tracker(1);
 		tracker.onHealerSpawned(10, 0);
-		tracker.onFoodConsumedForHealer(10, 0, false);
+		tracker.onFoodConsumedForHealer(10, 0);
+
+		assertFalse(tracker.isHealthRatioMode(10));
 		tracker.switchToHealthRatioTtk(10, 5, 17, 30);
 
-		assertTrue(tracker.getPrediction(10).isPublishable());
+		assertTrue(tracker.isHealthRatioMode(10));
 	}
 
 	@Test
