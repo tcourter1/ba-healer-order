@@ -98,7 +98,7 @@ public class HealerCodePanel extends JPanel
 
 	private JPanel createPresetSection()
 	{
-		JPanel section = section("Run Preset");
+		JPanel section = section("Healer Codes");
 		styleCombo(presetCombo, CONTENT_WIDTH - 16);
 		presetCombo.addActionListener(event ->
 		{

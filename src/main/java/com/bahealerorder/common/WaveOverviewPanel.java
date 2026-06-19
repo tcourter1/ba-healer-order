@@ -486,7 +486,7 @@ public class WaveOverviewPanel extends JPanel
 	{
 		if (!BaWaveInfo.isValidWave(snapshot == null ? -1 : snapshot.getWave()))
 		{
-			return "Wave Overview";
+			return "Recent Runs";
 		}
 
 		return store.isSelectedWaveInProgress()

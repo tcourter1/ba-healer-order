@@ -17,11 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.NPC;
-import net.runelite.api.events.ActorDeath;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.api.events.GameTick;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.gameval.VarbitID;
@@ -127,32 +125,12 @@ public class AttackerController
 
     public void onNpcDespawned(NpcDespawned event)
     {
-        visibleAttackableNpcs.remove(event.getNpc());
-    }
+        NPC npc = event.getNpc();
+        BaOverviewNpcType type = visibleAttackableNpcs.remove(npc);
 
-    public void onActorDeath(ActorDeath event)
-    {
-        if (!isWaveActive() || !(event.getActor() instanceof NPC)) return;
-
-        NPC npc = (NPC) event.getActor();
-        BaOverviewNpcType type = visibleAttackableNpcs.get(npc);
-        if (type != null && npc != null)
+        if (isWaveActive() && type != null)
         {
             waveOverviewService.recordDeath(type, npc.getIndex());
-        }
-    }
-
-    public void onGameTick(GameTick event)
-    {
-        if (!isWaveActive()) return;
-
-        for (Map.Entry<NPC, BaOverviewNpcType> entry : visibleAttackableNpcs.entrySet())
-        {
-            NPC npc = entry.getKey();
-            if (npc != null && npc.getHealthRatio() == 0)
-            {
-                waveOverviewService.recordDeath(entry.getValue(), npc.getIndex());
-            }
         }
     }
 

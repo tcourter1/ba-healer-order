@@ -111,7 +111,6 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onActorDeath(ActorDeath event)
 	{
-		attackerController.onActorDeath(event);
 		defenderController.onActorDeath(event);
 	}
 
@@ -171,7 +170,6 @@ public class BaHealerOrderPlugin extends Plugin
 
 		roleDetector.onGameTick(event);
 		partySyncService.onGameTick(event);
-		attackerController.onGameTick(event);
 		defenderController.onGameTick(event);
 		healerController.onGameTick(event);
 		waveOverviewService.onGameTick();

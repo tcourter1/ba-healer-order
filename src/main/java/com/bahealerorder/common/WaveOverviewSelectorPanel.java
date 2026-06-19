@@ -42,6 +42,7 @@ class WaveOverviewSelectorPanel extends JPanel
 	private static final int SELECTOR_WIDTH = CONTENT_WIDTH - 16;
 	private static final int ACTION_BUTTON_WIDTH = CONTROL_HEIGHT + 4;
 	private static final int RUN_DROPDOWN_LIMIT = 10;
+	private static final int RUN_STATUS_HTML_WIDTH = 64;
 	private static final DateTimeFormatter RUN_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
 	private final BaWaveOverviewStore store;
@@ -110,12 +111,15 @@ class WaveOverviewSelectorPanel extends JPanel
 		refreshingControls = true;
 
 		DefaultComboBoxModel<SelectorItem> runModel = new DefaultComboBoxModel<>();
-		runModel.addElement(new SelectorItem(null, ""));
 		List<BaWaveOverviewRun> runs = store.getRuns();
 		for (int i = 0; i < Math.min(RUN_DROPDOWN_LIMIT, runs.size()); i++)
 		{
 			BaWaveOverviewRun run = runs.get(i);
 			runModel.addElement(new SelectorItem(run.getId(), formatRunDropdownLabel(run), formatSelectedRunLabel(run)));
+		}
+		if (runModel.getSize() == 0)
+		{
+			runModel.addElement(new SelectorItem(null, " ", ""));
 		}
 		runModel.addElement(new SelectorItem(OPEN_RUN_FOLDER_ACTION, "Open saved run folder..."));
 
@@ -124,6 +128,10 @@ class WaveOverviewSelectorPanel extends JPanel
 		if (selectedRunItem.value == null && store.getSelectedRunId() != null)
 		{
 			store.setSelectedRunId(null);
+		}
+		else if (selectedRunItem.value instanceof String && !selectedRunItem.value.equals(store.getSelectedRunId()))
+		{
+			store.setSelectedRunId((String) selectedRunItem.value);
 		}
 		runCombo.setSelectedItem(selectedRunItem);
 		deleteRunButton.setEnabled(selectedRunItem.value != null);
@@ -275,6 +283,18 @@ class WaveOverviewSelectorPanel extends JPanel
 			SelectorItem item = model.getElementAt(i);
 			if (selectedRunId == null ? item.value == null : selectedRunId.equals(item.value))
 			{
+				if (selectedRunId != null || item.value instanceof String)
+				{
+					return item;
+				}
+			}
+		}
+
+		for (int i = 0; i < model.getSize(); i++)
+		{
+			SelectorItem item = model.getElementAt(i);
+			if (item.value instanceof String)
+			{
 				return item;
 			}
 		}
@@ -284,7 +304,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private SelectorItem waveItem(int wave, String duration)
 	{
-		if (!BaWaveInfo.isValidWave(wave)) return new SelectorItem(-1, "");
+		if (!BaWaveInfo.isValidWave(wave)) return new SelectorItem(-1, "Select a wave...");
 
 		String label = duration == null || duration.isEmpty()
 				? "Wave " + wave
@@ -313,26 +333,35 @@ class WaveOverviewSelectorPanel extends JPanel
 
 		String role = getRunRole(run);
 		String status = run.isComplete() ? run.getRoundDuration() : "Incomplete";
-		String suffix = formatRunDropdownSuffix(run);
-		return "<html>" + formatRoleHtml(role) + " - " + status + suffix + "</html>";
+		String age = formatRunDropdownAge(run);
+		return "<html><table width=\"" + SELECTOR_WIDTH + "\" cellpadding=\"0\" cellspacing=\"0\"><tr>"
+				+ "<td>" + formatRoleHtml(role) + formatRunAgeHtml(age) + "</td>"
+				+ "<td width=\"" + RUN_STATUS_HTML_WIDTH + "\" align=\"right\">" + escapeHtml(status) + "</td>"
+				+ "</tr></table></html>";
 	}
 
 	private String formatSelectedRunLabel(BaWaveOverviewRun run)
 	{
 		if (run == null) return "";
 
-		return "<html>" + formatRoleHtml(getRunRole(run)) + formatRunDropdownSuffix(run) + "</html>";
+		String age = formatRunDropdownAge(run);
+		return "<html>" + formatRoleHtml(getRunRole(run)) + formatRunAgeHtml(age) + "</html>";
 	}
 
-	private String formatRunDropdownSuffix(BaWaveOverviewRun run)
+	private String formatRunAgeHtml(String age)
+	{
+		return age == null || age.isEmpty() ? "" : " <i>" + escapeHtml(age) + "</i>";
+	}
+
+	private String formatRunDropdownAge(BaWaveOverviewRun run)
 	{
 		if (run.isCurrent())
 		{
-			return run.isComplete() ? "" : " (in progress)";
+			return run.isComplete() ? "" : "in progress";
 		}
 
 		String age = formatRunAge(run.getName());
-		return age.isEmpty() ? "" : " (" + age + ")";
+		return age;
 	}
 
 	private String getRunRole(BaWaveOverviewRun run)
@@ -378,22 +407,27 @@ class WaveOverviewSelectorPanel extends JPanel
 			if (age.isNegative()) return "";
 
 			long minutes = age.toMinutes();
-			if (minutes < 1) return "just now";
-			if (minutes == 1) return "1 min. ago";
+			if (minutes < 60) return minutes + "m";
 
 			long hours = age.toHours();
-			if (hours < 1) return minutes + " min. ago";
-			if (hours < 24) return hours + "h ago";
+			if (hours < 24) return hours + "h";
 
 			long days = age.toDays();
-			if (days < 7) return days + "d ago";
+			if (days < 14) return days + "d";
+
+			long weeks = days / 7;
+			if (weeks < 8) return weeks + "w";
+
+			long months = days / 30;
+			if (months < 10) return Math.max(1, months) + "mo";
+
+			long years = days / 365;
+			return Math.max(1, years) + "y";
 		}
 		catch (DateTimeParseException ex)
 		{
 			return runName;
 		}
-
-		return runName;
 	}
 
 	private String escapeHtml(String text)
@@ -474,6 +508,9 @@ class WaveOverviewSelectorPanel extends JPanel
 				SelectorItem item = (SelectorItem) value;
 				label.setText(index == -1 ? item.selectedLabel : item.label);
 			}
+
+			Dimension preferredSize = label.getPreferredSize();
+			label.setPreferredSize(new Dimension(preferredSize.width, CONTROL_HEIGHT));
 
 			return label;
 		}
