@@ -12,10 +12,6 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -24,11 +20,9 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -64,8 +58,6 @@ public class WaveOverviewPanel extends JPanel
 	private static final int OVERVIEW_CELL_GAP = 7;
 	private static final int OVERVIEW_HEADER_GAP = 10;
 	private static final int OVERVIEW_COLUMN_GAP = 4;
-	private static final int RUN_DROPDOWN_LIMIT = 10;
-	private static final DateTimeFormatter RUN_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 	private static final String OVERVIEW_ICON_RESOURCE_PATH = "/com/bahealerorder/overview/";
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
@@ -81,13 +73,11 @@ public class WaveOverviewPanel extends JPanel
 	private final BaUtilitiesConfig config;
 	private final ConfigManager configManager;
 	private final BaWaveOverviewStore store;
-	private final JComboBox<RunItem> runCombo = new JComboBox<>();
-	private final JComboBox<WaveItem> waveCombo = new JComboBox<>();
+	private final WaveOverviewSelectorPanel selectorPanel;
 	private final Map<BaOverviewNpcType, ImageIcon> overviewIcons = new EnumMap<>(BaOverviewNpcType.class);
 	private final JLabel titleLabel = label("Wave Overview", true);
 	private final JPanel contentPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 
-	private boolean refreshingControls;
 	private boolean loadingSkullIcon;
 	private ImageIcon skullIcon;
 	private String lastRenderSignature;
@@ -105,37 +95,23 @@ public class WaveOverviewPanel extends JPanel
 		this.config = config;
 		this.configManager = configManager;
 		this.store = store;
+		this.selectorPanel = new WaveOverviewSelectorPanel(store, this::createColumnMenuButton, () ->
+		{
+			lastRenderSignature = null;
+			refreshAll();
+		});
 
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		setAlignmentX(LEFT_ALIGNMENT);
 		setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-
-		runCombo.addActionListener(event ->
-		{
-			if (refreshingControls) return;
-
-			RunItem item = (RunItem) runCombo.getSelectedItem();
-			store.setSelectedRunId(item == null ? null : item.id);
-			lastRenderSignature = null;
-			refreshAll();
-		});
-		waveCombo.addActionListener(event ->
-		{
-			if (refreshingControls) return;
-
-			WaveItem item = (WaveItem) waveCombo.getSelectedItem();
-			store.setSelectedWave(item == null ? -1 : item.wave);
-			lastRenderSignature = null;
-			refreshAll();
-		});
 		add(createWaveOverviewSection());
 		refreshAll();
 	}
 
 	public void refreshAll()
 	{
-		refreshSelectors();
+		selectorPanel.refreshSelectors();
 		BaWaveOverviewSnapshot snapshot = store.getSelectedSnapshot();
 		String signature = buildRenderSignature(snapshot);
 
@@ -145,9 +121,7 @@ public class WaveOverviewPanel extends JPanel
 		}
 
 		lastRenderSignature = signature;
-		titleLabel.setText(BaWaveInfo.isValidWave(snapshot == null ? -1 : snapshot.getWave())
-				? "Wave " + snapshot.getWave() + " Overview"
-				: "Wave Overview");
+		titleLabel.setText(getTitleText(snapshot));
 
 		contentPanel.removeAll();
 		populateWaveOverviewContent(contentPanel, snapshot);
@@ -158,7 +132,7 @@ public class WaveOverviewPanel extends JPanel
 	private JPanel createWaveOverviewSection()
 	{
 		JPanel section = section();
-		section.add(createSelectorPanel());
+		section.add(selectorPanel);
 		section.add(Box.createVerticalStrut(6));
 		section.add(contentPanel);
 		return section;
@@ -336,125 +310,6 @@ public class WaveOverviewPanel extends JPanel
 		return new ImageIcon(image);
 	}
 
-	private JPanel createSelectorPanel()
-	{
-		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2 + 6));
-		panel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2 + 6));
-		panel.setAlignmentX(LEFT_ALIGNMENT);
-		panel.add(createRunSelectorRow());
-		panel.add(Box.createVerticalStrut(6));
-		panel.add(createWaveSelectorRow());
-		return panel;
-	}
-
-	private JPanel createRunSelectorRow()
-	{
-		JPanel row = new JPanel(new BorderLayout());
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setAlignmentX(LEFT_ALIGNMENT);
-		row.add(runCombo, BorderLayout.CENTER);
-		return row;
-	}
-
-	private JPanel createWaveSelectorRow()
-	{
-		JPanel row = new JPanel(new BorderLayout(6, 0));
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setAlignmentX(LEFT_ALIGNMENT);
-		row.add(waveCombo, BorderLayout.CENTER);
-		row.add(createColumnMenuButton(), BorderLayout.EAST);
-		return row;
-	}
-
-	private void refreshSelectors()
-	{
-		refreshingControls = true;
-
-		DefaultComboBoxModel<RunItem> runModel = new DefaultComboBoxModel<>();
-		runModel.addElement(new RunItem(null, ""));
-		List<BaWaveOverviewRun> runs = store.getRuns();
-		for (int i = 0; i < Math.min(RUN_DROPDOWN_LIMIT, runs.size()); i++)
-		{
-			BaWaveOverviewRun run = runs.get(i);
-			runModel.addElement(new RunItem(run.getId(), formatRunDropdownLabel(run.getName())));
-		}
-
-		runCombo.setModel(runModel);
-		RunItem selectedRunItem = getSelectedRunItem(runModel, store.getSelectedRunId());
-		if (selectedRunItem.id == null && store.getSelectedRunId() != null)
-		{
-			store.setSelectedRunId(null);
-		}
-		runCombo.setSelectedItem(selectedRunItem);
-		styleCombo(runCombo, CONTENT_WIDTH - 16);
-
-		DefaultComboBoxModel<WaveItem> waveModel = new DefaultComboBoxModel<>();
-		waveModel.addElement(new WaveItem(-1));
-		for (int wave = 1; wave <= 10; wave++)
-		{
-			waveModel.addElement(new WaveItem(wave));
-		}
-
-		waveCombo.setModel(waveModel);
-		waveCombo.setSelectedItem(new WaveItem(store.getSelectedWave()));
-		styleCombo(waveCombo, CONTENT_WIDTH - 16 - CONTROL_HEIGHT - 10);
-
-		refreshingControls = false;
-	}
-
-	private RunItem getSelectedRunItem(DefaultComboBoxModel<RunItem> model, String selectedRunId)
-	{
-		RunItem fallback = model.getElementAt(0);
-
-		for (int i = 0; i < model.getSize(); i++)
-		{
-			RunItem item = model.getElementAt(i);
-			if (selectedRunId == null ? item.id == null : selectedRunId.equals(item.id))
-			{
-				return item;
-			}
-		}
-
-		return fallback;
-	}
-
-	private String formatRunDropdownLabel(String runName)
-	{
-		if (runName == null || runName.isEmpty()) return "";
-
-		try
-		{
-			Duration age = Duration.between(LocalDateTime.parse(runName, RUN_TIME_FORMAT), LocalDateTime.now());
-
-			if (age.isNegative())
-			{
-				return runName;
-			}
-
-			long minutes = age.toMinutes();
-			if (minutes < 1) return "Just now...";
-			if (minutes == 1) return "1 min. ago";
-
-			long hours = age.toHours();
-			if (hours < 1) return minutes + " min. ago";
-			if (hours < 24) return hours + "h ago";
-
-			long days = age.toDays();
-			if (days < 7) return days + "d ago";
-		}
-		catch (DateTimeParseException ex)
-		{
-			return runName;
-		}
-
-		return runName;
-	}
-
 	private JPopupMenu createColumnMenu()
 	{
 		JPopupMenu menu = new JPopupMenu();
@@ -620,10 +475,23 @@ public class WaveOverviewPanel extends JPanel
 
 		return store.getSelectedRunId()
 				+ ":" + store.getSelectedWave()
+				+ ":" + store.isSelectedWaveInProgress()
 				+ ":" + getVisibleColumns()
 				+ ":" + (skullIcon != null)
 				+ ":" + (selectedRun == null ? "none" : selectedRun.metadataSignature())
 				+ ":" + (snapshot == null ? "none" : snapshot.signature());
+	}
+
+	private String getTitleText(BaWaveOverviewSnapshot snapshot)
+	{
+		if (!BaWaveInfo.isValidWave(snapshot == null ? -1 : snapshot.getWave()))
+		{
+			return "Wave Overview";
+		}
+
+		return store.isSelectedWaveInProgress()
+				? "Wave " + snapshot.getWave() + " In Progress..."
+				: "Wave " + snapshot.getWave() + " Overview";
 	}
 
 	private JPanel section()
@@ -799,12 +667,6 @@ public class WaveOverviewPanel extends JPanel
 		return panel;
 	}
 
-	private static void styleCombo(JComboBox<?> comboBox, int width)
-	{
-		comboBox.setFocusable(false);
-		fixedSize(comboBox, width, CONTROL_HEIGHT);
-	}
-
 	private static void fixedSize(JComponent component, int width, int height)
 	{
 		Dimension size = new Dimension(width, height);
@@ -812,67 +674,6 @@ public class WaveOverviewPanel extends JPanel
 		component.setMinimumSize(size);
 		component.setMaximumSize(size);
 		component.setAlignmentX(Component.LEFT_ALIGNMENT);
-	}
-
-	private static class RunItem
-	{
-		private final String id;
-		private final String label;
-
-		private RunItem(String id, String label)
-		{
-			this.id = id;
-			this.label = label;
-		}
-
-		@Override
-		public String toString()
-		{
-			return label;
-		}
-
-		@Override
-		public boolean equals(Object other)
-		{
-			if (!(other instanceof RunItem)) return false;
-
-			RunItem item = (RunItem) other;
-			return id == null ? item.id == null : id.equals(item.id);
-		}
-
-		@Override
-		public int hashCode()
-		{
-			return id == null ? 0 : id.hashCode();
-		}
-	}
-
-	private static class WaveItem
-	{
-		private final int wave;
-
-		private WaveItem(int wave)
-		{
-			this.wave = wave;
-		}
-
-		@Override
-		public String toString()
-		{
-			return BaWaveInfo.isValidWave(wave) ? "Wave " + wave : "";
-		}
-
-		@Override
-		public boolean equals(Object other)
-		{
-			return other instanceof WaveItem && wave == ((WaveItem) other).wave;
-		}
-
-		@Override
-		public int hashCode()
-		{
-			return wave;
-		}
 	}
 
 	private static class EntryState

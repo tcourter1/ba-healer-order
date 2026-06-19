@@ -13,19 +13,25 @@ public class BaWaveOverviewRun
 	private final Map<Integer, BaWaveOverviewSnapshot> snapshotsByWave;
 	private final String roundDuration;
 	private final List<BaTeamMember> teamMembers;
+	private final String playerRole;
+	private final boolean current;
 
 	BaWaveOverviewRun(
 			String id,
 			String name,
 			Map<Integer, BaWaveOverviewSnapshot> snapshotsByWave,
 			String roundDuration,
-			List<BaTeamMember> teamMembers)
+			List<BaTeamMember> teamMembers,
+			String playerRole,
+			boolean current)
 	{
 		this.id = id;
 		this.name = name;
 		this.snapshotsByWave = Collections.unmodifiableMap(new HashMap<>(snapshotsByWave));
 		this.roundDuration = roundDuration;
 		this.teamMembers = Collections.unmodifiableList(new ArrayList<>(teamMembers));
+		this.playerRole = playerRole;
+		this.current = current;
 	}
 
 	public String getId()
@@ -70,8 +76,23 @@ public class BaWaveOverviewRun
 		return teamMembers;
 	}
 
+	public String getPlayerRole()
+	{
+		return playerRole;
+	}
+
+	public boolean isCurrent()
+	{
+		return current;
+	}
+
+	public boolean isComplete()
+	{
+		return roundDuration != null && !roundDuration.isEmpty();
+	}
+
 	public String metadataSignature()
 	{
-		return roundDuration + ":" + teamMembers;
+		return roundDuration + ":" + teamMembers + ":" + playerRole + ":" + current;
 	}
 }

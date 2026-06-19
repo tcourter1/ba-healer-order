@@ -31,6 +31,18 @@ public class BaWaveOverviewStoreTest
 	}
 
 	@Test
+	public void newWaveOneAfterAbandonedWaveOneStartsNewRun()
+	{
+		BaWaveOverviewStore store = new BaWaveOverviewStore();
+
+		store.startWave(1);
+		store.leaveWave(1);
+		store.startWave(1);
+
+		assertEquals(2, store.getRuns().size());
+	}
+
+	@Test
 	public void lowerWaveAfterCompletedWaveStartsNewRun()
 	{
 		BaWaveOverviewStore store = new BaWaveOverviewStore();
@@ -103,6 +115,36 @@ public class BaWaveOverviewStoreTest
 	}
 
 	@Test
+	public void lateWaveDurationUpdatesCompletedWaveInCurrentRun()
+	{
+		BaWaveOverviewStore store = new BaWaveOverviewStore();
+
+		store.startWave(1);
+		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1));
+		store.startWave(2);
+
+		assertTrue(store.saveCurrentRunWaveDuration(1, "0:42.6"));
+
+		BaWaveOverviewRun run = store.getRuns().get(0);
+		assertEquals("0:42.6", run.getSnapshot(1).getDuration());
+	}
+
+	@Test
+	public void waveDurationDoesNotCreateMissingWaveInCurrentRun()
+	{
+		BaWaveOverviewStore store = new BaWaveOverviewStore();
+
+		store.startWave(10);
+		store.completeSnapshot(BaWaveOverviewSnapshot.blank(10));
+		store.startWave(1);
+
+		assertFalse(store.saveCurrentRunWaveDuration(10, "3:12.0"));
+
+		BaWaveOverviewRun newestRun = store.getRuns().get(0);
+		assertNull(newestRun.getSnapshot(10));
+	}
+
+	@Test
 	public void completedSnapshotPreservesNpcDeathsAndDurationForHistoricalSelection()
 	{
 		BaWaveOverviewStore store = new BaWaveOverviewStore();
@@ -130,6 +172,7 @@ public class BaWaveOverviewStoreTest
 		BaWaveOverviewStore store = new BaWaveOverviewStore();
 
 		store.startWave(1);
+		assertTrue(store.updateCurrentRunPlayerRole(BaRole.HEALER));
 		assertTrue(store.updateCurrentRunTeamMembers(Arrays.asList(
 				new BaTeamMember("Leader", "Healer"),
 				new BaTeamMember("Player2", "Attacker"),
@@ -141,9 +184,26 @@ public class BaWaveOverviewStoreTest
 
 		BaWaveOverviewRun run = store.getRuns().get(0);
 		assertEquals("14:04.2", run.getRoundDuration());
+		assertEquals("Healer", run.getPlayerRole());
 		assertEquals(Arrays.asList("Leader", "Player2", "Player3", "Player4", "Player5"), run.getTeamNames());
 		assertEquals("Healer", run.getTeamMembers().get(0).getRole());
 		assertEquals("Attacker", run.getTeamMembers().get(1).getRole());
+	}
+
+	@Test
+	public void roundDurationMarksRunNotCurrent()
+	{
+		BaWaveOverviewStore store = new BaWaveOverviewStore();
+
+		store.startWave(1);
+		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1));
+		assertTrue(store.getRuns().get(0).isCurrent());
+
+		assertTrue(store.updateLatestCompletedRunRoundDuration("14:04.2"));
+
+		BaWaveOverviewRun run = store.getRuns().get(0);
+		assertTrue(run.isComplete());
+		assertFalse(run.isCurrent());
 	}
 
 	@Test
@@ -172,6 +232,7 @@ public class BaWaveOverviewStoreTest
 
 		BaWaveOverviewStore store = new BaWaveOverviewStore(new GsonBuilder().setPrettyPrinting().create(), runsDirectory);
 		store.startWave(1);
+		store.updateCurrentRunPlayerRole(BaRole.HEALER);
 		store.updateCurrentRunTeamMembers(Arrays.asList(
 				new BaTeamMember("Leader", "Healer"),
 				new BaTeamMember("Player2", "Attacker"),
@@ -192,6 +253,7 @@ public class BaWaveOverviewStoreTest
 
 		assertEquals(run.getName().replace(':', '.') + ".json", files[0].getName());
 		assertEquals("14:04.2", run.getRoundDuration());
+		assertEquals("Healer", run.getPlayerRole());
 		assertEquals(Arrays.asList("Leader", "Player2", "Player3", "Player4", "Player5"), run.getTeamNames());
 		assertEquals("Healer", run.getTeamMembers().get(0).getRole());
 		assertEquals("Collector", run.getTeamMembers().get(3).getRole());
@@ -249,6 +311,41 @@ public class BaWaveOverviewStoreTest
 		store.setSelectedWave(1);
 
 		assertTrue(store.getSelectedSnapshot().hasSpawned(BaOverviewNpcType.RUNNER, 1));
+	}
+
+	@Test
+	public void activeSelectedWaveIsInProgress()
+	{
+		BaWaveOverviewStore store = new BaWaveOverviewStore();
+
+		store.startWave(1);
+		assertTrue(store.isSelectedWaveInProgress());
+
+		store.leaveWave(1);
+		assertFalse(store.isSelectedWaveInProgress());
+	}
+
+	@Test
+	public void deletingSelectedRunClearsSelectionAndDeletesFile() throws Exception
+	{
+		File runsDirectory = temporaryFolder.newFolder("runs");
+		BaWaveOverviewStore store = new BaWaveOverviewStore(new GsonBuilder().setPrettyPrinting().create(), runsDirectory);
+
+		store.startWave(1);
+		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1));
+
+		BaWaveOverviewRun run = store.getRuns().get(0);
+		store.setSelectedRunId(run.getId());
+		store.setSelectedWave(1);
+
+		assertTrue(store.deleteRun(run.getId()));
+		assertTrue(store.getRuns().isEmpty());
+		assertNull(store.getSelectedRunId());
+		assertEquals(-1, store.getSelectedWave());
+
+		File[] files = runsDirectory.listFiles((directory, name) -> name.endsWith(".json"));
+		assertNotNull(files);
+		assertEquals(0, files.length);
 	}
 
 	@Test

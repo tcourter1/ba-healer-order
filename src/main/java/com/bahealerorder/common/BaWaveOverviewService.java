@@ -2,6 +2,7 @@ package com.bahealerorder.common;
 
 import com.bahealerorder.BaUtilitiesPanel;
 import com.bahealerorder.healer.HealerSharedState;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -146,7 +147,7 @@ public class BaWaveOverviewService
 		}
 		boolean stateChanged = state.startWave(wave);
 		store.startWave(wave);
-		boolean metadataChanged = saveCurrentTeamNames();
+		boolean metadataChanged = saveCurrentRunMetadata();
 
 		if (stateChanged)
 		{
@@ -165,10 +166,11 @@ public class BaWaveOverviewService
 
 	public void onGameTick()
 	{
-		if (!updatePending && !syncPending) return;
+		boolean metadataChanged = waveLifecycleService.isWaveActive() && saveCurrentRunMetadata();
+		if (!updatePending && !syncPending && !metadataChanged) return;
 
 		boolean changed = updatePending && saveCurrentSnapshot();
-		if (changed)
+		if (changed || metadataChanged)
 		{
 			refreshPanel();
 		}
@@ -269,18 +271,6 @@ public class BaWaveOverviewService
 	{
 		if (duration == null) return;
 
-		if (waveLifecycleService.isWaveActive()
-				&& waveLifecycleService.getWave() == duration.wave
-				&& roleDetector.isRoleInterfaceLoaded())
-		{
-			log.debug(
-					"Ignoring BA wave {} duration {} while a BA role interface is still active",
-					duration.wave,
-					duration.duration
-			);
-			return;
-		}
-
 		if (pendingCompletionSnapshot != null && pendingCompletionWave == duration.wave)
 		{
 			completePendingWave(duration.duration);
@@ -294,6 +284,12 @@ public class BaWaveOverviewService
 			return;
 		}
 
+		if (store.saveCurrentRunWaveDuration(duration.wave, duration.duration))
+		{
+			refreshPanel();
+			return;
+		}
+
 		pendingDurationWave = duration.wave;
 		pendingDuration = duration.duration;
 	}
@@ -303,7 +299,7 @@ public class BaWaveOverviewService
 		int wave = state.getWave();
 		pendingCompletionSnapshot = BaWaveOverviewSnapshot.fromStates(wave, state, healerState);
 		pendingCompletionWave = wave;
-		saveCurrentTeamNames();
+		saveCurrentRunMetadata();
 		store.leaveWave(wave);
 		state.reset();
 		waveStartTick = -1;
@@ -331,9 +327,43 @@ public class BaWaveOverviewService
 		}
 	}
 
-	private boolean saveCurrentTeamNames()
+	private boolean saveCurrentRunMetadata()
 	{
-		return store.updateCurrentRunTeamMembers(partySyncService.getBaPartySyncTeamMembers());
+		List<BaTeamMember> teamMembers = partySyncService.getBaPartySyncTeamMembers();
+		boolean changed = store.updateCurrentRunPlayerRole(getCurrentPlayerRole(teamMembers));
+		changed |= store.updateCurrentRunTeamMembers(teamMembers);
+		return changed;
+	}
+
+	private BaRole getCurrentPlayerRole(List<BaTeamMember> teamMembers)
+	{
+		BaRole teamRole = getLocalPlayerRole(teamMembers);
+		return teamRole == null ? roleDetector.getCurrentRole() : teamRole;
+	}
+
+	private BaRole getLocalPlayerRole(List<BaTeamMember> teamMembers)
+	{
+		if (teamMembers == null || teamMembers.isEmpty() || client.getLocalPlayer() == null) return null;
+
+		String localName = normalizePlayerName(client.getLocalPlayer().getName());
+		if (localName.isEmpty()) return null;
+
+		for (BaTeamMember member : teamMembers)
+		{
+			if (member == null || !localName.equals(normalizePlayerName(member.getName()))) continue;
+
+			return BaRole.fromDisplayName(member.getRole());
+		}
+
+		return null;
+	}
+
+	private String normalizePlayerName(String name)
+	{
+		return Text.removeTags(name == null ? "" : name)
+				.replace('\u00A0', ' ')
+				.trim()
+				.toLowerCase(Locale.ROOT);
 	}
 
 	private void clearPendingCompletion()

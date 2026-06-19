@@ -152,6 +152,19 @@ public class BaWaveOverviewStore
 		return updateCurrentRunTeamMembers(members);
 	}
 
+	public synchronized boolean updateCurrentRunPlayerRole(BaRole role)
+	{
+		if (currentRunId == null || role == null) return false;
+
+		MutableRun run = runsById.get(currentRunId);
+		String playerRole = role.getDisplayName();
+		if (run == null || playerRole.equals(run.playerRole)) return false;
+
+		run.playerRole = playerRole;
+		saveIfCompleted(run);
+		return true;
+	}
+
 	public synchronized boolean updateLatestCompletedRunRoundDuration(String roundDuration)
 	{
 		if (roundDuration == null || roundDuration.isEmpty()) return false;
@@ -170,6 +183,37 @@ public class BaWaveOverviewStore
 		}
 
 		return false;
+	}
+
+	public synchronized boolean saveCurrentRunWaveDuration(int wave, String duration)
+	{
+		if (!BaWaveInfo.isValidWave(wave) || duration == null || duration.isEmpty() || currentRunId == null) return false;
+
+		MutableRun run = runsById.get(currentRunId);
+		if (run == null) return false;
+
+		BaWaveOverviewSnapshot snapshot = run.completedSnapshotsByWave.get(wave);
+		if (snapshot == null)
+		{
+			snapshot = run.liveSnapshotsByWave.remove(wave);
+		}
+		if (snapshot == null) return false;
+
+		if (activeWave == wave)
+		{
+			activeWave = -1;
+		}
+
+		BaWaveOverviewSnapshot updated = snapshot.withDuration(duration);
+		BaWaveOverviewSnapshot previous = run.completedSnapshotsByWave.put(wave, updated);
+		boolean changed = previous == null || !previous.signature().equals(updated.signature());
+
+		if (changed)
+		{
+			saveRun(run);
+		}
+
+		return changed;
 	}
 
 	public synchronized void leaveWave(int wave)
@@ -194,7 +238,7 @@ public class BaWaveOverviewStore
 
 		for (MutableRun run : runsById.values())
 		{
-			runs.add(run.snapshot());
+			runs.add(run.snapshot(isCurrentRunInProgress(run)));
 		}
 
 		Collections.reverse(runs);
@@ -232,7 +276,7 @@ public class BaWaveOverviewStore
 	public synchronized BaWaveOverviewRun getSelectedRun()
 	{
 		MutableRun run = selectedRunId == null ? null : runsById.get(selectedRunId);
-		return run == null ? null : run.snapshot();
+		return run == null ? null : run.snapshot(isCurrentRunInProgress(run));
 	}
 
 	public synchronized String getSelectedRunId()
@@ -240,9 +284,22 @@ public class BaWaveOverviewStore
 		return selectedRunId;
 	}
 
+	public File getRunsDirectory()
+	{
+		return runsDirectory;
+	}
+
 	public synchronized void setSelectedRunId(String selectedRunId)
 	{
 		this.selectedRunId = selectedRunId == null || selectedRunId.isEmpty() ? null : selectedRunId;
+	}
+
+	public synchronized boolean isSelectedWaveInProgress()
+	{
+		return selectedRunId != null
+				&& selectedRunId.equals(currentRunId)
+				&& BaWaveInfo.isValidWave(selectedWave)
+				&& selectedWave == activeWave;
 	}
 
 	public synchronized int getSelectedWave()
@@ -253,6 +310,30 @@ public class BaWaveOverviewStore
 	public synchronized void setSelectedWave(int selectedWave)
 	{
 		this.selectedWave = BaWaveInfo.isValidWave(selectedWave) ? selectedWave : -1;
+	}
+
+	public synchronized boolean deleteRun(String runId)
+	{
+		if (runId == null || runId.isEmpty()) return false;
+
+		MutableRun run = runsById.remove(runId);
+		if (run == null) return false;
+
+		if (runId.equals(currentRunId))
+		{
+			currentRunId = null;
+			activeWave = -1;
+			lastWave = -1;
+		}
+
+		if (runId.equals(selectedRunId))
+		{
+			selectedRunId = null;
+			selectedWave = -1;
+		}
+
+		deleteRunFile(run);
+		return true;
 	}
 
 	private void startRun()
@@ -350,15 +431,30 @@ public class BaWaveOverviewStore
 		saveRun(run);
 	}
 
-	private boolean hasCompletedCurrentRun()
+	private void deleteRunFile(MutableRun run)
 	{
-		MutableRun run = currentRunId == null ? null : runsById.get(currentRunId);
-		return run != null && !run.completedSnapshotsByWave.isEmpty();
+		if (runsDirectory == null || run == null) return;
+
+		try
+		{
+			Files.deleteIfExists(new File(runsDirectory, run.fileName).toPath());
+		}
+		catch (RuntimeException | java.io.IOException ex)
+		{
+			log.debug("Failed to delete BA Utilities wave overview run {}", run.fileName, ex);
+		}
 	}
 
 	private boolean shouldStartNewRun(int wave)
 	{
-		return wave == 1 && activeWave != 1 && hasCompletedCurrentRun();
+		return wave == 1 && activeWave != 1;
+	}
+
+	private boolean isCurrentRunInProgress(MutableRun run)
+	{
+		return run != null
+				&& run.id.equals(currentRunId)
+				&& (run.roundDuration == null || run.roundDuration.isEmpty());
 	}
 
 	private List<BaTeamMember> normalizeTeamMembers(List<BaTeamMember> teamMembers)
@@ -411,6 +507,7 @@ public class BaWaveOverviewStore
 		private final Map<Integer, BaWaveOverviewSnapshot> completedSnapshotsByWave = new HashMap<>();
 		private final Map<Integer, BaWaveOverviewSnapshot> liveSnapshotsByWave = new HashMap<>();
 		private String roundDuration;
+		private String playerRole;
 		private List<BaTeamMember> teamMembers = new ArrayList<>();
 
 		private MutableRun(String id, String name, String fileName)
@@ -420,9 +517,9 @@ public class BaWaveOverviewStore
 			this.fileName = fileName;
 		}
 
-		private BaWaveOverviewRun snapshot()
+		private BaWaveOverviewRun snapshot(boolean current)
 		{
-			return new BaWaveOverviewRun(id, name, completedSnapshotsByWave, roundDuration, teamMembers);
+			return new BaWaveOverviewRun(id, name, completedSnapshotsByWave, roundDuration, teamMembers, playerRole, current);
 		}
 
 		private StoredRun toStoredRun()
@@ -432,6 +529,7 @@ public class BaWaveOverviewStore
 			run.id = id;
 			run.name = name;
 			run.roundDuration = roundDuration;
+			run.playerRole = playerRole;
 			run.teamMembers = new ArrayList<>(teamMembers);
 			run.completedSnapshotsByWave = new HashMap<>(completedSnapshotsByWave);
 			return run;
@@ -441,6 +539,7 @@ public class BaWaveOverviewStore
 		{
 			MutableRun run = new MutableRun(storedRun.id, storedRun.name, fileName);
 			run.roundDuration = storedRun.roundDuration;
+			run.playerRole = storedRun.playerRole;
 			run.teamMembers = storedRun.getTeamMembers();
 
 			if (storedRun.completedSnapshotsByWave != null)
@@ -458,6 +557,7 @@ public class BaWaveOverviewStore
 		private String id;
 		private String name;
 		private String roundDuration;
+		private String playerRole;
 		private List<BaTeamMember> teamMembers = new ArrayList<>();
 		private List<String> teamNames = new ArrayList<>();
 		private Map<Integer, BaWaveOverviewSnapshot> completedSnapshotsByWave = new HashMap<>();
