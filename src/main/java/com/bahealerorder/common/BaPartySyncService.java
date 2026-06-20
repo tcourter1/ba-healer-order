@@ -629,9 +629,9 @@ public class BaPartySyncService
 			if (nameWidget == null) continue;
 
 			teamWidgetLoaded = true;
-			String name = cleanWidgetText(nameWidget.getText());
+			String name = getBaTeamPlayerName(playerIndex, nameWidget.getText());
 
-			if (isLikelyBaTeamPlayerName(name) && names.add(name))
+			if (name != null && names.add(name))
 			{
 				members.add(new BaTeamMember(name, getBaTeamRole(playerIndex)));
 			}
@@ -659,35 +659,20 @@ public class BaPartySyncService
 		return roleWidget == null ? null : getBaTeamRoleForModelId(roleWidget.getModelId());
 	}
 
-	private boolean isLikelyBaTeamPlayerName(String text)
+	static String getBaTeamPlayerName(int playerIndex, String text)
 	{
-		if (text == null || text.length() < 1 || text.length() > 12) return false;
+		String rosterText = cleanWidgetText(text);
+		String expectedPrefix = playerIndex == 0 ? "Leader" : "Player " + playerIndex;
 
-		String lower = text.toLowerCase(Locale.ROOT);
-
-		if (lower.contains("current team")
-				|| lower.startsWith("leader")
-				|| lower.startsWith("player ")
-				|| lower.contains("-----")
-				|| lower.contains("wave")
-				|| lower.contains("attacker")
-				|| lower.contains("collector")
-				|| lower.contains("defender")
-				|| lower.contains("healer")
-				|| lower.contains("penance")
-				|| lower.contains("points")
-				|| lower.contains("role")
-				|| lower.contains("level"))
+		if (rosterText.isEmpty())
 		{
-			return false;
+			return null;
 		}
 
-		if (!text.matches("[A-Za-z0-9 _\\-]+") || !text.matches(".*[A-Za-z].*"))
-		{
-			return false;
-		}
-
-		return !text.matches("\\d+");
+		String name = rosterText.toLowerCase(Locale.ROOT).startsWith(expectedPrefix.toLowerCase(Locale.ROOT) + ":")
+				? rosterText.substring(rosterText.indexOf(':') + 1).trim()
+				: rosterText;
+		return name.isEmpty() || "-----".equals(name) ? null : name;
 	}
 
 	private String getBaTeamRoleForModelId(int modelId)
@@ -707,7 +692,7 @@ public class BaPartySyncService
 		}
 	}
 
-	private String cleanWidgetText(String text)
+	private static String cleanWidgetText(String text)
 	{
 		if (text == null) return "";
 

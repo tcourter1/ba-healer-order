@@ -1,6 +1,8 @@
 package com.bahealerorder.common;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -59,6 +61,21 @@ public class BaPartySyncServiceTest
 		);
 
 		assertFalse(BaPartySyncService.hasIncompleteDuoHealerParty(team, inParty()));
+	}
+
+	@Test
+	public void rosterPlayerNameCanBeAllNumbers()
+	{
+		assertEquals("123456", BaPartySyncService.getBaTeamPlayerName(0, "Leader: 123456"));
+		assertEquals("123456", BaPartySyncService.getBaTeamPlayerName(0, "123456"));
+		assertEquals("000 111", BaPartySyncService.getBaTeamPlayerName(2, "Player 2: 000 111"));
+	}
+
+	@Test
+	public void rosterPlayerNameIgnoresEmptySlots()
+	{
+		assertNull(BaPartySyncService.getBaTeamPlayerName(1, "Player 1: -----"));
+		assertNull(BaPartySyncService.getBaTeamPlayerName(3, "Player 3: "));
 	}
 
 	private static java.util.function.Predicate<String> inParty(String... names)
