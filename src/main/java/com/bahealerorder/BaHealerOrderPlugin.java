@@ -156,12 +156,6 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
-		WaveStart recoveredWave = waveLifecycleService.recoverIfNeeded();
-		if (recoveredWave != null)
-		{
-			startWave(recoveredWave);
-		}
-
 		Integer endedWave = waveLifecycleService.onGameTick();
 		if (endedWave != null)
 		{

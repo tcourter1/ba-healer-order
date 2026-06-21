@@ -1,12 +1,10 @@
 package com.bahealerorder.common;
 
-import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import net.runelite.api.ChatLineBuffer;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.MessageNode;
@@ -21,7 +19,6 @@ public class BaWaveLifecycleService
 	private static final int ARENA_CONFIRM_TIMEOUT_TICKS = 10;
 
 	private final Client client;
-	private final BooleanSupplier recoveryVisible;
 	private final BooleanSupplier arenaVisible;
 
 	private int wave = -1;
@@ -29,22 +26,19 @@ public class BaWaveLifecycleService
 	private long startTimeMs = -1;
 	private int messageNodeId = -1;
 	private boolean arenaConfirmed;
-	private boolean recoveryPending = true;
 
 	@Inject
 	BaWaveLifecycleService(Client client, BaRoleDetector roleDetector)
 	{
 		this(
 				client,
-				roleDetector::isRoleInterfaceLoaded,
 				() -> roleDetector.isRoleInterfaceLoaded() || client.isInInstancedRegion()
 		);
 	}
 
-	BaWaveLifecycleService(Client client, BooleanSupplier recoveryVisible, BooleanSupplier arenaVisible)
+	BaWaveLifecycleService(Client client, BooleanSupplier arenaVisible)
 	{
 		this.client = client;
-		this.recoveryVisible = recoveryVisible;
 		this.arenaVisible = arenaVisible;
 	}
 
@@ -52,15 +46,6 @@ public class BaWaveLifecycleService
 	{
 		if (event == null || event.getType() != ChatMessageType.GAMEMESSAGE) return null;
 		return start(event.getMessageNode(), event.getMessage(), "wave chat");
-	}
-
-	public WaveStart recoverIfNeeded()
-	{
-		if (!recoveryPending || isWaveActive() || !recoveryVisible.getAsBoolean()) return null;
-
-		MessageNode latest = findLatestWaveMessage(client.getChatLineMap());
-		recoveryPending = false;
-		return latest == null ? null : start(latest, latest.getValue(), "chat history recovery");
 	}
 
 	public Integer onGameTick()
@@ -76,7 +61,7 @@ public class BaWaveLifecycleService
 		if (!arenaConfirmed && client.getTickCount() - startTick <= ARENA_CONFIRM_TIMEOUT_TICKS) return null;
 
 		int endedWave = wave;
-		clearWave(false);
+		clearWave();
 		return endedWave;
 	}
 
@@ -85,23 +70,22 @@ public class BaWaveLifecycleService
 		if (!isWaveActive()) return null;
 
 		int endedWave = wave;
-		clearWave(false);
+		clearWave();
 		return endedWave;
 	}
 
 	public void reset()
 	{
-		clearWave(true);
+		clearWave();
 	}
 
-	private void clearWave(boolean recover)
+	private void clearWave()
 	{
 		wave = -1;
 		startTick = -1;
 		startTimeMs = -1;
 		messageNodeId = -1;
 		arenaConfirmed = false;
-		recoveryPending = recover;
 	}
 
 	public boolean isWaveActive()
@@ -137,34 +121,7 @@ public class BaWaveLifecycleService
 		startTimeMs = System.currentTimeMillis();
 		messageNodeId = nodeId;
 		arenaConfirmed = false;
-		recoveryPending = false;
 		return new WaveStart(wave, startTick, nodeId, source);
-	}
-
-	private MessageNode findLatestWaveMessage(Map<Integer, ChatLineBuffer> chatLineMap)
-	{
-		MessageNode latest = null;
-		if (chatLineMap == null) return null;
-
-		for (ChatLineBuffer buffer : chatLineMap.values())
-		{
-			if (buffer == null || buffer.getLines() == null) continue;
-
-			for (MessageNode messageNode : buffer.getLines())
-			{
-				if (messageNode == null || parseWave(messageNode.getValue()) == null) continue;
-
-				if (latest == null
-						|| messageNode.getTimestamp() > latest.getTimestamp()
-						|| messageNode.getTimestamp() == latest.getTimestamp()
-						&& messageNode.getId() > latest.getId())
-				{
-					latest = messageNode;
-				}
-			}
-		}
-
-		return latest;
 	}
 
 	private boolean isArenaVisible()

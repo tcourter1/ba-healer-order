@@ -32,7 +32,6 @@ public class BaWaveLifecycleServiceTest
 		AtomicBoolean arenaVisible = new AtomicBoolean();
 		BaWaveLifecycleService lifecycle = new BaWaveLifecycleService(
 				client(tick),
-				arenaVisible::get,
 				arenaVisible::get
 		);
 
@@ -56,7 +55,6 @@ public class BaWaveLifecycleServiceTest
 		AtomicBoolean arenaVisible = new AtomicBoolean(true);
 		BaWaveLifecycleService lifecycle = new BaWaveLifecycleService(
 				client(tick),
-				arenaVisible::get,
 				arenaVisible::get
 		);
 
@@ -75,7 +73,6 @@ public class BaWaveLifecycleServiceTest
 		AtomicInteger tick = new AtomicInteger(100);
 		BaWaveLifecycleService lifecycle = new BaWaveLifecycleService(
 				client(tick),
-				() -> false,
 				() -> false
 		);
 
