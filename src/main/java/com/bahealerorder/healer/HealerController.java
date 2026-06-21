@@ -488,7 +488,7 @@ public class HealerController
 
 	public boolean shouldShowLabels()
 	{
-		return !config.showLabelsAsHealerOnly() || isHealerRole() || partySyncService.isBaPartySyncConnected();
+		return !config.showLabelsAsHealerOnly() || isHealerRole();
 	}
 
 	public boolean shouldShowHealerHighlights()

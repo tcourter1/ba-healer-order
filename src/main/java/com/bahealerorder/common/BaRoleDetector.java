@@ -85,7 +85,7 @@ public class BaRoleDetector
 
 	private void setRole(BaRole role)
 	{
-		if (role != null && currentRole == null)
+		if (role != null)
 		{
 			currentRole = role;
 		}
