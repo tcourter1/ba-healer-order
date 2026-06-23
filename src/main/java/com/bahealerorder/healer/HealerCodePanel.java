@@ -1,11 +1,11 @@
 package com.bahealerorder.healer;
 
-import com.bahealerorder.common.BaPartySyncMemberStatus;
 import com.bahealerorder.healer.codes.RunPreset;
 import com.bahealerorder.healer.codes.WaveCode;
 import com.formdev.flatlaf.FlatClientProperties;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Toolkit;
@@ -14,7 +14,6 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -22,11 +21,11 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
@@ -38,7 +37,7 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 
 @Singleton
-public class HealerCodePanel extends PluginPanel
+public class HealerCodePanel extends JPanel
 {
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
@@ -56,8 +55,6 @@ public class HealerCodePanel extends PluginPanel
 	private final JTextField importName = new JTextField();
 	private final JTextArea importCode = new JTextArea();
 	private final JPanel contentPanel = new JPanel();
-	private final JLabel partySyncStatus = label("Party Sync Off", true);
-	private final JPanel partySyncMembersPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 	private JButton deleteWaveCodeAction;
 
 	private boolean refreshing;
@@ -68,15 +65,16 @@ public class HealerCodePanel extends PluginPanel
 	{
 		this.codeManager = codeManager;
 
+		setBackground(ColorScheme.DARK_GRAY_COLOR);
+		setLayout(new BorderLayout());
+		setAlignmentX(LEFT_ALIGNMENT);
+		setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
+
 		contentPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
 		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 		add(contentPanel, BorderLayout.NORTH);
 
-		contentPanel.add(header("BA Healer Utilities"));
-		contentPanel.add(Box.createVerticalStrut(10));
-		contentPanel.add(createPartySyncSection());
-		contentPanel.add(Box.createVerticalStrut(10));
 		contentPanel.add(createPresetSection());
 		contentPanel.add(Box.createVerticalStrut(CREATE_CODE_GAP));
 		contentPanel.add(createImportCodeSection());
@@ -93,145 +91,18 @@ public class HealerCodePanel extends PluginPanel
 		refreshing = false;
 	}
 
-	public void updatePartySyncStatus(String status, List<BaPartySyncMemberStatus> memberStatuses)
+	public void refreshLater()
 	{
-		SwingUtilities.invokeLater(() ->
-		{
-			partySyncStatus.setText("Party Sync " + (status == null || status.isEmpty() ? "Unknown" : status));
-			partySyncStatus.setForeground(getPartySyncStatusColor(status));
-			partySyncMembersPanel.removeAll();
-			partySyncMembersPanel.setVisible(shouldShowPartySyncMembers(status) || "Already in Party".equals(status));
-
-			if (shouldShowPartySyncMembers(status))
-			{
-				for (BaPartySyncMemberStatus memberStatus : memberStatuses)
-				{
-					String statusText = memberStatus.isInParty() ? "In Party" : "Not In Party";
-					partySyncMembersPanel.add(partySyncMemberRow(
-							memberStatus.getName(),
-							statusText,
-							memberStatus.isInParty() ? Color.GREEN : Color.RED
-					));
-					partySyncMembersPanel.add(Box.createVerticalStrut(3));
-				}
-			}
-			else if ("Already in Party".equals(status))
-			{
-				partySyncMembersPanel.add(partySyncMessage("You must leave your current party to join a BA party."));
-			}
-
-			contentPanel.revalidate();
-			contentPanel.repaint();
-		});
-	}
-
-	private boolean shouldShowPartySyncMembers(String status)
-	{
-		return "Connected".equals(status) || "In Wave".equals(status);
-	}
-
-	private JPanel createPartySyncSection()
-	{
-		JPanel section = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		section.setBorder(new EmptyBorder(8, 8, 8, 8));
-		section.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-		section.setAlignmentX(LEFT_ALIGNMENT);
-		section.add(partySyncHeaderRow());
-		section.add(Box.createVerticalStrut(6));
-		partySyncMembersPanel.setAlignmentX(LEFT_ALIGNMENT);
-		partySyncMembersPanel.setVisible(false);
-		section.add(partySyncMembersPanel);
-		return section;
-	}
-
-	private JPanel partySyncHeaderRow()
-	{
-		partySyncStatus.setHorizontalAlignment(SwingConstants.CENTER);
-
-		JPanel row = new JPanel(new BorderLayout());
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setAlignmentX(LEFT_ALIGNMENT);
-		row.add(partySyncStatus, BorderLayout.CENTER);
-		return row;
-	}
-
-	private JPanel partySyncMemberRow(String name, String status, Color statusColor)
-	{
-		JLabel nameLabel = label(name);
-		JLabel statusLabel = label(status);
-		statusLabel.setForeground(statusColor);
-		statusLabel.setHorizontalAlignment(SwingConstants.RIGHT);
-
-		JPanel row = new JPanel(new BorderLayout(6, 0));
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setAlignmentX(LEFT_ALIGNMENT);
-		row.add(nameLabel, BorderLayout.CENTER);
-		row.add(statusLabel, BorderLayout.EAST);
-		return row;
-	}
-
-	private JTextArea partySyncMessage(String text)
-	{
-		JTextArea message = new JTextArea(text);
-		message.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		message.setForeground(ColorScheme.TEXT_COLOR);
-		message.setFont(LABEL_FONT);
-		message.setEditable(false);
-		message.setFocusable(false);
-		message.setLineWrap(true);
-		message.setWrapStyleWord(true);
-		message.setOpaque(false);
-		message.setBorder(null);
-		message.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2));
-		message.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT * 2));
-		message.setAlignmentX(LEFT_ALIGNMENT);
-		return message;
-	}
-
-	private Color getPartySyncStatusColor(String status)
-	{
-		if ("Off".equals(status))
-		{
-			return Color.RED;
-		}
-
-		if ("Waiting for Team".equals(status))
-		{
-			return Color.WHITE;
-		}
-
-		if ("Joining".equals(status) || "Connecting".equals(status))
-		{
-			return Color.YELLOW;
-		}
-
-		if ("Connected".equals(status) || "In Wave".equals(status))
-		{
-			return Color.GREEN;
-		}
-
-		if ("Already in Party".equals(status))
-		{
-			return Color.ORANGE;
-		}
-
-		return ColorScheme.TEXT_COLOR;
+		SwingUtilities.invokeLater(this::refreshAll);
 	}
 
 	private JPanel createPresetSection()
 	{
-		JPanel section = section("Run Preset");
-		styleCombo(presetCombo);
+		JPanel section = section("Healer Codes");
+		styleCombo(presetCombo, CONTENT_WIDTH - 16);
 		presetCombo.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
 			ComboItem item = (ComboItem) presetCombo.getSelectedItem();
 			if (item == null || item.id == null)
@@ -248,6 +119,7 @@ public class HealerCodePanel extends PluginPanel
 		section.add(Box.createVerticalStrut(6));
 		section.add(action("Save Current Selections", this::saveCurrentPreset));
 		section.add(Box.createVerticalStrut(5));
+
 		JPanel presetActionRow = horizontalActionRow();
 		presetActionRow.add(action("Delete", this::deleteSelectedPreset));
 		presetActionRow.add(action("Clear", () ->
@@ -257,6 +129,7 @@ public class HealerCodePanel extends PluginPanel
 		}));
 		section.add(presetActionRow);
 		section.add(Box.createVerticalStrut(5));
+
 		JPanel jsonActionRow = horizontalActionRow();
 		jsonActionRow.add(action("Import", this::importRunPresetFromClipboard));
 		jsonActionRow.add(action("Export", this::exportSelectedRunPresetToClipboard));
@@ -275,10 +148,7 @@ public class HealerCodePanel extends PluginPanel
 			styleCombo(comboBox, CONTENT_WIDTH - 16 - WAVE_LABEL_WIDTH - 6);
 			comboBox.addActionListener(event ->
 			{
-				if (refreshing)
-				{
-					return;
-				}
+				if (refreshing) return;
 
 				ComboItem item = (ComboItem) comboBox.getSelectedItem();
 				codeManager.setActiveWaveCodeId(selectedWave, item == null ? null : item.id);
@@ -301,7 +171,7 @@ public class HealerCodePanel extends PluginPanel
 		{
 			importWaveCombo.addItem(new ComboItem(String.valueOf(wave), "Wave " + wave));
 		}
-		styleCombo(importWaveCombo);
+		styleCombo(importWaveCombo, CONTENT_WIDTH - 16);
 		importWaveCombo.addActionListener(event ->
 		{
 			if (!refreshingImport)
@@ -314,7 +184,7 @@ public class HealerCodePanel extends PluginPanel
 		section.add(importWaveCombo);
 		section.add(Box.createVerticalStrut(6));
 
-		styleCombo(userWaveCodeCombo);
+		styleCombo(userWaveCodeCombo, CONTENT_WIDTH - 16);
 		userWaveCodeCombo.addActionListener(event ->
 		{
 			if (!refreshingImport)
@@ -327,8 +197,8 @@ public class HealerCodePanel extends PluginPanel
 		section.add(userWaveCodeCombo);
 		section.add(Box.createVerticalStrut(6));
 
-		styleTextField(importName);
 		importName.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Enter new code name...");
+		fixedSize(importName, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		section.add(label("Name"));
 		section.add(Box.createVerticalStrut(3));
 		section.add(importName);
@@ -341,6 +211,7 @@ public class HealerCodePanel extends PluginPanel
 		section.add(Box.createVerticalStrut(6));
 		section.add(action("Save Wave Code", this::saveImportedWaveCode));
 		section.add(Box.createVerticalStrut(5));
+
 		JPanel saveDeleteRow = horizontalActionRow();
 		deleteWaveCodeAction = action("Delete", this::deleteOrResetSelectedWaveCode);
 		saveDeleteRow.add(deleteWaveCodeAction);
@@ -446,10 +317,7 @@ public class HealerCodePanel extends PluginPanel
 		RunPreset currentPreset = selectedPreset == null ? null : codeManager.findRunPreset(selectedPreset.id);
 		String name = promptName("Preset name", currentPreset == null ? "" : currentPreset.getName());
 
-		if (name == null)
-		{
-			return;
-		}
+		if (name == null) return;
 
 		if (currentPreset == null)
 		{
@@ -471,17 +339,11 @@ public class HealerCodePanel extends PluginPanel
 	{
 		ComboItem item = (ComboItem) presetCombo.getSelectedItem();
 
-		if (item == null || item.id == null)
-		{
-			return;
-		}
+		if (item == null || item.id == null) return;
 
 		int result = JOptionPane.showConfirmDialog(this, "Delete this run preset?", "Delete Preset", JOptionPane.OK_CANCEL_OPTION);
 
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		codeManager.deleteUserPreset(item.id);
 		refreshAll();
@@ -512,10 +374,7 @@ public class HealerCodePanel extends PluginPanel
 				JOptionPane.OK_CANCEL_OPTION
 		);
 
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		StringSelection contents = new StringSelection(json);
 		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(contents, null);
@@ -545,10 +404,7 @@ public class HealerCodePanel extends PluginPanel
 				JOptionPane.OK_CANCEL_OPTION
 		);
 
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		if (!codeManager.importRunPresetJson(json))
 		{
@@ -565,10 +421,7 @@ public class HealerCodePanel extends PluginPanel
 		String name = importName.getText().trim();
 		String code = importCode.getText().trim();
 
-		if (name.isEmpty() || code.isEmpty())
-		{
-			return;
-		}
+		if (name.isEmpty() || code.isEmpty()) return;
 
 		int wave = getImportWave();
 		String selectedId = getSelectedUserWaveCodeId();
@@ -604,17 +457,11 @@ public class HealerCodePanel extends PluginPanel
 	{
 		String selectedId = getSelectedUserWaveCodeId();
 
-		if (selectedId == null)
-		{
-			return;
-		}
+		if (selectedId == null) return;
 
 		WaveCode selectedCode = codeManager.findWaveCode(selectedId);
 
-		if (selectedCode == null)
-		{
-			return;
-		}
+		if (selectedCode == null) return;
 
 		if (selectedCode.isBuiltIn())
 		{
@@ -624,10 +471,7 @@ public class HealerCodePanel extends PluginPanel
 
 		int result = JOptionPane.showConfirmDialog(this, "Delete this custom wave code?", "Delete Wave Code", JOptionPane.OK_CANCEL_OPTION);
 
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		codeManager.deleteUserWaveCode(selectedId);
 		clearImportForm();
@@ -647,10 +491,7 @@ public class HealerCodePanel extends PluginPanel
 	{
 		int result = JOptionPane.showConfirmDialog(this, "Reset this built-in wave code to its default?", "Reset Wave Code", JOptionPane.OK_CANCEL_OPTION);
 
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		codeManager.resetBuiltInWaveCode(selectedCode.getId());
 		refreshAll();
@@ -666,10 +507,7 @@ public class HealerCodePanel extends PluginPanel
 
 	private void updateDeleteWaveCodeAction(WaveCode code)
 	{
-		if (deleteWaveCodeAction == null)
-		{
-			return;
-		}
+		if (deleteWaveCodeAction == null) return;
 
 		deleteWaveCodeAction.setText(code != null && code.isBuiltIn() ? "Reset" : "Delete");
 	}
@@ -677,13 +515,10 @@ public class HealerCodePanel extends PluginPanel
 	private String promptName(String title, String defaultValue)
 	{
 		JTextField field = new JTextField(defaultValue);
-		styleTextField(field);
+		fixedSize(field, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		int result = JOptionPane.showConfirmDialog(this, field, title, JOptionPane.OK_CANCEL_OPTION);
 
-		if (result != JOptionPane.OK_OPTION || field.getText().trim().isEmpty())
-		{
-			return null;
-		}
+		if (result != JOptionPane.OK_OPTION || field.getText().trim().isEmpty()) return null;
 
 		return field.getText().trim();
 	}
@@ -692,10 +527,7 @@ public class HealerCodePanel extends PluginPanel
 	{
 		ComboItem waveItem = (ComboItem) importWaveCombo.getSelectedItem();
 
-		if (waveItem == null || waveItem.id == null)
-		{
-			return 1;
-		}
+		if (waveItem == null || waveItem.id == null) return 1;
 
 		return Integer.parseInt(waveItem.id);
 	}
@@ -717,25 +549,7 @@ public class HealerCodePanel extends PluginPanel
 		return panel;
 	}
 
-	private JPanel header(String text)
-	{
-		JSeparator separator = new JSeparator(SwingConstants.HORIZONTAL);
-		separator.setForeground(ColorScheme.BORDER_COLOR);
-		separator.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		separator.setPreferredSize(new Dimension(CONTENT_WIDTH, 1));
-		separator.setMaximumSize(new Dimension(CONTENT_WIDTH, 1));
-		separator.setAlignmentX(LEFT_ALIGNMENT);
-
-		JPanel panel = verticalPanel(ColorScheme.DARK_GRAY_COLOR);
-		panel.setAlignmentX(LEFT_ALIGNMENT);
-		panel.setMaximumSize(new Dimension(CONTENT_WIDTH, 34));
-		panel.add(centeredLabelRow(text, true, ColorScheme.DARK_GRAY_COLOR));
-		panel.add(Box.createVerticalStrut(5));
-		panel.add(separator);
-		return panel;
-	}
-
-	private JPanel centeredLabelRow(String text, boolean bold, java.awt.Color background)
+	private JPanel centeredLabelRow(String text, boolean bold, Color background)
 	{
 		JLabel label = label(text, bold);
 		label.setHorizontalAlignment(SwingConstants.CENTER);
@@ -783,9 +597,7 @@ public class HealerCodePanel extends PluginPanel
 	{
 		JButton button = new JButton(text);
 		button.addActionListener(event -> runnable.run());
-		button.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		button.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		button.setAlignmentX(LEFT_ALIGNMENT);
+		fixedSize(button, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		return button;
 	}
 
@@ -799,7 +611,7 @@ public class HealerCodePanel extends PluginPanel
 		return panel;
 	}
 
-	private static JPanel verticalPanel(java.awt.Color background)
+	private static JPanel verticalPanel(Color background)
 	{
 		JPanel panel = new JPanel();
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -807,31 +619,17 @@ public class HealerCodePanel extends PluginPanel
 		return panel;
 	}
 
-	private void styleCombo(JComboBox<ComboItem> comboBox)
+	private JScrollPane wrapTextArea(JTextArea area, int height)
 	{
-		styleCombo(comboBox, CONTENT_WIDTH - 16);
+		JScrollPane scrollPane = new JScrollPane(area);
+		fixedSize(scrollPane, CONTENT_WIDTH - 16, height);
+		return scrollPane;
 	}
 
 	private void styleCombo(JComboBox<ComboItem> comboBox, int width)
 	{
-		Dimension size = new Dimension(width, CONTROL_HEIGHT);
 		comboBox.setFocusable(false);
-		comboBox.setPreferredSize(size);
-		comboBox.setMinimumSize(size);
-		comboBox.setMaximumSize(size);
-		comboBox.setAlignmentX(LEFT_ALIGNMENT);
-	}
-
-	private void styleTextField(JTextField field)
-	{
-		Dimension size = new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT);
-		field.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
-		field.setForeground(ColorScheme.TEXT_COLOR);
-		field.setCaretColor(ColorScheme.TEXT_COLOR);
-		field.setBorder(new EmptyBorder(5, 5, 5, 5));
-		field.setPreferredSize(size);
-		field.setMaximumSize(size);
-		field.setAlignmentX(LEFT_ALIGNMENT);
+		fixedSize(comboBox, width, CONTROL_HEIGHT);
 	}
 
 	private void styleTextArea(JTextArea area, int rows)
@@ -839,20 +637,15 @@ public class HealerCodePanel extends PluginPanel
 		area.setRows(rows);
 		area.setLineWrap(true);
 		area.setWrapStyleWord(true);
-		area.setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
-		area.setForeground(ColorScheme.TEXT_COLOR);
-		area.setCaretColor(ColorScheme.TEXT_COLOR);
-		area.setBorder(new EmptyBorder(5, 5, 5, 5));
 	}
 
-	private JScrollPane wrapTextArea(JTextArea area, int height)
+	private static void fixedSize(JComponent component, int width, int height)
 	{
-		JScrollPane scrollPane = new JScrollPane(area);
-		scrollPane.getViewport().setBackground(ColorScheme.DARKER_GRAY_COLOR.darker());
-		scrollPane.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, height));
-		scrollPane.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, height));
-		scrollPane.setAlignmentX(LEFT_ALIGNMENT);
-		return scrollPane;
+		Dimension size = new Dimension(width, height);
+		component.setPreferredSize(size);
+		component.setMinimumSize(size);
+		component.setMaximumSize(size);
+		component.setAlignmentX(Component.LEFT_ALIGNMENT);
 	}
 
 	private void selectComboValue(JComboBox<ComboItem> comboBox, String id)
@@ -871,11 +664,6 @@ public class HealerCodePanel extends PluginPanel
 		{
 			comboBox.setSelectedIndex(0);
 		}
-	}
-
-	public void refreshLater()
-	{
-		SwingUtilities.invokeLater(this::refreshAll);
 	}
 
 	private static class ComboItem

@@ -2,7 +2,6 @@ package com.bahealerorder.healer.ttk;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import javax.inject.Inject;
 
 public class HealerTtkTracker
@@ -11,7 +10,6 @@ public class HealerTtkTracker
 
 	private final Map<Integer, HealerTtkState> statesByNpcIndex = new HashMap<>();
 	private int waveStartTick = -1;
-	private int wave = -1;
 	private int healerMaxHp = -1;
 
 	@Inject
@@ -22,7 +20,6 @@ public class HealerTtkTracker
 	public void startWave(int tick, int wave)
 	{
 		waveStartTick = tick;
-		this.wave = wave;
 		healerMaxHp = getHealerMaxHp(wave);
 		statesByNpcIndex.clear();
 	}
@@ -30,21 +27,20 @@ public class HealerTtkTracker
 	public void reset()
 	{
 		waveStartTick = -1;
-		wave = -1;
 		healerMaxHp = -1;
 		statesByNpcIndex.clear();
 	}
 
-	public void onHealerSpawned(int npcIndex, int healerOrder, int tick)
+	public void onHealerSpawned(int npcIndex, int tick)
 	{
 		statesByNpcIndex.compute(npcIndex, (key, state) ->
 		{
 			if (state == null)
 			{
-				return new HealerTtkState(npcIndex, healerOrder, tick, healerMaxHp);
+				return new HealerTtkState(tick, healerMaxHp);
 			}
 
-			state.updateSpawn(healerOrder, tick, healerMaxHp);
+			state.updateSpawn(tick, healerMaxHp);
 			return state;
 		});
 	}
@@ -59,26 +55,41 @@ public class HealerTtkTracker
 		}
 	}
 
-	public Optional<HealerTtkResult> getTtk(int npcIndex, int currentTick)
+	public boolean observeHp(int npcIndex, int tick, int healthRatio, int healthScale)
 	{
-		HealerTtkState state = statesByNpcIndex.get(npcIndex);
-		return state == null ? Optional.empty() : state.getTtk(currentTick);
+		HealerTtkState state = statesByNpcIndex.computeIfAbsent(
+				npcIndex,
+				key -> new HealerTtkState(tick, healerMaxHp)
+		);
+
+		return state.observeHp(tick, healthRatio, healthScale);
 	}
 
-	public boolean hasPoisonedHealerWithUnknownTtk(int npcIndex)
+	public boolean switchToHealthRatioTtk(int npcIndex, int tick, int healthRatio, int healthScale)
+	{
+		HealerTtkState state = statesByNpcIndex.computeIfAbsent(
+				npcIndex,
+				key -> new HealerTtkState(tick, healerMaxHp)
+		);
+
+		return state.switchToHealthRatioTtk(tick, healthRatio, healthScale);
+	}
+
+	public HealerTtkPrediction getPrediction(int npcIndex)
 	{
 		HealerTtkState state = statesByNpcIndex.get(npcIndex);
-		return state != null && state.hasPoisonedHealerWithUnknownTtk();
+		return state == null ? HealerTtkPrediction.empty() : state.getPrediction();
+	}
+
+	public boolean isHealthRatioMode(int npcIndex)
+	{
+		HealerTtkState state = statesByNpcIndex.get(npcIndex);
+		return state != null && state.isHealthRatioMode();
 	}
 
 	public int getWaveStartTick()
 	{
 		return waveStartTick;
-	}
-
-	public int getWave()
-	{
-		return wave;
 	}
 
 	HealerTtkState getState(int npcIndex)

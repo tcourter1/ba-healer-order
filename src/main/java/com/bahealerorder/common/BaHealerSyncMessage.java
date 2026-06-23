@@ -17,6 +17,7 @@ public class BaHealerSyncMessage extends PartyMemberMessage
 	int predictedDeathTick;
 	boolean unknownTtk;
 	int actualDeathTick;
-	int observedTick;
+	boolean observedDeath;
+	boolean healthRatioMode;
 	int[] foodTicks;
 }

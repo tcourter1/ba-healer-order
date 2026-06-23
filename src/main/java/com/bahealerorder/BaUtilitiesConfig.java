@@ -12,6 +12,12 @@ import net.runelite.client.config.Range;
 public interface BaUtilitiesConfig extends Config
 {
 	String GROUP_NAME = "bahealerorder";
+	String SHOW_OVERVIEW_RANGERS_KEY = "showOverviewRangers";
+	String SHOW_OVERVIEW_FIGHTERS_KEY = "showOverviewFighters";
+	String SHOW_OVERVIEW_RUNNERS_KEY = "showOverviewRunners";
+	String SHOW_OVERVIEW_HEALERS_KEY = "showOverviewHealers";
+	String FOOD_PANEL_CODE_COLLAPSED_KEY = "foodPanelCodeCollapsed";
+	String SIDE_PANEL_TAB_KEY = "sidePanelTab";
 
 	@ConfigSection(
 			name = "General",
@@ -502,6 +508,84 @@ public interface BaUtilitiesConfig extends Config
 			position = 3
 	)
 	default boolean deprioritizeOtherDispensers()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = SIDE_PANEL_TAB_KEY,
+			name = "Side Panel Tab",
+			description = "Remembers the last selected BA Utilities side-panel tab",
+			section = generalSection,
+			position = 99,
+			hidden = true
+	)
+	default String sidePanelTab()
+	{
+		return "healer";
+	}
+
+	@ConfigItem(
+			keyName = SHOW_OVERVIEW_RANGERS_KEY,
+			name = "Show Overview Rangers",
+			description = "Shows Penance Rangers in the side-panel wave overview",
+			section = generalSection,
+			position = 100,
+			hidden = true
+	)
+	default boolean showOverviewRangers()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = SHOW_OVERVIEW_FIGHTERS_KEY,
+			name = "Show Overview Fighters",
+			description = "Shows Penance Fighters in the side-panel wave overview",
+			section = generalSection,
+			position = 101,
+			hidden = true
+	)
+	default boolean showOverviewFighters()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = SHOW_OVERVIEW_RUNNERS_KEY,
+			name = "Show Overview Runners",
+			description = "Shows Penance Runners in the side-panel wave overview",
+			section = generalSection,
+			position = 102,
+			hidden = true
+	)
+	default boolean showOverviewRunners()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = SHOW_OVERVIEW_HEALERS_KEY,
+			name = "Show Overview Healers",
+			description = "Shows Penance Healers in the side-panel wave overview",
+			section = generalSection,
+			position = 103,
+			hidden = true
+	)
+	default boolean showOverviewHealers()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = FOOD_PANEL_CODE_COLLAPSED_KEY,
+			name = "Food Panel Code Collapsed",
+			description = "Remembers whether the food panel code section is collapsed",
+			section = healerSection,
+			position = 100,
+			hidden = true
+	)
+	default boolean foodPanelCodeCollapsed()
 	{
 		return false;
 	}

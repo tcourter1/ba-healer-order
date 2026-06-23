@@ -10,8 +10,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 
-class HealerSharedState
+@Singleton
+public class HealerSharedState
 {
 	private static final int UNKNOWN_TICK = -1;
 	private static final int SYNC_CALL_COUNT = 3;
@@ -20,6 +23,11 @@ class HealerSharedState
 	private int wave = -1;
 	private int currentCallIndex;
 
+	@Inject
+	public HealerSharedState()
+	{
+	}
+
 	void reset()
 	{
 		statesByOrder.clear();
@@ -27,33 +35,41 @@ class HealerSharedState
 		currentCallIndex = 0;
 	}
 
-	void startWave(int wave)
+	boolean startWave(int wave)
 	{
-		if (this.wave == wave) return;
+		if (this.wave == wave) return false;
 
 		reset();
 		this.wave = wave;
+		return true;
 	}
 
-	void recordLocalSpawn(int healerOrder, int npcIndex, int spawnTick)
+	boolean recordLocalSpawn(int healerOrder, int npcIndex, int spawnTick)
 	{
-		recordSpawn(healerOrder, npcIndex, spawnTick);
+		return recordSpawn(healerOrder, npcIndex, spawnTick);
 	}
 
-	private void recordSpawn(int healerOrder, int npcIndex, int spawnTick)
+	private boolean recordSpawn(int healerOrder, int npcIndex, int spawnTick)
 	{
 		State state = state(healerOrder);
+		boolean changed = !state.spawned;
 		state.spawned = true;
 		if (spawnTick >= 0)
 		{
+			int previousSpawnTick = state.spawnTick;
 			state.spawnTick = state.spawnTick < 0 ? spawnTick : Math.min(state.spawnTick, spawnTick);
+			changed |= previousSpawnTick != state.spawnTick;
 		}
 
 		if (npcIndex >= 0)
 		{
+			int previousNpcIndex = state.npcIndex;
 			clearNpcIndexFromOtherStates(healerOrder, npcIndex);
 			state.npcIndex = npcIndex;
+			changed |= previousNpcIndex != state.npcIndex;
 		}
+
+		return changed;
 	}
 
 	void recordLocalCallIndex(int callIndex)
@@ -74,57 +90,92 @@ class HealerSharedState
 		}
 	}
 
-	void recordPrediction(int healerOrder, int predictedDeathTick, boolean unknownTtk, int observedTick)
+	boolean recordPrediction(int healerOrder, int predictedDeathTick, boolean unknownTtk)
 	{
 		State state = state(healerOrder);
 
-		if (state.actualDeathTick >= 0) return;
+		if (state.actualDeathTick >= 0) return false;
 
 		if (predictedDeathTick >= 0)
 		{
+			boolean changed = state.predictedDeathTick != predictedDeathTick || state.unknownTtk;
 			state.predictedDeathTick = predictedDeathTick;
 			state.unknownTtk = false;
-			state.observedTick = Math.max(state.observedTick, observedTick);
-			return;
+			return changed;
 		}
 
+		boolean changed = state.unknownTtk != unknownTtk || state.predictedDeathTick != UNKNOWN_TICK;
+		state.predictedDeathTick = UNKNOWN_TICK;
 		state.unknownTtk = unknownTtk;
-		state.observedTick = Math.max(state.observedTick, observedTick);
+		return changed;
 	}
 
-	void recordDeath(int healerOrder, int deathTick)
+	boolean recordHealthRatioMode(int healerOrder)
 	{
 		State state = state(healerOrder);
-		recordDeath(state, deathTick);
-		state.unknownTtk = false;
+		if (state.healthRatioMode) return false;
+
+		state.healthRatioMode = true;
+		return true;
 	}
 
-	void updateFromParty(BaHealerSyncMessage message, boolean acceptPrediction)
+	boolean recordDeath(int healerOrder, int deathTick)
 	{
-		if (message.getWave() <= 0 || message.getHealerOrder() <= 0) return;
+		State state = state(healerOrder);
+		boolean wasUnknown = state.unknownTtk;
+		boolean changed = recordDeath(state, deathTick, true);
+		state.unknownTtk = false;
+		return changed || wasUnknown;
+	}
 
-		startWave(message.getWave());
+	boolean recordPresumedDeath(int healerOrder, int deathTick)
+	{
+		State state = state(healerOrder);
+		boolean wasUnknown = state.unknownTtk;
+		boolean changed = recordDeath(state, deathTick, false);
+		state.unknownTtk = false;
+		return changed || wasUnknown;
+	}
+
+	boolean clearPresumedDeath(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		if (state == null || state.actualDeathTick < 0 || state.observedDeath) return false;
+
+		state.actualDeathTick = UNKNOWN_TICK;
+		return true;
+	}
+
+	boolean updateFromParty(BaHealerSyncMessage message, boolean acceptPrediction)
+	{
+		if (message.getWave() <= 0 || message.getHealerOrder() <= 0) return false;
+
+		boolean changed = startWave(message.getWave());
 		currentCallIndex = Math.max(currentCallIndex, message.getCurrentCallIndex());
 
-		recordSpawn(message.getHealerOrder(), message.getNpcIndex(), message.getSpawnTick());
+		changed |= recordSpawn(message.getHealerOrder(), message.getNpcIndex(), message.getSpawnTick());
 		State state = state(message.getHealerOrder());
 
 		if (message.getActualDeathTick() >= 0)
 		{
-			recordDeath(state, message.getActualDeathTick());
+			changed |= recordDeath(state, message.getActualDeathTick(), message.isObservedDeath());
 		}
+
+		changed |= message.isHealthRatioMode() && recordHealthRatioMode(message.getHealerOrder());
 
 		boolean hasPrediction = message.getPredictedDeathTick() >= 0 || message.isUnknownTtk();
-		boolean newerObservation = message.getObservedTick() >= state.observedTick;
-		if (acceptPrediction && hasPrediction && state.actualDeathTick < 0 && newerObservation)
+		if (acceptPrediction && hasPrediction && state.actualDeathTick < 0)
 		{
+			changed |= state.predictedDeathTick != message.getPredictedDeathTick()
+					|| state.unknownTtk != (message.getPredictedDeathTick() < 0 && message.isUnknownTtk());
 			state.predictedDeathTick = message.getPredictedDeathTick();
 			state.unknownTtk = message.getPredictedDeathTick() < 0 && message.isUnknownTtk();
-			state.observedTick = Math.max(state.observedTick, message.getObservedTick());
 		}
+
+		return changed;
 	}
 
-	boolean hasSpawned(int healerOrder)
+	public boolean hasSpawned(int healerOrder)
 	{
 		return stateOrNull(healerOrder) != null && state(healerOrder).spawned;
 	}
@@ -167,25 +218,25 @@ class HealerSharedState
 		return state != null && state.actualDeathTick >= 0;
 	}
 
-	Integer getActualDeathTick(int healerOrder)
+	public Integer getActualDeathTick(int healerOrder)
 	{
 		State state = stateOrNull(healerOrder);
 		return state == null || state.actualDeathTick < 0 ? null : state.actualDeathTick;
 	}
 
-	Integer getPredictedDeathTick(int healerOrder)
+	boolean isObservedDeath(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state != null && state.observedDeath;
+	}
+
+	public Integer getPredictedDeathTick(int healerOrder)
 	{
 		State state = stateOrNull(healerOrder);
 		return state == null || state.predictedDeathTick < 0 ? null : state.predictedDeathTick;
 	}
 
-	boolean hasTtk(int healerOrder)
-	{
-		State state = stateOrNull(healerOrder);
-		return state != null && (state.predictedDeathTick >= 0 || state.unknownTtk || state.actualDeathTick >= 0);
-	}
-
-	boolean hasUnknownTtk(int healerOrder)
+	public boolean hasUnknownTtk(int healerOrder)
 	{
 		State state = stateOrNull(healerOrder);
 		return state != null && state.unknownTtk;
@@ -194,6 +245,11 @@ class HealerSharedState
 	int getCurrentCallIndex()
 	{
 		return currentCallIndex;
+	}
+
+	public int getWave()
+	{
+		return wave;
 	}
 
 	Map<Integer, Integer> getFoodFedByHealerOrder()
@@ -247,6 +303,12 @@ class HealerSharedState
 		return ticks;
 	}
 
+	boolean isHealthRatioMode(int healerOrder)
+	{
+		State state = stateOrNull(healerOrder);
+		return state != null && state.healthRatioMode;
+	}
+
 	List<Integer> recordPartyFoodTicks(long memberId, int healerOrder, int[] foodTicks)
 	{
 		List<Integer> newFoodTicks = new ArrayList<>();
@@ -288,13 +350,24 @@ class HealerSharedState
 		}
 	}
 
-	private void recordDeath(State state, int deathTick)
+	private boolean recordDeath(State state, int deathTick, boolean observed)
 	{
-		if (deathTick < 0) return;
+		if (deathTick < 0) return false;
 
-		state.actualDeathTick = state.actualDeathTick < 0
-				? deathTick
-				: Math.min(state.actualDeathTick, deathTick);
+		int previousDeathTick = state.actualDeathTick;
+		boolean previousObservedDeath = state.observedDeath;
+
+		if (state.actualDeathTick < 0 || observed && !state.observedDeath)
+		{
+			state.actualDeathTick = deathTick;
+			state.observedDeath = observed;
+		}
+		else if (!observed && !state.observedDeath)
+		{
+			state.actualDeathTick = Math.min(state.actualDeathTick, deathTick);
+		}
+
+		return previousDeathTick != state.actualDeathTick || previousObservedDeath != state.observedDeath;
 	}
 
 	private static class State
@@ -310,7 +383,8 @@ class HealerSharedState
 		private int predictedDeathTick = UNKNOWN_TICK;
 		private boolean unknownTtk;
 		private int actualDeathTick = UNKNOWN_TICK;
-		private int observedTick = UNKNOWN_TICK;
+		private boolean observedDeath;
+		private boolean healthRatioMode;
 
 		private State(int healerOrder)
 		{

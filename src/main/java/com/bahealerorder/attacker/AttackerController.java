@@ -1,25 +1,27 @@
 package com.bahealerorder.attacker;
 
 import com.bahealerorder.BaUtilitiesConfig;
+import com.bahealerorder.common.BaOverviewNpcType;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.BaRoleDetector;
+import com.bahealerorder.common.BaWaveLifecycleService;
+import com.bahealerorder.common.BaWaveInfo;
+import com.bahealerorder.common.BaWaveOverviewService;
+import com.bahealerorder.common.BaWaveOverviewState;
+import java.util.HashMap;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.NPC;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
-import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Text;
@@ -30,24 +32,6 @@ public class AttackerController
 {
     private static final String PENANCE_RANGER_NAME = "Penance Ranger";
     private static final String PENANCE_FIGHTER_NAME = "Penance Fighter";
-
-    private static final Pattern WAVE_START_PATTERN = Pattern.compile(".*\\bwave:\\s*(\\d+)\\b.*");
-    private static final Pattern WAVE_PATTERN = Pattern.compile(".*---- Wave: (10|[1-9]) ----.*");
-
-    /*
-     * Index 0 is unused so wave numbers can be used directly.
-     */
-    private static final int[] RANGER_TOTALS_BY_WAVE = {
-            0,
-            4, 4, 6, 6, 6,
-            7, 7, 8, 8, 7
-    };
-
-    private static final int[] FIGHTER_TOTALS_BY_WAVE = {
-            0,
-            4, 5, 5, 6, 6,
-            6, 7, 7, 8, 7
-    };
 
     /*
      * Normal waves 1-9. Captured from Block -> Penance cave debug.
@@ -65,19 +49,13 @@ public class AttackerController
     private final Client client;
     private final BaUtilitiesConfig config;
     private final BaRoleDetector roleDetector;
+    private final BaWaveLifecycleService waveLifecycleService;
     private final OverlayManager overlayManager;
     private final AttackerCaveOverlay caveOverlay;
+    private final BaWaveOverviewService waveOverviewService;
+    private final BaWaveOverviewState waveOverviewState;
 
-    @Getter
-    private int currentWave = -1;
-
-    @Getter
-    private int rangersSpawned;
-
-    @Getter
-    private int fightersSpawned;
-
-    private int inGameBit;
+    private final Map<NPC, BaOverviewNpcType> visibleAttackableNpcs = new HashMap<>();
 
     private int lastSpawnOverlayDebugTick = -100;
 
@@ -86,14 +64,20 @@ public class AttackerController
             Client client,
             BaUtilitiesConfig config,
             BaRoleDetector roleDetector,
+            BaWaveLifecycleService waveLifecycleService,
             OverlayManager overlayManager,
-            AttackerCaveOverlay caveOverlay)
+            AttackerCaveOverlay caveOverlay,
+            BaWaveOverviewService waveOverviewService,
+            BaWaveOverviewState waveOverviewState)
     {
         this.client = client;
         this.config = config;
         this.roleDetector = roleDetector;
+        this.waveLifecycleService = waveLifecycleService;
         this.overlayManager = overlayManager;
         this.caveOverlay = caveOverlay;
+        this.waveOverviewService = waveOverviewService;
+        this.waveOverviewState = waveOverviewState;
     }
 
     public void startUp()
@@ -111,7 +95,7 @@ public class AttackerController
 
     public void onNpcSpawned(NpcSpawned event)
     {
-        if (!isAttackerRole() || !isWaveActive())
+        if (!isWaveActive())
         {
             return;
         }
@@ -127,71 +111,26 @@ public class AttackerController
 
         if (PENANCE_RANGER_NAME.equals(npcName))
         {
-            rangersSpawned++;
-            log.debug("Attacker spawn counter registered Ranger {}/{} for wave {}", rangersSpawned, getRangerTotal(), currentWave);
+            visibleAttackableNpcs.put(npc, BaOverviewNpcType.RANGER);
+            waveOverviewService.recordSpawn(BaOverviewNpcType.RANGER, npc.getIndex());
+            log.debug("Attacker spawn counter registered Ranger {}/{} for wave {}", getRangersSpawned(), getRangerTotal(), getCurrentWave());
         }
         else if (PENANCE_FIGHTER_NAME.equals(npcName))
         {
-            fightersSpawned++;
-            log.debug("Attacker spawn counter registered Fighter {}/{} for wave {}", fightersSpawned, getFighterTotal(), currentWave);
+            visibleAttackableNpcs.put(npc, BaOverviewNpcType.FIGHTER);
+            waveOverviewService.recordSpawn(BaOverviewNpcType.FIGHTER, npc.getIndex());
+            log.debug("Attacker spawn counter registered Fighter {}/{} for wave {}", getFightersSpawned(), getFighterTotal(), getCurrentWave());
         }
     }
 
-    public void onChatMessage(ChatMessage event)
+    public void onNpcDespawned(NpcDespawned event)
     {
-        if (event.getType() != ChatMessageType.GAMEMESSAGE)
+        NPC npc = event.getNpc();
+        BaOverviewNpcType type = visibleAttackableNpcs.remove(npc);
+
+        if (isWaveActive() && type != null)
         {
-            return;
-        }
-
-        Matcher waveMatcher = WAVE_PATTERN.matcher(event.getMessage());
-
-        if (waveMatcher.matches())
-        {
-            try
-            {
-                startNewWave(Integer.parseInt(waveMatcher.group(1)));
-            }
-            catch (NumberFormatException ex)
-            {
-                log.debug("Failed to parse attacker wave number from message: {}", event.getMessage());
-            }
-
-            return;
-        }
-
-        String message = Text.removeTags(event.getMessage()).toLowerCase(Locale.ROOT);
-        Matcher waveStartMatcher = WAVE_START_PATTERN.matcher(message);
-
-        if (!waveStartMatcher.matches())
-        {
-            return;
-        }
-
-        try
-        {
-            startNewWave(Integer.parseInt(waveStartMatcher.group(1)));
-        }
-        catch (NumberFormatException ex)
-        {
-            log.debug("Failed to parse attacker wave start message: {}", message, ex);
-        }
-    }
-
-    public void onVarbitChanged(VarbitChanged event)
-    {
-        int currentInGameBit = client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING);
-
-        if (inGameBit == currentInGameBit)
-        {
-            return;
-        }
-
-        inGameBit = currentInGameBit;
-
-        if (currentInGameBit == 0)
-        {
-            resetWaveState();
+            waveOverviewService.recordDeath(type, npc.getIndex());
         }
     }
 
@@ -237,10 +176,10 @@ public class AttackerController
                     attackerRole,
                     roleDetector.getCurrentRole(),
                     waveActive,
-                    currentWave,
-                    rangersSpawned,
+                    getCurrentWave(),
+                    getRangersSpawned(),
                     rangerTotal,
-                    fightersSpawned,
+                    getFightersSpawned(),
                     fighterTotal
             );
         }
@@ -255,69 +194,74 @@ public class AttackerController
 
     public boolean isWaveActive()
     {
-        return currentWave >= 1 && currentWave <= 10;
+        return waveLifecycleService.isWaveActive();
+    }
+
+    public int getCurrentWave()
+    {
+        return waveLifecycleService.getWave();
     }
 
     public int getRangerTotal()
     {
-        if (currentWave < 1 || currentWave >= RANGER_TOTALS_BY_WAVE.length)
-        {
-            return 0;
-        }
-
-        return RANGER_TOTALS_BY_WAVE[currentWave];
+        return BaWaveInfo.getExpectedCount(getCurrentWave(), BaOverviewNpcType.RANGER);
     }
 
     public int getFighterTotal()
     {
-        if (currentWave < 1 || currentWave >= FIGHTER_TOTALS_BY_WAVE.length)
-        {
-            return 0;
-        }
+        return BaWaveInfo.getExpectedCount(getCurrentWave(), BaOverviewNpcType.FIGHTER);
+    }
 
-        return FIGHTER_TOTALS_BY_WAVE[currentWave];
+    public int getRangersSpawned()
+    {
+        return waveOverviewState.getSpawnedCount(BaOverviewNpcType.RANGER);
+    }
+
+    public int getFightersSpawned()
+    {
+        return waveOverviewState.getSpawnedCount(BaOverviewNpcType.FIGHTER);
     }
 
     public WorldPoint getRangerCaveLabelTile()
     {
-        return currentWave == 10 ? WAVE_10_RANGER_CAVE_LABEL_TILE : NORMAL_RANGER_CAVE_LABEL_TILE;
+        return getCurrentWave() == 10 ? WAVE_10_RANGER_CAVE_LABEL_TILE : NORMAL_RANGER_CAVE_LABEL_TILE;
     }
 
     public WorldPoint getFighterCaveLabelTile()
     {
-        return currentWave == 10 ? WAVE_10_FIGHTER_CAVE_LABEL_TILE : NORMAL_FIGHTER_CAVE_LABEL_TILE;
+        return getCurrentWave() == 10 ? WAVE_10_FIGHTER_CAVE_LABEL_TILE : NORMAL_FIGHTER_CAVE_LABEL_TILE;
     }
 
-    private void startNewWave(int wave)
+    public void onWaveStarted(int wave)
     {
         if (wave < 1 || wave > 10)
         {
             return;
         }
 
-        currentWave = wave;
-        rangersSpawned = 0;
-        fightersSpawned = 0;
+        visibleAttackableNpcs.clear();
 
         log.debug(
                 "Starting attacker spawn counter for wave {}. Rangers total={}, Fighters total={}",
-                currentWave,
+                getCurrentWave(),
                 getRangerTotal(),
                 getFighterTotal()
         );
     }
 
+    public void onWaveEnded()
+    {
+        resetWaveState();
+    }
+
     private void resetWaveState()
     {
-        currentWave = -1;
-        rangersSpawned = 0;
-        fightersSpawned = 0;
+        visibleAttackableNpcs.clear();
     }
 
     private void resetAllState()
     {
         resetWaveState();
-        inGameBit = 0;
     }
 
     private void debugAttackerCaveClick(MenuOptionClicked event)
