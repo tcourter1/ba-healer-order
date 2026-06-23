@@ -1,7 +1,6 @@
 package com.bahealerorder.common;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -47,11 +46,6 @@ public class BaWaveOverviewStore
 	private int activeWave = -1;
 	private int lastWave = -1;
 
-	public BaWaveOverviewStore()
-	{
-		this(new GsonBuilder().setPrettyPrinting().create(), null);
-	}
-
 	@Inject
 	public BaWaveOverviewStore(Gson gson)
 	{
@@ -60,7 +54,7 @@ public class BaWaveOverviewStore
 
 	BaWaveOverviewStore(Gson gson, File runsDirectory)
 	{
-		this.gson = gson == null ? new GsonBuilder().setPrettyPrinting().create() : gson;
+		this.gson = gson;
 		this.runsDirectory = runsDirectory;
 		load();
 	}

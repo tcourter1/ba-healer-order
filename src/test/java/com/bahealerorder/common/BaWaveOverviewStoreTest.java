@@ -7,7 +7,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.bahealerorder.healer.HealerSharedState;
-import com.google.gson.GsonBuilder;
+import com.google.gson.Gson;
 import java.io.File;
 import java.util.Arrays;
 import org.junit.Rule;
@@ -16,13 +16,25 @@ import org.junit.rules.TemporaryFolder;
 
 public class BaWaveOverviewStoreTest
 {
+	private static final Gson GSON = new Gson();
+
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	private static BaWaveOverviewStore newStore()
+	{
+		return new BaWaveOverviewStore(GSON, null);
+	}
+
+	private static BaWaveOverviewStore newStore(File runsDirectory)
+	{
+		return new BaWaveOverviewStore(GSON, runsDirectory);
+	}
 
 	@Test
 	public void duplicateWaveStartDoesNotCreateNewRun()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 		store.startWave(1);
@@ -33,7 +45,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void newWaveOneAfterAbandonedWaveOneStartsNewRun()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 		store.leaveWave(1);
@@ -45,7 +57,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void lowerWaveAfterCompletedWaveStartsNewRun()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1));
@@ -58,7 +70,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void sameWaveAfterCompletionStartsNewRun()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1));
@@ -70,7 +82,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void sameLaterWaveAfterFailedWaveStaysInCurrentRun()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1));
@@ -90,7 +102,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void completedWavesAccumulateInCurrentRun()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1));
@@ -105,7 +117,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void completedSnapshotStoresDuration()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1).withDuration("0:42.6"));
@@ -117,7 +129,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void lateWaveDurationUpdatesCompletedWaveInCurrentRun()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1));
@@ -132,7 +144,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void waveDurationDoesNotCreateMissingWaveInCurrentRun()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(10);
 		store.completeSnapshot(BaWaveOverviewSnapshot.blank(10));
@@ -147,7 +159,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void completedSnapshotPreservesNpcDeathsAndDurationForHistoricalSelection()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 		BaWaveOverviewState state = new BaWaveOverviewState();
 		state.startWave(1);
 		state.recordDeath(BaOverviewNpcType.RANGER, 100, 25);
@@ -169,7 +181,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void runMetadataStoresTeamNamesAndRoundDuration()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 		assertTrue(store.updateCurrentRunPlayerRole(BaRole.HEALER));
@@ -193,7 +205,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void roundDurationMarksRunNotCurrent()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1));
@@ -209,7 +221,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void roundDurationAppliesToMostRecentCompletedRun()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(10);
 		store.completeSnapshot(BaWaveOverviewSnapshot.blank(10));
@@ -230,7 +242,7 @@ public class BaWaveOverviewStoreTest
 		state.startWave(1);
 		state.recordDeath(BaOverviewNpcType.RANGER, 100, 25);
 
-		BaWaveOverviewStore store = new BaWaveOverviewStore(new GsonBuilder().setPrettyPrinting().create(), runsDirectory);
+		BaWaveOverviewStore store = newStore(runsDirectory);
 		store.startWave(1);
 		store.updateCurrentRunPlayerRole(BaRole.HEALER);
 		store.updateCurrentRunTeamMembers(Arrays.asList(
@@ -246,7 +258,7 @@ public class BaWaveOverviewStoreTest
 		assertNotNull(files);
 		assertEquals(1, files.length);
 
-		BaWaveOverviewStore reloaded = new BaWaveOverviewStore(new GsonBuilder().setPrettyPrinting().create(), runsDirectory);
+		BaWaveOverviewStore reloaded = newStore(runsDirectory);
 		BaWaveOverviewRun run = reloaded.getRuns().get(0);
 		reloaded.setSelectedRunId(run.getId());
 		reloaded.setSelectedWave(1);
@@ -264,7 +276,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void runNameUsesDateTime()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 
@@ -275,7 +287,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void noSelectedWaveReturnsNoSnapshot()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		assertNull(store.getSelectedSnapshot());
 	}
@@ -283,7 +295,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void blankRunSelectionReturnsBlankWave()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 		store.setSelectedRunId(null);
 		store.setSelectedWave(9);
 
@@ -298,7 +310,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void selectedRunReturnsSavedWaveSnapshot()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 		BaWaveOverviewState state = new BaWaveOverviewState();
 		state.startWave(1);
 		state.recordSpawn(BaOverviewNpcType.RUNNER, 100);
@@ -316,7 +328,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void activeSelectedWaveIsInProgress()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 
 		store.startWave(1);
 		assertTrue(store.isSelectedWaveInProgress());
@@ -329,7 +341,7 @@ public class BaWaveOverviewStoreTest
 	public void deletingSelectedRunClearsSelectionAndDeletesFile() throws Exception
 	{
 		File runsDirectory = temporaryFolder.newFolder("runs");
-		BaWaveOverviewStore store = new BaWaveOverviewStore(new GsonBuilder().setPrettyPrinting().create(), runsDirectory);
+		BaWaveOverviewStore store = newStore(runsDirectory);
 
 		store.startWave(1);
 		store.completeSnapshot(BaWaveOverviewSnapshot.blank(1));
@@ -351,7 +363,7 @@ public class BaWaveOverviewStoreTest
 	@Test
 	public void restartedWaveShowsLiveSnapshotInsteadOfPreviousCompletion()
 	{
-		BaWaveOverviewStore store = new BaWaveOverviewStore();
+		BaWaveOverviewStore store = newStore();
 		BaWaveOverviewState state = new BaWaveOverviewState();
 
 		store.startWave(1);
