@@ -14,8 +14,9 @@ It provides visual tracking, menu helpers, side-panel tools, and optional party 
 * Supports optional Penance Healer time-to-kill indicators.
 * Includes healer dispenser menu helpers for called food, Take-Vial, and Take-Meat.
 * Includes optional poisoned-food protection to prevent using healer food on the wrong target.
-* Supports optional BA Party Sync for sharing healer information with teammates who also use the plugin.
+* Supports optional BA Party Sync for sharing NPC information with teammates who also use the plugin.
 * Adds Attacker role utilities, starting with configurable Ranger/Fighter cave spawn-count overlays.
+* And a ton more! See [this document](https://docs.google.com/document/d/e/2PACX-1vTHMC5GHx8T8Y1dKU5voarGItnU5oorXI9S9WufXcLP-SL0yb0ietfNxwtPfIgF2A/pub) for a detailed look at every feature this plugin has to offer.
 
 ## 2.0.0 Update
 
@@ -34,6 +35,52 @@ BA Party Sync lets teammates using BA Utilities share useful wave information au
 When enabled, the plugin can connect players on the same Barbarian Assault team through RuneLite's built-in Party system. This can help keep healer labels, food tracking, death times, and time-to-kill information consistent between teammates, even when one player did not personally see a healer spawn or die.
 
 Party Sync is optional and off by default. It is intended to make shared information smoother during coordinated runs without requiring players to manually copy codes, call out every healer state, or track everything from only one client's point of view.
+
+## Side Panel
+
+The side panel contains information about your recent runs, overviews of each wave, as well as setup for healer and defender (coming soon) strategies.
+
+### Recent Runs and Wave Overviews
+
+This section displays your last ten runs, including teammates, roles, durations, and an overview of each wave. While a wave is in-progress, the wave overview updates live with each NPC's spawn status, predicted TTK (healers only), and death time. The more team members are in a BA Party, the more information can be shared here.
+
+<img width="209" height="328" alt="image" src="https://github.com/user-attachments/assets/298a7512-e94e-4890-9224-65cd21873e21" />
+
+_List of recent runs, including a button to delete the selected one, and a button to open the folder where the runs are stored._
+
+<img width="217" height="694" alt="image" src="https://github.com/user-attachments/assets/0e4f8490-9627-49d2-991b-2ef1b597d39b" />
+
+_Summary of a completed wave. Usernames redacted._
+
+<img width="293" height="391" alt="image" src="https://github.com/user-attachments/assets/3dc85eb3-a76f-4fd6-a08e-32fb0768b213" />
+
+_NPC columns can be removed to clean up the display and only track relevant NPCs_
+
+### Healer Codes
+
+BA Utilities includes a healer-code system for managing expected food counts and healer targets across Barbarian Assault waves.
+
+From this tab, users can select wave-specific codes, save custom presets, clear current selections, and manage their active healer-code setup.
+
+The plugin also supports importing and exporting healer-code presets as JSON. This makes it easier to share code setups with teammates or back up custom configurations.
+
+Pre-loaded presets are available for waves 4 through 10, giving users a ready-to-use starting point for common healer-code setups.
+
+Healer-code entries can include time-based progression. Additional lines represent later wave timing increments, allowing the plugin to update expected food counts as the wave progresses.
+
+Target labels can be included in healer-code entries using parentheses. When present, the plugin can display the active target label above the healer.
+
+<img width="237" height="534" alt="image" src="https://github.com/user-attachments/assets/27866011-b816-40d2-b968-93f83c3465bb" /> <img width="218" height="394" alt="image" src="https://github.com/user-attachments/assets/d686fb70-9243-4f35-8344-c0e85fd3aa5c" />
+
+The active code can also be displayed in the Penance Healers' right-click menu.
+
+<img width="413" height="249" alt="image" src="https://github.com/user-attachments/assets/4f12e807-1992-4530-b050-381c0448e283" />
+
+### Defender Strategies
+
+<img width="218" height="135" alt="image" src="https://github.com/user-attachments/assets/b55bdaa9-0696-417e-bde9-4b5fa453f536" />
+
+Coming soon!
 
 ## Healer Features
 
@@ -72,26 +119,6 @@ Highlight color, label color, label size, and stacked-label spacing are configur
 Food counts are based on inventory consumption after using poisoned food on a tracked Penance Healer.
 
 The plugin does not count every menu click as a successful feed. Instead, it tracks when a poisoned food item is actually consumed from the inventory after being used on a tracked healer. Wrong-food attempts are ignored when the Barbarian Assault wrong-food penalty message appears.
-
-### Healer Codes
-
-BA Utilities includes a healer-code system for managing expected food counts and healer targets across Barbarian Assault waves.
-
-Healer codes live in a dedicated side panel. From this panel, users can select wave-specific codes, save custom presets, clear current selections, and manage their active healer-code setup.
-
-The plugin also supports importing and exporting healer-code presets as JSON. This makes it easier to share code setups with teammates or back up custom configurations.
-
-Pre-loaded presets are available for waves 4 through 10, giving users a ready-to-use starting point for common healer-code setups.
-
-Healer-code entries can include time-based progression. Additional lines represent later wave timing increments, allowing the plugin to update expected food counts as the wave progresses.
-
-Target labels can be included in healer-code entries using parentheses. When present, the plugin can display the active target label above the healer.
-
-<img width="237" height="534" alt="image" src="https://github.com/user-attachments/assets/27866011-b816-40d2-b968-93f83c3465bb" /> <img width="218" height="394" alt="image" src="https://github.com/user-attachments/assets/d686fb70-9243-4f35-8344-c0e85fd3aa5c" />
-
-The active code can also be displayed in the Penance Healers' right-click menu.
-
-<img width="413" height="249" alt="image" src="https://github.com/user-attachments/assets/4f12e807-1992-4530-b050-381c0448e283" />
 
 ### Food Panel
 
@@ -185,6 +212,11 @@ BA Utilities does not automate gameplay. It provides visual tracking, menu organ
 
 <details>
 <summary>Show version history</summary>
+
+### 2.1.0
+* Added Wave Overview and Recent Runs in side panel
+* Reworked TTK calculations to use precise food tracking when possible, but switch to HP-ratio-estimate mode when necessary
+* Added healer inventory counts
 
 ### 2.0.0
 
