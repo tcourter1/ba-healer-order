@@ -476,7 +476,7 @@ public class HealerController
 
 	public boolean isHealerRole()
 	{
-		return roleDetector.isRole(BaRole.HEALER);
+		return roleDetector.isRole(BaRole.HEALER) || waveLifecycleService.isDevWaveActive();
 	}
 
 	public boolean shouldShowFoodPanel()

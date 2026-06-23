@@ -332,6 +332,59 @@ public interface BaUtilitiesConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "foodPanelStyle",
+			name = "Overlay Panel Style",
+			description = "Choose how the food panel displays tracked healer food",
+			section = generalSection,
+			position = 5
+	)
+	default FoodPanelStyle foodPanelStyle()
+	{
+		return FoodPanelStyle.ROWS;
+	}
+
+	@ConfigItem(
+			keyName = "showFoodPanelAsHealerOnly",
+			name = "Show Overlay as Healer Only",
+			description = "Only shows the food panel while playing the Healer role",
+			section = generalSection,
+			position = 6
+	)
+	default boolean showFoodPanelAsHealerOnly()
+	{
+		return true;
+	}
+
+	@Range(
+			min = 8,
+			max = 24
+	)
+	@ConfigItem(
+			keyName = "foodPanelOverlayTextSize",
+			name = "Overlay Text Size",
+			description = "Font size used by the on-screen BA Utilities overlay panel. Panel spacing scales proportionally with this value.",
+			section = generalSection,
+			position = 7
+	)
+	default int foodPanelOverlayTextSize()
+	{
+		return 14;
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "foodPanelOverlayBackgroundColor",
+			name = "Overlay Panel Background",
+			description = "Background color used by the on-screen BA Utilities overlay panel",
+			section = generalSection,
+			position = 8
+	)
+	default Color foodPanelOverlayBackgroundColor()
+	{
+		return new Color(0, 80, 0, 120);
+	}
+
+	@ConfigItem(
 			keyName = "spreadStackedLabels",
 			name = "Spread Stacked Labels",
 			description = "Horizontally separates healer labels when multiple Penance Healers occupy the same tile",
@@ -401,30 +454,6 @@ public interface BaUtilitiesConfig extends Config
 	default DispenserOptions dispenserOptions()
 	{
 		return DispenserOptions.NONE;
-	}
-
-	@ConfigItem(
-			keyName = "foodPanelStyle",
-			name = "Food Panel Style",
-			description = "Choose how the food panel displays tracked healer food",
-			section = healerSection,
-			position = 12
-	)
-	default FoodPanelStyle foodPanelStyle()
-	{
-		return FoodPanelStyle.ROWS;
-	}
-
-	@ConfigItem(
-			keyName = "showFoodPanelAsHealerOnly",
-			name = "Show Food Panel as Healer Only",
-			description = "Only shows the food panel while playing the Healer role",
-			section = healerSection,
-			position = 13
-	)
-	default boolean showFoodPanelAsHealerOnly()
-	{
-		return true;
 	}
 
 	@ConfigItem(

@@ -3,6 +3,7 @@ package com.bahealerorder.healer;
 import com.bahealerorder.BaUtilitiesConfig;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -20,18 +21,21 @@ import net.runelite.client.util.ColorUtil;
 
 public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 {
-    private static final Color PANEL_BACKGROUND = new Color(0, 80, 0, 120);
+    private static final Color DEFAULT_PANEL_BACKGROUND = new Color(0, 80, 0, 120);
     private static final Color TITLE_COLOR = new Color(0, 255, 0);
     private static final Color TEXT_COLOR = Color.WHITE;
     private static final Color TTK_COLOR = Color.ORANGE;
     private static final Color DEAD_COLOR = Color.GRAY;
-    private static final int MAX_HEALER_COLUMNS = 4;
-    private static final int COLUMN_LABEL_WIDTH = 44;
-    private static final int COLUMN_CELL_WIDTH = 60;
-    private static final int ROW_LABEL_WIDTH = 60;
-    private static final int ROW_CELL_WIDTH = 60;
-    private static final int MAX_CELL_CHARS = 11;
-    private static final int TOGGLE_BUTTON_WIDTH = 24;
+
+    private static final int BASE_OVERLAY_TEXT_SIZE = 14;
+    private static final int BASE_PANEL_WIDTH = 320;
+    private static final int BASE_MAX_HEALER_COLUMNS = 4;
+    private static final int BASE_COLUMN_LABEL_WIDTH = 44;
+    private static final int BASE_COLUMN_CELL_WIDTH = 60;
+    private static final int BASE_ROW_LABEL_WIDTH = 60;
+    private static final int BASE_ROW_CELL_WIDTH = 60;
+    private static final int BASE_MAX_CELL_CHARS = 11;
+    private static final int BASE_TOGGLE_BUTTON_WIDTH = 24;
 
     @Inject
     private BaUtilitiesConfig config;
@@ -48,8 +52,8 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
     private HealerFoodOverlay()
     {
         setPosition(OverlayPosition.TOP_LEFT);
-        panelComponent.setPreferredSize(new Dimension(320, 0));
-        panelComponent.setBackgroundColor(PANEL_BACKGROUND);
+        panelComponent.setPreferredSize(new Dimension(BASE_PANEL_WIDTH, 0));
+        panelComponent.setBackgroundColor(DEFAULT_PANEL_BACKGROUND);
     }
 
     void setController(HealerController controller)
@@ -70,63 +74,74 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
             return null;
         }
 
-        panelComponent.getChildren().clear();
-        panelComponent.setPreferredSize(new Dimension(320, 0));
-        codeToggleBounds.setBounds(0, 0, 0, 0);
-        codeToggleLine = null;
+        Font originalFont = graphics.getFont();
+        graphics.setFont(new Font("Arial", Font.BOLD, getOverlayTextSize()));
+        panelComponent.setBackgroundColor(getPanelBackgroundColor());
 
-        List<Integer> healerOrders = controller.getHealerOrdersForCurrentWave();
-        BaUtilitiesConfig.FoodPanelStyle panelStyle = getEffectivePanelStyle();
-
-        if (controller.isHealerRole() && panelStyle == BaUtilitiesConfig.FoodPanelStyle.CODE_ONLY)
+        try
         {
-            String sourceText = controller.getCurrentWaveCodeSource();
+            panelComponent.getChildren().clear();
+            panelComponent.setPreferredSize(new Dimension(scale(BASE_PANEL_WIDTH), 0));
+            codeToggleBounds.setBounds(0, 0, 0, 0);
+            codeToggleLine = null;
 
-            if (sourceText == null || sourceText.isEmpty())
+            List<Integer> healerOrders = controller.getHealerOrdersForCurrentWave();
+            BaUtilitiesConfig.FoodPanelStyle panelStyle = getEffectivePanelStyle();
+
+            if (controller.isHealerRole() && panelStyle == BaUtilitiesConfig.FoodPanelStyle.CODE_ONLY)
             {
-                return null;
+                String sourceText = controller.getCurrentWaveCodeSource();
+
+                if (sourceText == null || sourceText.isEmpty())
+                {
+                    return null;
+                }
             }
-        }
 
-        panelComponent.getChildren().add(
-                TitleComponent.builder()
-                        .text(getPanelTitle())
-                        .color(TITLE_COLOR)
-                        .build()
-        );
+            panelComponent.getChildren().add(
+                    TitleComponent.builder()
+                            .text(getPanelTitle())
+                            .color(TITLE_COLOR)
+                            .build()
+            );
 
-        if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.CODE_ONLY)
-        {
-            addCurrentWaveCode(false);
-            return renderPanel(graphics);
-        }
+            if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.CODE_ONLY)
+            {
+                addCurrentWaveCode(false);
+                return renderPanel(graphics);
+            }
 
-        if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.SIMPLIFIED)
-        {
-            addSimplifiedRows(healerOrders);
+            if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.SIMPLIFIED)
+            {
+                addSimplifiedRows(healerOrders);
+                addCurrentWaveCodeIfHealer(true);
+                return renderPanel(graphics);
+            }
+
+            if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.COLUMNS)
+            {
+                addColumnTables(graphics, healerOrders);
+                addCurrentWaveCodeIfHealer(true);
+                return renderPanel(graphics);
+            }
+
+            if (controller.hasActiveWaveCode())
+            {
+                addHealerCallRows(graphics, healerOrders);
+            }
+            else
+            {
+                addHealerRows(healerOrders);
+            }
+
             addCurrentWaveCodeIfHealer(true);
+
             return renderPanel(graphics);
         }
-
-        if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.COLUMNS)
+        finally
         {
-            addColumnTables(graphics, healerOrders);
-            addCurrentWaveCodeIfHealer(true);
-            return renderPanel(graphics);
+            graphics.setFont(originalFont);
         }
-
-        if (controller.hasActiveWaveCode())
-        {
-            addHealerCallRows(graphics, healerOrders);
-        }
-        else
-        {
-            addHealerRows(healerOrders);
-        }
-
-        addCurrentWaveCodeIfHealer(true);
-
-        return renderPanel(graphics);
     }
 
     private BaUtilitiesConfig.FoodPanelStyle getEffectivePanelStyle()
@@ -144,10 +159,36 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
         {
             codeToggleBounds.setBounds(codeToggleLine.getBounds());
             codeToggleBounds.translate(getBounds().x, getBounds().y);
-            codeToggleBounds.width = Math.min(TOGGLE_BUTTON_WIDTH, codeToggleBounds.width);
+            codeToggleBounds.width = Math.min(scale(BASE_TOGGLE_BUTTON_WIDTH), codeToggleBounds.width);
         }
 
         return dimension;
+    }
+
+    private int getOverlayTextSize()
+    {
+        return Math.max(8, config.foodPanelOverlayTextSize());
+    }
+
+    private double getOverlayScale()
+    {
+        return getOverlayTextSize() / (double) BASE_OVERLAY_TEXT_SIZE;
+    }
+
+    private int scale(int value)
+    {
+        return Math.max(1, (int) Math.round(value * getOverlayScale()));
+    }
+
+    private int getMaxCellChars()
+    {
+        return Math.max(6, (int) Math.round(BASE_MAX_CELL_CHARS * getOverlayScale()));
+    }
+
+    private Color getPanelBackgroundColor()
+    {
+        Color color = config.foodPanelOverlayBackgroundColor();
+        return color == null ? DEFAULT_PANEL_BACKGROUND : color;
     }
 
     private String getPanelTitle()
@@ -224,14 +265,14 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
     private void addColumnTables(Graphics2D graphics, List<Integer> healerOrders)
     {
-        for (int start = 0; start < healerOrders.size(); start += MAX_HEALER_COLUMNS)
+        for (int start = 0; start < healerOrders.size(); start += BASE_MAX_HEALER_COLUMNS)
         {
             if (start > 0)
             {
                 panelComponent.getChildren().add(LineComponent.builder().left("").build());
             }
 
-            addColumnTable(graphics, healerOrders.subList(start, Math.min(start + MAX_HEALER_COLUMNS, healerOrders.size())));
+            addColumnTable(graphics, healerOrders.subList(start, Math.min(start + BASE_MAX_HEALER_COLUMNS, healerOrders.size())));
         }
     }
 
@@ -305,14 +346,14 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
     private String buildHealerCallHeader(FontMetrics metrics)
     {
-        StringBuilder builder = new StringBuilder(padRightPixels("", ROW_LABEL_WIDTH, metrics));
+        StringBuilder builder = new StringBuilder(padRightPixels("", scale(BASE_ROW_LABEL_WIDTH), metrics));
 
         for (int callIndex : getRowCallIndexes())
         {
-            builder.append(ColorUtil.prependColorTag(padCell("C" + (callIndex + 1), ROW_CELL_WIDTH, metrics), TEXT_COLOR));
+            builder.append(ColorUtil.prependColorTag(padCell("C" + (callIndex + 1), scale(BASE_ROW_CELL_WIDTH), metrics), TEXT_COLOR));
         }
 
-        builder.append(ColorUtil.prependColorTag(padCell("Dead", ROW_CELL_WIDTH, metrics), TEXT_COLOR));
+        builder.append(ColorUtil.prependColorTag(padCell("Dead", scale(BASE_ROW_CELL_WIDTH), metrics), TEXT_COLOR));
         return builder.toString();
     }
 
@@ -321,15 +362,15 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
         boolean spawned = controller.hasHealerSpawned(healerOrder);
         boolean displayDead = shouldDisplayHealerDead(healerOrder);
         StringBuilder builder = new StringBuilder(ColorUtil.prependColorTag(
-                padCell(controller.getFoodPanelHealerLabel(healerOrder), ROW_LABEL_WIDTH, metrics),
+                padCell(controller.getFoodPanelHealerLabel(healerOrder), scale(BASE_ROW_LABEL_WIDTH), metrics),
                 getHealerColor(spawned, displayDead)));
 
         for (int callIndex : getRowCallIndexes())
         {
-            appendFoodCell(builder, healerOrder, callIndex, ROW_CELL_WIDTH, metrics);
+            appendFoodCell(builder, healerOrder, callIndex, scale(BASE_ROW_CELL_WIDTH), metrics);
         }
 
-        appendDeathTimeCell(builder, healerOrder, ROW_CELL_WIDTH, metrics);
+        appendDeathTimeCell(builder, healerOrder, scale(BASE_ROW_CELL_WIDTH), metrics);
         return builder.toString();
     }
 
@@ -342,7 +383,7 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
     private String buildColumnHeader(List<Integer> healerOrders, FontMetrics metrics)
     {
-        StringBuilder builder = new StringBuilder(padRightPixels("", COLUMN_LABEL_WIDTH, metrics));
+        StringBuilder builder = new StringBuilder(padRightPixels("", scale(BASE_COLUMN_LABEL_WIDTH), metrics));
 
         for (int healerOrder : healerOrders)
         {
@@ -351,7 +392,7 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
             Color color = getHealerColor(spawned, displayDead);
             String label = controller.getFoodPanelHealerLabel(healerOrder);
 
-            builder.append(ColorUtil.prependColorTag(padCell(label, COLUMN_CELL_WIDTH, metrics), color));
+            builder.append(ColorUtil.prependColorTag(padCell(label, scale(BASE_COLUMN_CELL_WIDTH), metrics), color));
         }
 
         return builder.toString();
@@ -360,11 +401,11 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
     private String buildColumnRow(List<Integer> healerOrders, int callIndex, FontMetrics metrics)
     {
         String rowLabel = callIndex < 0 ? "Fed" : "C" + (callIndex + 1);
-        StringBuilder builder = new StringBuilder(padCell(rowLabel, COLUMN_LABEL_WIDTH, metrics));
+        StringBuilder builder = new StringBuilder(padCell(rowLabel, scale(BASE_COLUMN_LABEL_WIDTH), metrics));
 
         for (int healerOrder : healerOrders)
         {
-            appendFoodCell(builder, healerOrder, callIndex, COLUMN_CELL_WIDTH, metrics);
+            appendFoodCell(builder, healerOrder, callIndex, scale(BASE_COLUMN_CELL_WIDTH), metrics);
         }
 
         return builder.toString();
@@ -372,11 +413,11 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
 
     private String buildDeathTimeRow(List<Integer> healerOrders, FontMetrics metrics)
     {
-        StringBuilder builder = new StringBuilder(padCell("Dead", COLUMN_LABEL_WIDTH, metrics));
+        StringBuilder builder = new StringBuilder(padCell("Dead", scale(BASE_COLUMN_LABEL_WIDTH), metrics));
 
         for (int healerOrder : healerOrders)
         {
-            appendDeathTimeCell(builder, healerOrder, COLUMN_CELL_WIDTH, metrics);
+            appendDeathTimeCell(builder, healerOrder, scale(BASE_COLUMN_CELL_WIDTH), metrics);
         }
 
         return builder.toString();
@@ -455,25 +496,27 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
     private String fixedWidthCellText(String text)
     {
         String value = truncateCell(text);
+        int maxCellChars = getMaxCellChars();
 
-        if (value.length() >= MAX_CELL_CHARS)
+        if (value.length() >= maxCellChars)
         {
             return value;
         }
 
-        return value + spaces(MAX_CELL_CHARS - value.length());
+        return value + spaces(maxCellChars - value.length());
     }
 
     private String truncateCell(String text)
     {
         String value = text == null ? "" : text;
+        int maxCellChars = getMaxCellChars();
 
-        if (value.length() <= MAX_CELL_CHARS)
+        if (value.length() <= maxCellChars)
         {
             return value;
         }
 
-        return value.substring(0, MAX_CELL_CHARS - 3) + "...";
+        return value.substring(0, maxCellChars - 3) + "...";
     }
 
     private String spaces(int count)
@@ -515,10 +558,10 @@ public class HealerFoodOverlay extends OverlayPanel implements MouseListener
         for (String line : sourceText.split("\\r?\\n", -1))
         {
             panelComponent.getChildren().add(
-                LineComponent.builder()
-                        .left(line.isEmpty() ? " " : line)
-                        .leftColor(TEXT_COLOR)
-                        .build()
+                    LineComponent.builder()
+                            .left(line.isEmpty() ? " " : line)
+                            .leftColor(TEXT_COLOR)
+                            .build()
             );
         }
     }

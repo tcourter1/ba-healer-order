@@ -18,6 +18,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.events.ActorDeath;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.CommandExecuted;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
@@ -183,6 +184,44 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		roleDetector.onWidgetLoaded(event);
+	}
+
+	@Subscribe
+	public void onCommandExecuted(CommandExecuted event)
+	{
+		String command = event.getCommand();
+
+		if ("bawave".equalsIgnoreCase(command))
+		{
+			String[] arguments = event.getArguments();
+
+			if (arguments.length < 1)
+			{
+				return;
+			}
+
+			try
+			{
+				WaveStart waveStart = waveLifecycleService.startDevWave(Integer.parseInt(arguments[0]));
+
+				if (waveStart != null)
+				{
+					startWave(waveStart);
+				}
+			}
+			catch (NumberFormatException ex)
+			{
+				return;
+			}
+
+			return;
+		}
+
+		if ("baend".equalsIgnoreCase(command))
+		{
+			Integer endedWave = waveLifecycleService.endWave();
+			endWave(endedWave == null ? -1 : endedWave);
+		}
 	}
 
 	@Subscribe
