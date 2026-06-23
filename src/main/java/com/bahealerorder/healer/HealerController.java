@@ -2,6 +2,7 @@ package com.bahealerorder.healer;
 
 import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.BaUtilitiesPanel;
+import com.bahealerorder.common.BaHealerFoodCounts;
 import com.bahealerorder.common.BaHealerSyncMessage;
 import com.bahealerorder.common.BaOverviewNpcType;
 import com.bahealerorder.common.BaPartySyncService;
@@ -45,7 +46,6 @@ import net.runelite.api.Hitsplat;
 import net.runelite.api.HitsplatID;
 import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
-import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.MenuEntry;
@@ -63,6 +63,7 @@ import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.PostMenuSort;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.callback.Hooks;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.NpcUtil;
@@ -171,6 +172,7 @@ public class HealerController
 	private int currentCallIndex = 0;
 	private int healerIndexBase = -1;
 	private String lastCallText;
+	private String lastFoodCallText;
 	private String currentCallText;
 	private String currentCallSource;
 	private boolean callTrackingArmed;
@@ -353,6 +355,7 @@ public class HealerController
 			return;
 		}
 
+		updateLocalHealerFoodCounts(event.getItemContainer(), false);
 		Map<Integer, Integer> consumedPoisonedFoodByItemId = getConsumedPoisonedFoodByItemId(event.getItemContainer());
 
 		if (consumedPoisonedFoodByItemId.isEmpty())
@@ -389,6 +392,7 @@ public class HealerController
 		if (isHealerRole())
 		{
 			updateCallIndexFromHealerWidget();
+			updateFoodCountsFromHealerListenWidget();
 		}
 
 		if (client.isMenuOpen())
@@ -1030,6 +1034,7 @@ public class HealerController
 		resetWaveTrackedState();
 		sharedState.startWave(waveNumber);
 		ttkTracker.startWave(waveStart.getTick(), waveNumber);
+		updateLocalHealerFoodCounts(client.getItemContainer(InventoryID.INVENTORY), true);
 
 		log.debug(
 				"Starting new BA wave {} at tick {} from {} message node {}",
@@ -1477,7 +1482,30 @@ public class HealerController
 			currentCallIndex++;
 			sharedState.recordLocalCallIndex(currentCallIndex);
 			lastCallText = callText;
+			updateLocalHealerFoodCounts(client.getItemContainer(InventoryID.INVENTORY), false);
 			log.debug("BA healer call changed to {} at wave {} call {}", callText, getCurrentWave(), currentCallIndex);
+		}
+	}
+
+	private void updateFoodCountsFromHealerListenWidget()
+	{
+		if (getCurrentWave() <= 0) return;
+
+		String callText = getHealerListenText();
+
+		if (callText == null || callText.isEmpty()) return;
+
+		if (lastFoodCallText == null)
+		{
+			lastFoodCallText = callText;
+			updateLocalHealerFoodCounts(client.getItemContainer(InventoryID.INVENTORY), false);
+			return;
+		}
+
+		if (!lastFoodCallText.equals(callText))
+		{
+			lastFoodCallText = callText;
+			updateLocalHealerFoodCounts(client.getItemContainer(InventoryID.INVENTORY), false);
 		}
 	}
 
@@ -1923,15 +1951,7 @@ public class HealerController
 
 	private boolean isPoisonedFoodItem(int itemId)
 	{
-		ItemComposition itemComposition = client.getItemDefinition(itemId);
-
-		if (itemComposition == null)
-		{
-			return false;
-		}
-
-		String itemName = normalizeMenuText(itemComposition.getName());
-		return itemName.contains("poisoned") && (itemName.contains("tofu") || itemName.contains("worms") || itemName.contains("meat"));
+		return getPoisonedFoodType(itemId) != BaHealerFoodCounts.FOOD_NONE;
 	}
 
 	private boolean isSelectedPoisonedFoodUseEntry(MenuEntry entry)
@@ -2051,6 +2071,74 @@ public class HealerController
 			{
 				lastPoisonedFoodCountByItemId.put(item.getId(), getItemCount(items, item.getId()));
 			}
+		}
+	}
+
+	private void updateLocalHealerFoodCounts(ItemContainer itemContainer, boolean forceSend)
+	{
+		if (!isHealerRole() || client.getLocalPlayer() == null)
+		{
+			return;
+		}
+
+		partySyncService.updateLocalHealerFoodCounts(
+				client.getLocalPlayer().getName(),
+				buildLocalHealerFoodCounts(itemContainer),
+				forceSend
+		);
+	}
+
+	private BaHealerFoodCounts buildLocalHealerFoodCounts(ItemContainer itemContainer)
+	{
+		Item[] items = itemContainer == null ? null : itemContainer.getItems();
+
+		return new BaHealerFoodCounts(
+				getItemCount(items, ItemID.BARBASSAULT_POISION_01),
+				getItemCount(items, ItemID.BARBASSAULT_POISION_02),
+				getItemCount(items, ItemID.BARBASSAULT_POISION_03),
+				getCalledFoodType()
+		);
+	}
+
+	private int getCalledFoodType()
+	{
+		String callText = getHealerListenText();
+
+		if (callText == null)
+		{
+			return BaHealerFoodCounts.FOOD_NONE;
+		}
+
+		if (callText.contains("tofu"))
+		{
+			return BaHealerFoodCounts.FOOD_TOFU;
+		}
+
+		if (callText.contains("worm"))
+		{
+			return BaHealerFoodCounts.FOOD_WORMS;
+		}
+
+		if (callText.contains("meat"))
+		{
+			return BaHealerFoodCounts.FOOD_MEAT;
+		}
+
+		return BaHealerFoodCounts.FOOD_NONE;
+	}
+
+	private int getPoisonedFoodType(int itemId)
+	{
+		switch (itemId)
+		{
+			case ItemID.BARBASSAULT_POISION_01:
+				return BaHealerFoodCounts.FOOD_TOFU;
+			case ItemID.BARBASSAULT_POISION_02:
+				return BaHealerFoodCounts.FOOD_WORMS;
+			case ItemID.BARBASSAULT_POISION_03:
+				return BaHealerFoodCounts.FOOD_MEAT;
+			default:
+				return BaHealerFoodCounts.FOOD_NONE;
 		}
 	}
 
@@ -2228,6 +2316,7 @@ public class HealerController
 		selectedPoisonedFoodItemId = null;
 		currentCallIndex = 0;
 		lastCallText = null;
+		lastFoodCallText = null;
 		currentCallText = null;
 		currentCallSource = null;
 		callTrackingArmed = false;

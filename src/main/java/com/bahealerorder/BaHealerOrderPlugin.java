@@ -2,6 +2,7 @@ package com.bahealerorder;
 
 import com.bahealerorder.attacker.AttackerController;
 import com.bahealerorder.common.BaDispenserMenuService;
+import com.bahealerorder.common.BaHealerFoodCountMessage;
 import com.bahealerorder.common.BaHealerSyncMessage;
 import com.bahealerorder.common.BaPartySyncService;
 import com.bahealerorder.common.BaRoleDetector;
@@ -225,6 +226,12 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onBaHealerSyncMessage(BaHealerSyncMessage event)
 	{
 		healerController.onBaHealerSyncMessage(event);
+	}
+
+	@Subscribe
+	public void onBaHealerFoodCountMessage(BaHealerFoodCountMessage event)
+	{
+		partySyncService.onBaHealerFoodCountMessage(event);
 	}
 
 	@Subscribe

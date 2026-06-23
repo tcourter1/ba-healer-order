@@ -3,9 +3,11 @@ package com.bahealerorder.common;
 import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.BaUtilitiesPanel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -83,6 +85,7 @@ public class BaPartySyncService
 	private List<BaPartySyncMemberStatus> lastDisplayedBaPartySyncMemberStatuses = new ArrayList<>();
 	private List<String> baPartySyncTeamNames = new ArrayList<>();
 	private List<BaTeamMember> baPartySyncTeamMembers = new ArrayList<>();
+	private final Map<String, BaHealerFoodCounts> healerFoodCountsByPlayerName = new HashMap<>();
 	private boolean baSyncManagedParty;
 
 	@Inject
@@ -112,6 +115,7 @@ public class BaPartySyncService
 		}
 
 		wsClient.registerMessage(BaHealerSyncMessage.class);
+		wsClient.registerMessage(BaHealerFoodCountMessage.class);
 		wsClient.registerMessage(BaWaveOverviewSyncMessage.class);
 		updateBaPartySyncPanelStatus();
 	}
@@ -120,6 +124,7 @@ public class BaPartySyncService
 	{
 		leaveBaSyncParty("plugin shutdown");
 		wsClient.unregisterMessage(BaHealerSyncMessage.class);
+		wsClient.unregisterMessage(BaHealerFoodCountMessage.class);
 		wsClient.unregisterMessage(BaWaveOverviewSyncMessage.class);
 	}
 
@@ -199,6 +204,77 @@ public class BaPartySyncService
 		}
 	}
 
+	public void updateLocalHealerFoodCounts(String playerName, BaHealerFoodCounts counts, boolean forceSend)
+	{
+		if (playerName == null || playerName.isEmpty() || counts == null) return;
+
+		String normalizedName = normalizePlayerName(playerName);
+		BaHealerFoodCounts previous = healerFoodCountsByPlayerName.put(normalizedName, counts);
+		boolean changed = !counts.equals(previous);
+
+		if (changed)
+		{
+			updateBaPartySyncPanelStatus();
+		}
+
+		if (!changed && !forceSend) return;
+
+		if (!isBaPartySyncConnected() || !waveLifecycleService.isWaveActive()) return;
+
+		BaHealerFoodCountMessage message = new BaHealerFoodCountMessage(
+				playerName,
+				client.getWorld(),
+				counts.getTofu(),
+				counts.getWorms(),
+				counts.getMeat(),
+				counts.getCalledFood()
+		);
+
+		try
+		{
+			partyService.send(message);
+		}
+		catch (RuntimeException ex)
+		{
+			log.debug("Failed to send BA healer food count message", ex);
+		}
+	}
+
+	public void onBaHealerFoodCountMessage(BaHealerFoodCountMessage event)
+	{
+		if (event == null) return;
+
+		String playerName = event.getPlayerName();
+		if (playerName == null || playerName.isEmpty())
+		{
+			return;
+		}
+
+		if (isLocalPartyMember(event.getMemberId()))
+		{
+			return;
+		}
+
+		if (event.getWorld() != client.getWorld())
+		{
+			return;
+		}
+
+		BaHealerFoodCounts counts = new BaHealerFoodCounts(
+				event.getTofu(),
+				event.getWorms(),
+				event.getMeat(),
+				event.getCalledFood()
+		);
+		String normalizedName = normalizePlayerName(playerName);
+		BaHealerFoodCounts previous = healerFoodCountsByPlayerName.put(normalizedName, counts);
+
+		if (!counts.equals(previous))
+		{
+			updateBaPartySyncPanelStatus();
+		}
+	}
+
 	public void onGameTick(GameTick event)
 	{
 		updateBaPartySyncDoorExit();
@@ -212,6 +288,9 @@ public class BaPartySyncService
 
 	public void onWaveEnded(int wave)
 	{
+		healerFoodCountsByPlayerName.clear();
+		updateBaPartySyncPanelStatus();
+
 		if (wave == 10)
 		{
 			leaveBaSyncParty("BA wave 10 ended");
@@ -273,6 +352,12 @@ public class BaPartySyncService
 
 	private void updateBaPartySync()
 	{
+		Optional<BaTeamRoster> teamRoster = isWaveActive()
+				|| client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING) == 1
+				? Optional.empty()
+				: getBaTeamRosterFromWidgets();
+		teamRoster.ifPresent(this::setBaPartySyncTeam);
+
 		if (!config.enableBaPartySync())
 		{
 			if (baSyncManagedParty)
@@ -283,12 +368,6 @@ public class BaPartySyncService
 			setBaPartySyncStatus("Off", null);
 			return;
 		}
-
-		Optional<BaTeamRoster> teamRoster = isWaveActive()
-				|| client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING) == 1
-				? Optional.empty()
-				: getBaTeamRosterFromWidgets();
-		teamRoster.ifPresent(this::setBaPartySyncTeam);
 
 		if (isWaveActive())
 		{
@@ -519,6 +598,7 @@ public class BaPartySyncService
 			baPartySyncProgenitorName = null;
 			baPartySyncTeamNames = new ArrayList<>();
 			baPartySyncTeamMembers = new ArrayList<>();
+			healerFoodCountsByPlayerName.clear();
 			baPartySyncJoinAttemptTick = -1;
 			clearBaPartySyncPendingDoorExit();
 			updateBaPartySyncPanelStatus();
@@ -544,6 +624,7 @@ public class BaPartySyncService
 			baPartySyncProgenitorName = null;
 			baPartySyncTeamNames = new ArrayList<>();
 			baPartySyncTeamMembers = new ArrayList<>();
+			healerFoodCountsByPlayerName.clear();
 			baPartySyncJoinAttemptTick = -1;
 			clearBaPartySyncPendingDoorExit();
 			setBaPartySyncStatus(config.enableBaPartySync() ? "Waiting for Team" : "Off", null);
@@ -577,18 +658,16 @@ public class BaPartySyncService
 	{
 		List<BaPartySyncMemberStatus> statuses = new ArrayList<>();
 
-		if (!"Connected".equals(baPartySyncStatus) && !"In Wave".equals(baPartySyncStatus))
-		{
-			return statuses;
-		}
-
 		for (String name : baPartySyncTeamNames)
 		{
 			BaTeamMember member = getBaPartySyncTeamMember(name);
+			String role = member == null ? null : member.getRole();
+			boolean inParty = partyService.getMemberByDisplayName(name) != null;
 			statuses.add(new BaPartySyncMemberStatus(
 					name,
-					member == null ? null : member.getRole(),
-					partyService.getMemberByDisplayName(name) != null));
+					role,
+					inParty,
+					getDisplayableHealerFoodCounts(name, role, inParty)));
 		}
 
 		return statuses;
@@ -608,13 +687,35 @@ public class BaPartySyncService
 
 			if (!leftStatus.getName().equals(rightStatus.getName())
 					|| !Objects.equals(leftStatus.getRole(), rightStatus.getRole())
-					|| leftStatus.isInParty() != rightStatus.isInParty())
+					|| leftStatus.isInParty() != rightStatus.isInParty()
+					|| !Objects.equals(leftStatus.getHealerFoodCounts(), rightStatus.getHealerFoodCounts()))
 			{
 				return false;
 			}
 		}
 
 		return true;
+	}
+
+	private BaHealerFoodCounts getDisplayableHealerFoodCounts(String playerName, String role, boolean inParty)
+	{
+		if (!waveLifecycleService.isWaveActive() || BaRole.fromDisplayName(role) != BaRole.HEALER)
+		{
+			return null;
+		}
+
+		if (!isLocalPlayer(playerName) && !inParty)
+		{
+			return null;
+		}
+
+		return healerFoodCountsByPlayerName.get(normalizePlayerName(playerName));
+	}
+
+	private boolean isLocalPlayer(String playerName)
+	{
+		return client.getLocalPlayer() != null
+				&& normalizePlayerName(client.getLocalPlayer().getName()).equals(normalizePlayerName(playerName));
 	}
 
 	private Optional<BaTeamRoster> getBaTeamRosterFromWidgets()
@@ -700,6 +801,11 @@ public class BaPartySyncService
 				.replace('\u00A0', ' ')
 				.replaceAll("\\s+", " ")
 				.trim();
+	}
+
+	private static String normalizePlayerName(String playerName)
+	{
+		return Text.removeTags(Text.toJagexName(playerName == null ? "" : playerName)).toLowerCase(Locale.ROOT);
 	}
 
 	private void setBaPartySyncTeam(BaTeamRoster roster)

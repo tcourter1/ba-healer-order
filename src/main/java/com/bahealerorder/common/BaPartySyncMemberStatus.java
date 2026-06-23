@@ -5,6 +5,7 @@ public class BaPartySyncMemberStatus
 	private final String name;
 	private final String role;
 	private final boolean inParty;
+	private final BaHealerFoodCounts healerFoodCounts;
 
 	public BaPartySyncMemberStatus(String name, boolean inParty)
 	{
@@ -13,9 +14,15 @@ public class BaPartySyncMemberStatus
 
 	public BaPartySyncMemberStatus(String name, String role, boolean inParty)
 	{
+		this(name, role, inParty, null);
+	}
+
+	public BaPartySyncMemberStatus(String name, String role, boolean inParty, BaHealerFoodCounts healerFoodCounts)
+	{
 		this.name = name;
 		this.role = role;
 		this.inParty = inParty;
+		this.healerFoodCounts = healerFoodCounts;
 	}
 
 	public String getName()
@@ -31,5 +38,10 @@ public class BaPartySyncMemberStatus
 	public boolean isInParty()
 	{
 		return inParty;
+	}
+
+	public BaHealerFoodCounts getHealerFoodCounts()
+	{
+		return healerFoodCounts;
 	}
 }

@@ -1,6 +1,7 @@
 package com.bahealerorder;
 
 import com.bahealerorder.common.BaPartySyncMemberStatus;
+import com.bahealerorder.common.BaHealerFoodCounts;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.WaveOverviewPanel;
 import com.bahealerorder.healer.HealerCodePanel;
@@ -47,6 +48,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	private static final int ROLE_ICON_SIZE = 18;
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
+	private static final String CALLED_FOOD_HTML_COLOR = "#00dc00";
 	private static final String OVERVIEW_TAB = "overview";
 	private static final String HEALER_TAB = "healer";
 	private static final String DEFENDER_TAB = "defender";
@@ -60,8 +62,10 @@ public class BaUtilitiesPanel extends PluginPanel
 	private final JPanel tabDisplayPanel = new JPanel(new BorderLayout());
 	private final MaterialTabGroup tabGroup = new MaterialTabGroup(tabDisplayPanel);
 	private final Map<String, MaterialTab> tabsById = new LinkedHashMap<>();
+	private final Map<String, JLabel> partySyncMemberStatusLabels = new LinkedHashMap<>();
 	private final JLabel partySyncStatus = label("Party Sync Off", true);
 	private final JPanel partySyncMembersPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+	private String lastPartySyncMemberStructure;
 
 	@Inject
 	public BaUtilitiesPanel(
@@ -117,19 +121,24 @@ public class BaUtilitiesPanel extends PluginPanel
 		{
 			partySyncStatus.setText("Party Sync " + (status == null || status.isEmpty() ? "Unknown" : status));
 			partySyncStatus.setForeground(getPartySyncStatusColor(status));
-			partySyncMembersPanel.removeAll();
-			partySyncMembersPanel.setVisible(shouldShowPartySyncMembers(status) || "Already in Party".equals(status));
+			String memberStructure = buildPartySyncMemberStructure(status, memberStatuses);
 
-			if (shouldShowPartySyncMembers(status))
+			if (memberStructure.equals(lastPartySyncMemberStructure))
+			{
+				updatePartySyncMemberStatusLabels(memberStatuses);
+				return;
+			}
+
+			lastPartySyncMemberStructure = memberStructure;
+			partySyncMemberStatusLabels.clear();
+			partySyncMembersPanel.removeAll();
+			partySyncMembersPanel.setVisible(!memberStatuses.isEmpty() || "Already in Party".equals(status));
+
+			if (!memberStatuses.isEmpty())
 			{
 				for (BaPartySyncMemberStatus memberStatus : memberStatuses)
 				{
-					String statusText = memberStatus.isInParty() ? "In Party" : "Not In Party";
-					partySyncMembersPanel.add(partySyncMemberRow(
-							memberStatus,
-							statusText,
-							memberStatus.isInParty() ? Color.GREEN : Color.RED
-					));
+					partySyncMembersPanel.add(partySyncMemberRow(memberStatus));
 					partySyncMembersPanel.add(Box.createVerticalStrut(3));
 				}
 			}
@@ -143,9 +152,42 @@ public class BaUtilitiesPanel extends PluginPanel
 		});
 	}
 
-	private boolean shouldShowPartySyncMembers(String status)
+	private String buildPartySyncMemberStructure(String status, List<BaPartySyncMemberStatus> memberStatuses)
 	{
-		return "Connected".equals(status) || "In Wave".equals(status);
+		if (memberStatuses.isEmpty())
+		{
+			return "Already in Party".equals(status) ? "message:already-in-party" : "empty";
+		}
+
+		StringBuilder builder = new StringBuilder();
+		for (BaPartySyncMemberStatus memberStatus : memberStatuses)
+		{
+			builder.append(memberStatus.getName())
+					.append(':')
+					.append(memberStatus.getRole())
+					.append('|');
+		}
+		return builder.toString();
+	}
+
+	private void updatePartySyncMemberStatusLabels(List<BaPartySyncMemberStatus> memberStatuses)
+	{
+		for (BaPartySyncMemberStatus memberStatus : memberStatuses)
+		{
+			JLabel statusLabel = partySyncMemberStatusLabels.get(memberStatus.getName());
+			if (statusLabel == null) continue;
+
+			String statusText = getPartySyncMemberStatusText(memberStatus);
+			Color statusColor = getPartySyncMemberStatusColor(memberStatus);
+			if (!statusText.equals(statusLabel.getText()))
+			{
+				statusLabel.setText(statusText);
+			}
+			if (!statusColor.equals(statusLabel.getForeground()))
+			{
+				statusLabel.setForeground(statusColor);
+			}
+		}
 	}
 
 	private JPanel createPartySyncSection()
@@ -175,12 +217,13 @@ public class BaUtilitiesPanel extends PluginPanel
 		return row;
 	}
 
-	private JPanel partySyncMemberRow(BaPartySyncMemberStatus memberStatus, String status, Color statusColor)
+	private JPanel partySyncMemberRow(BaPartySyncMemberStatus memberStatus)
 	{
 		JLabel nameLabel = label(memberStatus.getName());
-		JLabel statusLabel = label(status);
-		statusLabel.setForeground(statusColor);
+		JLabel statusLabel = label(getPartySyncMemberStatusText(memberStatus));
+		statusLabel.setForeground(getPartySyncMemberStatusColor(memberStatus));
 		statusLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+		partySyncMemberStatusLabels.put(memberStatus.getName(), statusLabel);
 
 		JPanel namePanel = new JPanel();
 		namePanel.setLayout(new BoxLayout(namePanel, BoxLayout.X_AXIS));
@@ -197,6 +240,41 @@ public class BaUtilitiesPanel extends PluginPanel
 		row.add(namePanel, BorderLayout.CENTER);
 		row.add(statusLabel, BorderLayout.EAST);
 		return row;
+	}
+
+	private String getPartySyncMemberStatusText(BaPartySyncMemberStatus memberStatus)
+	{
+		BaHealerFoodCounts counts = memberStatus.getHealerFoodCounts();
+		if (counts != null)
+		{
+			return formatHealerFoodCounts(counts);
+		}
+
+		return memberStatus.isInParty() ? "In Party" : "Not In Party";
+	}
+
+	private Color getPartySyncMemberStatusColor(BaPartySyncMemberStatus memberStatus)
+	{
+		return memberStatus.getHealerFoodCounts() != null
+				? ColorScheme.TEXT_COLOR
+				: memberStatus.isInParty() ? Color.GREEN : Color.RED;
+	}
+
+	private String formatHealerFoodCounts(BaHealerFoodCounts counts)
+	{
+		return "<html>"
+				+ formatFoodCount(counts.getTofu(), "T", counts.getCalledFood() == BaHealerFoodCounts.FOOD_TOFU)
+				+ " "
+				+ formatFoodCount(counts.getWorms(), "W", counts.getCalledFood() == BaHealerFoodCounts.FOOD_WORMS)
+				+ " "
+				+ formatFoodCount(counts.getMeat(), "M", counts.getCalledFood() == BaHealerFoodCounts.FOOD_MEAT)
+				+ "</html>";
+	}
+
+	private String formatFoodCount(int count, String label, boolean called)
+	{
+		String text = count + label;
+		return called ? "<font color=\"" + CALLED_FOOD_HTML_COLOR + "\">" + text + "</font>" : text;
 	}
 
 	private JLabel roleIconLabel(String roleName)
