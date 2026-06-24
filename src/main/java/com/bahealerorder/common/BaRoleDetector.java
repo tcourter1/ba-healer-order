@@ -13,6 +13,7 @@ public class BaRoleDetector
 {
 	private final Client client;
 	private BaRole currentRole;
+	private BaRole devRoleOverride;
 
 	@Inject
 	private BaRoleDetector(Client client)
@@ -22,12 +23,22 @@ public class BaRoleDetector
 
 	public BaRole getCurrentRole()
 	{
-		return currentRole;
+		return devRoleOverride == null ? currentRole : devRoleOverride;
 	}
 
 	public boolean isRole(BaRole role)
 	{
-		return currentRole == role;
+		return role != null && (devRoleOverride == role || currentRole == role);
+	}
+
+	public void setDevRoleOverride(BaRole role)
+	{
+		devRoleOverride = role;
+	}
+
+	public boolean hasDevRoleOverride()
+	{
+		return devRoleOverride != null;
 	}
 
 	public boolean isRoleInterfaceLoaded()
@@ -69,6 +80,7 @@ public class BaRoleDetector
 	public void reset()
 	{
 		currentRole = null;
+		devRoleOverride = null;
 	}
 
 	private void detectRoleFromLoadedWidgets()

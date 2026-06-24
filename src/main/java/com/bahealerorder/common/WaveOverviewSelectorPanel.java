@@ -1,14 +1,10 @@
 package com.bahealerorder.common;
 
-import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
@@ -21,7 +17,6 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -180,30 +175,12 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private JButton createDeleteRunButton()
 	{
-		deleteRunButton.setIcon(createTrashIcon());
+		deleteRunButton.setIcon(BaIcons.trashIcon());
 		deleteRunButton.setToolTipText("Delete selected run");
 		SwingUtil.removeButtonDecorations(deleteRunButton);
 		fixedSize(deleteRunButton, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT);
 		deleteRunButton.addActionListener(event -> deleteSelectedRun());
 		return deleteRunButton;
-	}
-
-	private ImageIcon createTrashIcon()
-	{
-		int size = 14;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(ColorScheme.TEXT_COLOR);
-		graphics.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		graphics.drawLine(5, 3, 9, 3);
-		graphics.drawLine(6, 2, 8, 2);
-		graphics.drawLine(3, 5, 11, 5);
-		graphics.drawRoundRect(4, 6, 6, 6, 2, 2);
-		graphics.drawLine(6, 8, 6, 10);
-		graphics.drawLine(8, 8, 8, 10);
-		graphics.dispose();
-		return new ImageIcon(image);
 	}
 
 	private void deleteSelectedRun()

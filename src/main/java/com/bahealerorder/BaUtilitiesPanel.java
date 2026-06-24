@@ -4,6 +4,7 @@ import com.bahealerorder.common.BaPartySyncMemberStatus;
 import com.bahealerorder.common.BaHealerFoodCounts;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.WaveOverviewPanel;
+import com.bahealerorder.defender.DefenderStrategyPanel;
 import com.bahealerorder.healer.HealerCodePanel;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -58,6 +59,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	private final ConfigManager configManager;
 	private final WaveOverviewPanel waveOverviewPanel;
 	private final HealerCodePanel healerCodePanel;
+	private final DefenderStrategyPanel defenderStrategyPanel;
 	private final JPanel contentPanel = new JPanel();
 	private final JPanel tabDisplayPanel = new JPanel(new BorderLayout());
 	private final MaterialTabGroup tabGroup = new MaterialTabGroup(tabDisplayPanel);
@@ -73,13 +75,15 @@ public class BaUtilitiesPanel extends PluginPanel
 			BaUtilitiesConfig config,
 			ConfigManager configManager,
 			WaveOverviewPanel waveOverviewPanel,
-			HealerCodePanel healerCodePanel)
+			HealerCodePanel healerCodePanel,
+			DefenderStrategyPanel defenderStrategyPanel)
 	{
 		this.itemManager = itemManager;
 		this.config = config;
 		this.configManager = configManager;
 		this.waveOverviewPanel = waveOverviewPanel;
 		this.healerCodePanel = healerCodePanel;
+		this.defenderStrategyPanel = defenderStrategyPanel;
 
 		setLayout(new BorderLayout());
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -103,6 +107,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	{
 		waveOverviewPanel.refreshAll();
 		healerCodePanel.refreshAll();
+		defenderStrategyPanel.refreshAll();
 	}
 
 	public void refreshLater()
@@ -297,11 +302,10 @@ public class BaUtilitiesPanel extends PluginPanel
 
 	private JPanel createTabSection()
 	{
-		JPanel defenderPanel = placeholderTab("Defender", "Defender strategy content will go here.");
 		List<SidePanelTab> tabs = new ArrayList<>();
 		tabs.add(new SidePanelTab(OVERVIEW_TAB, ItemID.MIRROR, "Wave Overview", waveOverviewPanel));
 		tabs.add(new SidePanelTab(HEALER_TAB, ItemID.BARBASSAULT_PENANCE_HEALER_HAT, "Healer Codes", healerCodePanel));
-		tabs.add(new SidePanelTab(DEFENDER_TAB, ItemID.BARBASSAULT_PENANCE_RUNNER_HAT, "Defender Strategies", defenderPanel));
+		tabs.add(new SidePanelTab(DEFENDER_TAB, ItemID.BARBASSAULT_PENANCE_RUNNER_HAT, "Defender Strategies", defenderStrategyPanel));
 
 		tabGroup.setLayout(new DynamicGridLayout(1, tabs.size(), 6, 0));
 		tabGroup.setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -361,18 +365,6 @@ public class BaUtilitiesPanel extends PluginPanel
 		{
 			tabGroup.select(tab);
 		}
-	}
-
-	private JPanel placeholderTab(String title, String text)
-	{
-		JPanel panel = verticalPanel(ColorScheme.DARK_GRAY_COLOR);
-		panel.setAlignmentX(LEFT_ALIGNMENT);
-		panel.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-
-		JPanel section = section(title);
-		section.add(message(text, ColorScheme.DARKER_GRAY_COLOR, CONTROL_HEIGHT * 2, true));
-		panel.add(section);
-		return panel;
 	}
 
 	private MaterialTab itemTab(SidePanelTab sidePanelTab, int tabCount)

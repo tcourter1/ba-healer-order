@@ -13,12 +13,16 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.BorderFactory;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -223,15 +227,15 @@ public class HealerCodePanel extends JPanel
 	private void refreshPresetCombo()
 	{
 		String activePresetId = codeManager.getActiveRunPresetId();
-		presetCombo.removeAllItems();
-		presetCombo.addItem(new ComboItem(null, ""));
+		List<ComboItem> items = new ArrayList<>();
+		items.add(new ComboItem(null, ""));
 
 		for (RunPreset preset : codeManager.getRunPresets())
 		{
-			presetCombo.addItem(new ComboItem(preset.getId(), preset.getName()));
+			items.add(new ComboItem(preset.getId(), preset.getName()));
 		}
 
-		selectComboValue(presetCombo, activePresetId);
+		setComboItems(presetCombo, items, activePresetId);
 	}
 
 	private void refreshWaveCombos()
@@ -242,15 +246,15 @@ public class HealerCodePanel extends JPanel
 			JComboBox<ComboItem> comboBox = entry.getValue();
 			String selectedCodeId = codeManager.getActiveWaveCodeId(wave);
 
-			comboBox.removeAllItems();
-			comboBox.addItem(new ComboItem(null, ""));
+			List<ComboItem> items = new ArrayList<>();
+			items.add(new ComboItem(null, ""));
 
 			for (WaveCode code : codeManager.getWaveCodesForWave(wave))
 			{
-				comboBox.addItem(new ComboItem(code.getId(), code.getName()));
+				items.add(new ComboItem(code.getId(), code.getName()));
 			}
 
-			selectComboValue(comboBox, selectedCodeId);
+			setComboItems(comboBox, items, selectedCodeId);
 		}
 	}
 
@@ -270,15 +274,15 @@ public class HealerCodePanel extends JPanel
 	private void refreshUserWaveCodeCombo(String selectedWaveCodeId)
 	{
 		refreshingImport = true;
-		userWaveCodeCombo.removeAllItems();
-		userWaveCodeCombo.addItem(new ComboItem(null, "-- New --"));
+		List<ComboItem> items = new ArrayList<>();
+		items.add(new ComboItem(null, "-- New --"));
 
 		for (WaveCode code : codeManager.getWaveCodesForWave(getImportWave()))
 		{
-			userWaveCodeCombo.addItem(new ComboItem(code.getId(), code.getName()));
+			items.add(new ComboItem(code.getId(), code.getName()));
 		}
 
-		selectComboValue(userWaveCodeCombo, selectedWaveCodeId);
+		setComboItems(userWaveCodeCombo, items, selectedWaveCodeId);
 		refreshingImport = false;
 		loadSelectedUserWaveCode();
 	}
@@ -622,6 +626,7 @@ public class HealerCodePanel extends JPanel
 	private JScrollPane wrapTextArea(JTextArea area, int height)
 	{
 		JScrollPane scrollPane = new JScrollPane(area);
+		scrollPane.setBorder(BorderFactory.createLineBorder(ColorScheme.DARK_GRAY_COLOR));
 		fixedSize(scrollPane, CONTENT_WIDTH - 16, height);
 		return scrollPane;
 	}
@@ -664,6 +669,12 @@ public class HealerCodePanel extends JPanel
 		{
 			comboBox.setSelectedIndex(0);
 		}
+	}
+
+	private void setComboItems(JComboBox<ComboItem> comboBox, List<ComboItem> items, String selectedId)
+	{
+		comboBox.setModel(new DefaultComboBoxModel<>(items.toArray(new ComboItem[0])));
+		selectComboValue(comboBox, selectedId);
 	}
 
 	private static class ComboItem
