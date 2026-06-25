@@ -31,6 +31,37 @@ public final class BaIcons
 		return new ImageIcon(image);
 	}
 
+	public static ImageIcon copyIcon()
+	{
+		int size = 14;
+		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		graphics.setColor(ColorScheme.TEXT_COLOR);
+		graphics.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		graphics.drawRoundRect(5, 2, 7, 8, 2, 2);
+		graphics.drawRoundRect(2, 5, 7, 7, 2, 2);
+		graphics.dispose();
+		return new ImageIcon(image);
+	}
+
+	public static ImageIcon pasteIcon()
+	{
+		int size = 14;
+		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		graphics.setColor(ColorScheme.TEXT_COLOR);
+		graphics.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		graphics.drawRoundRect(3, 4, 8, 8, 2, 2);
+		graphics.drawLine(5, 2, 9, 2);
+		graphics.drawLine(5, 2, 5, 5);
+		graphics.drawLine(9, 2, 9, 5);
+		graphics.drawLine(5, 5, 9, 5);
+		graphics.dispose();
+		return new ImageIcon(image);
+	}
+
 	public static ImageIcon infoIcon()
 	{
 		int size = 14;

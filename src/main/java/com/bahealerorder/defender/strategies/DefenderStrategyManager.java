@@ -162,6 +162,34 @@ public class DefenderStrategyManager
 		}
 	}
 
+	public String exportMarkerClipboardJson(int wave, List<DefenderMarker> markers)
+	{
+		if (markers == null || markers.isEmpty())
+		{
+			return null;
+		}
+
+		return gson.toJson(DefenderMarkerClipboard.fromMarkers(wave, markers));
+	}
+
+	public List<DefenderMarker> importMarkerClipboardJson(int wave, String json)
+	{
+		if (json == null || json.trim().isEmpty())
+		{
+			return null;
+		}
+
+		try
+		{
+			DefenderMarkerClipboard clipboard = gson.fromJson(json, DefenderMarkerClipboard.class);
+			return clipboard == null ? null : clipboard.toMarkers(wave);
+		}
+		catch (RuntimeException ex)
+		{
+			return null;
+		}
+	}
+
 	public List<DefenderRunPreset> getRunPresets()
 	{
 		List<DefenderRunPreset> presets = new ArrayList<>();

@@ -3,14 +3,22 @@ package com.bahealerorder.defender;
 import com.bahealerorder.defender.strategies.DefenderMapLayout;
 import com.bahealerorder.defender.strategies.DefenderMarker;
 import com.bahealerorder.common.BaIcons;
+import com.formdev.flatlaf.FlatClientProperties;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.Toolkit;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.MouseWheelEvent;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
@@ -20,7 +28,9 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JLayeredPane;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
@@ -53,7 +63,7 @@ class DefenderTileMarkerEditor extends JPanel
 	private static final int MAP_DEFAULT_TILE_SIZE = 30;
 	private static final int WAVE_COMBO_WIDTH = 92;
 	private static final int STRATEGY_COMBO_WIDTH = 260;
-	private static final int NOTES_HEIGHT = 190;
+	private static final int NOTES_HEIGHT = 120;
 	private static final int SECTION_GAP = 14;
 	private static final int TRASH_BUTTON_WIDTH = 24;
 	private static final int MARKER_LABEL_WIDTH = 82;
@@ -71,6 +81,8 @@ class DefenderTileMarkerEditor extends JPanel
 	private final Supplier<List<StrategyOption>> strategyOptionsSupplier;
 	private final Supplier<String> selectedStrategyIdSupplier;
 	private final Consumer<String> strategyChanged;
+	private final Supplier<String> strategyNameSupplier;
+	private final Consumer<String> strategyNameChanged;
 	private final IntSupplier numberOfLogsSupplier;
 	private final Consumer<Integer> numberOfLogsChanged;
 	private final Supplier<String> notesSupplier;
@@ -79,6 +91,8 @@ class DefenderTileMarkerEditor extends JPanel
 	private final Runnable importRequested;
 	private final Runnable exportRequested;
 	private final Runnable saveRequested;
+	private final MarkerClipboardExporter markerClipboardExporter;
+	private final MarkerClipboardImporter markerClipboardImporter;
 	private final MarkerStyleChanged markerStyleChanged;
 	private final ColorPickerManager colorPickerManager;
 	private final JComboBox<ComboItem> waveCombo = new JComboBox<>();
@@ -86,6 +100,7 @@ class DefenderTileMarkerEditor extends JPanel
 	private final JComboBox<ComboItem> markerCombo = new JComboBox<>();
 	private final JTextField markerName = new JTextField();
 	private final JTextField markerLabel = new JTextField();
+	private final JTextField strategyName = new JTextField();
 	private final JButton markerColorButton = new JButton();
 	private final JSpinner markerOpacity = new JSpinner(new SpinnerNumberModel(
 			DefenderMarker.DEFAULT_OPACITY_PERCENT,
@@ -103,6 +118,9 @@ class DefenderTileMarkerEditor extends JPanel
 	private final JButton importButton = new JButton("Import");
 	private final JButton exportButton = new JButton("Export");
 	private final JButton saveButton = new JButton("Save Wave Strategy");
+	private final JLabel selectedCountLabel = new JLabel();
+	private final JButton copyMarkersButton = new JButton();
+	private final JButton pasteMarkersButton = new JButton();
 	private final JComboBox<Integer> numberOfLogs = new JComboBox<>(new Integer[]{0, 1, 2, 3, 4});
 	private final JTextArea notes = new JTextArea();
 	private final JSlider mapZoom = new JSlider(MAP_MIN_TILE_SIZE, MAP_MAX_TILE_SIZE, MAP_DEFAULT_TILE_SIZE);
@@ -112,8 +130,8 @@ class DefenderTileMarkerEditor extends JPanel
 	private final JPanel markerDetailPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 
 	private List<DefenderMarker> markers = new ArrayList<>();
+	private final Set<String> selectedMarkerIds = new LinkedHashSet<>();
 	private Color markerColor = DefenderTileMarkerMapPanel.DEFAULT_MARKER_COLOR;
-	private String selectedMarkerId;
 	private boolean refreshing;
 	private boolean editable = true;
 
@@ -123,6 +141,8 @@ class DefenderTileMarkerEditor extends JPanel
 			Supplier<List<StrategyOption>> strategyOptionsSupplier,
 			Supplier<String> selectedStrategyIdSupplier,
 			Consumer<String> strategyChanged,
+			Supplier<String> strategyNameSupplier,
+			Consumer<String> strategyNameChanged,
 			IntSupplier numberOfLogsSupplier,
 			Consumer<Integer> numberOfLogsChanged,
 			Supplier<String> notesSupplier,
@@ -131,6 +151,8 @@ class DefenderTileMarkerEditor extends JPanel
 			Runnable importRequested,
 			Runnable exportRequested,
 			Runnable saveRequested,
+			MarkerClipboardExporter markerClipboardExporter,
+			MarkerClipboardImporter markerClipboardImporter,
 			String lastMarkerColor,
 			int lastMarkerOpacityPercent,
 			float lastMarkerBorderWidth,
@@ -142,6 +164,8 @@ class DefenderTileMarkerEditor extends JPanel
 		this.strategyOptionsSupplier = strategyOptionsSupplier;
 		this.selectedStrategyIdSupplier = selectedStrategyIdSupplier;
 		this.strategyChanged = strategyChanged;
+		this.strategyNameSupplier = strategyNameSupplier;
+		this.strategyNameChanged = strategyNameChanged;
 		this.numberOfLogsSupplier = numberOfLogsSupplier;
 		this.numberOfLogsChanged = numberOfLogsChanged;
 		this.notesSupplier = notesSupplier;
@@ -150,12 +174,14 @@ class DefenderTileMarkerEditor extends JPanel
 		this.importRequested = importRequested;
 		this.exportRequested = exportRequested;
 		this.saveRequested = saveRequested;
+		this.markerClipboardExporter = markerClipboardExporter;
+		this.markerClipboardImporter = markerClipboardImporter;
 		this.markerStyleChanged = markerStyleChanged;
 		this.colorPickerManager = colorPickerManager;
 		mapPanel = new DefenderTileMarkerMapPanel(
 				waveSupplier,
 				() -> markers,
-				this::getSelectedMarker,
+				() -> selectedMarkerIds,
 				mapZoom::getValue,
 				this::addOrSelectMarkerAt
 		);
@@ -171,6 +197,7 @@ class DefenderTileMarkerEditor extends JPanel
 
 		add(createHeader(), BorderLayout.NORTH);
 		add(createBody(), BorderLayout.CENTER);
+		addTextChangeListener(strategyName, this::updateStrategyNameFromField);
 		addTextChangeListener(markerName, this::updateSelectedMarkerFromFields);
 		addTextChangeListener(markerLabel, this::updateSelectedMarkerFromFields);
 		addTextChangeListener(notes, this::updateNotesFromField);
@@ -185,10 +212,7 @@ class DefenderTileMarkerEditor extends JPanel
 	void setMarkers(List<DefenderMarker> markers)
 	{
 		this.markers = markers == null ? new ArrayList<>() : new ArrayList<>(markers);
-		if (getSelectedMarker() == null)
-		{
-			selectedMarkerId = null;
-		}
+		pruneSelectedMarkers();
 		refreshMarkerControls();
 		refreshMap();
 	}
@@ -198,10 +222,13 @@ class DefenderTileMarkerEditor extends JPanel
 		this.editable = editable;
 		markerCombo.setEnabled(editable && !markers.isEmpty());
 		numberOfLogs.setEnabled(editable);
+		strategyName.setEditable(editable);
+		strategyName.setEnabled(editable);
 		notes.setEditable(editable);
 		importButton.setEnabled(editable);
 		exportButton.setEnabled(true);
 		saveButton.setEnabled(editable);
+		updateFloatingSelectionControls();
 		updateMarkerDetailEnabled();
 		mapPanel.setEnabled(editable);
 	}
@@ -225,6 +252,11 @@ class DefenderTileMarkerEditor extends JPanel
 		refreshStrategyControls();
 		mapPanel.repaint();
 		SwingUtilities.invokeLater(mapPanel::scrollToTrap);
+	}
+
+	void focusStrategyName()
+	{
+		strategyName.requestFocusInWindow();
 	}
 
 	private JPanel createInstructionRow()
@@ -304,8 +336,63 @@ class DefenderTileMarkerEditor extends JPanel
 		mapScrollPane.getVerticalScrollBar().setUnitIncrement(MAP_DEFAULT_TILE_SIZE);
 		mapScrollPane.addMouseWheelListener(this::zoomFromMouseWheel);
 		mapPanel.addMouseWheelListener(this::zoomFromMouseWheel);
-		panel.add(mapScrollPane, BorderLayout.CENTER);
+		panel.add(createLayeredMap(), BorderLayout.CENTER);
 		panel.add(createZoomControls(), BorderLayout.SOUTH);
+		return panel;
+	}
+
+	private JLayeredPane createLayeredMap()
+	{
+		JPanel floatingControls = createFloatingMapControls();
+		JLayeredPane layeredPane = new JLayeredPane()
+		{
+			@Override
+			public void doLayout()
+			{
+				mapScrollPane.setBounds(0, 0, getWidth(), getHeight());
+				Dimension controlsSize = floatingControls.getPreferredSize();
+				floatingControls.setBounds(
+						Math.max(0, getWidth() - controlsSize.width - 18),
+						8,
+						controlsSize.width,
+						controlsSize.height
+				);
+			}
+		};
+		fixedSize(layeredPane, MAP_VIEWPORT_WIDTH, MAP_VIEWPORT_HEIGHT);
+		layeredPane.add(mapScrollPane, JLayeredPane.DEFAULT_LAYER);
+		layeredPane.add(floatingControls, JLayeredPane.PALETTE_LAYER);
+		return layeredPane;
+	}
+
+	private JPanel createFloatingMapControls()
+	{
+		JPanel panel = new JPanel();
+		panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+		panel.setBorder(new EmptyBorder(4, 6, 4, 6));
+		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+		selectedCountLabel.setForeground(ColorScheme.TEXT_COLOR);
+		selectedCountLabel.setFont(FontManager.getRunescapeSmallFont());
+		panel.add(selectedCountLabel);
+		panel.add(Box.createHorizontalStrut(6));
+
+		copyMarkersButton.setIcon(BaIcons.copyIcon());
+		copyMarkersButton.setToolTipText("Copy selected markers");
+		SwingUtil.removeButtonDecorations(copyMarkersButton);
+		fixedSize(copyMarkersButton, CONTROL_HEIGHT, CONTROL_HEIGHT);
+		copyMarkersButton.addActionListener(event -> copySelectedMarkersToClipboard());
+		panel.add(copyMarkersButton);
+		panel.add(Box.createHorizontalStrut(4));
+
+		pasteMarkersButton.setIcon(BaIcons.pasteIcon());
+		pasteMarkersButton.setToolTipText("Paste copied markers");
+		SwingUtil.removeButtonDecorations(pasteMarkersButton);
+		fixedSize(pasteMarkersButton, CONTROL_HEIGHT, CONTROL_HEIGHT);
+		pasteMarkersButton.addActionListener(event -> pasteMarkersFromClipboard());
+		panel.add(pasteMarkersButton);
+
+		updateFloatingSelectionControls();
 		return panel;
 	}
 
@@ -330,13 +417,15 @@ class DefenderTileMarkerEditor extends JPanel
 		panel.setBorder(new EmptyBorder(0, 0, 0, 0));
 		panel.setPreferredSize(new Dimension(SIDE_WIDTH, MAP_VIEWPORT_HEIGHT));
 		panel.add(createLegendPanel());
-		panel.add(Box.createVerticalStrut(SECTION_GAP));
+		panel.add(Box.createVerticalStrut(SECTION_GAP * 2));
 		panel.add(createMarkerSelectorPanel());
 		panel.add(Box.createVerticalStrut(SECTION_GAP));
 		panel.add(createMarkerDetailPanel());
 		panel.add(Box.createVerticalStrut(14));
 		panel.add(separator());
 		panel.add(Box.createVerticalStrut(10));
+		panel.add(createStrategyPanel());
+		panel.add(Box.createVerticalStrut(8));
 		panel.add(createNumberOfLogsPanel());
 		panel.add(Box.createVerticalStrut(8));
 		panel.add(createNotesPanel());
@@ -348,14 +437,20 @@ class DefenderTileMarkerEditor extends JPanel
 		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		panel.add(label("Legend", true));
 		panel.add(Box.createVerticalStrut(5));
-		panel.add(legendRow(DefenderTileMarkerMapPanel.TRAP_COLOR, "Trap"));
-		panel.add(legendRow(DefenderTileMarkerMapPanel.LOGS_COLOR, "Logs"));
-		panel.add(legendRow(DefenderTileMarkerMapPanel.HAMMER_COLOR, "Hammer"));
-		panel.add(legendRow(DefenderTileMarkerMapPanel.RUNNER_CAVE_COLOR, "Runner cave"));
-		panel.add(legendRow(DefenderTileMarkerMapPanel.HEALER_CAVE_COLOR, "Healer cave"));
-		panel.add(legendRow(DefenderTileMarkerMapPanel.QUEEN_TRAPDOOR_COLOR, "Queen trapdoor"));
-		panel.add(legendRow(DefenderTileMarkerMapPanel.CANNON_HILL_COLOR, "Cannon hill"));
-		panel.add(legendRow(DefenderTileMarkerMapPanel.DISABLED_TILE_COLOR, "Unavailable tile"));
+
+		JPanel grid = new JPanel(new GridLayout(4, 2, 8, 2));
+		grid.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		grid.setAlignmentX(LEFT_ALIGNMENT);
+		fixedSize(grid, SIDE_WIDTH, 78);
+		grid.add(legendRow(DefenderTileMarkerMapPanel.TRAP_COLOR, "Trap"));
+		grid.add(legendRow(DefenderTileMarkerMapPanel.LOGS_COLOR, "Logs"));
+		grid.add(legendRow(DefenderTileMarkerMapPanel.HAMMER_COLOR, "Hammer"));
+		grid.add(legendRow(DefenderTileMarkerMapPanel.RUNNER_CAVE_COLOR, "Runner cave"));
+		grid.add(legendRow(DefenderTileMarkerMapPanel.HEALER_CAVE_COLOR, "Healer cave"));
+		grid.add(legendRow(DefenderTileMarkerMapPanel.QUEEN_TRAPDOOR_COLOR, "Queen door"));
+		grid.add(legendRow(DefenderTileMarkerMapPanel.CANNON_HILL_COLOR, "Cannon hill"));
+		grid.add(legendRow(DefenderTileMarkerMapPanel.DISABLED_TILE_COLOR, "Unavailable"));
+		panel.add(grid);
 		return panel;
 	}
 
@@ -365,8 +460,8 @@ class DefenderTileMarkerEditor extends JPanel
 		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		row.setBorder(new EmptyBorder(1, 0, 1, 0));
-		row.setPreferredSize(new Dimension(SIDE_WIDTH, 18));
-		row.setMaximumSize(new Dimension(SIDE_WIDTH, 18));
+		row.setPreferredSize(new Dimension((SIDE_WIDTH - 8) / 2, 18));
+		row.setMaximumSize(new Dimension((SIDE_WIDTH - 8) / 2, 18));
 		row.setAlignmentX(LEFT_ALIGNMENT);
 
 		JPanel swatch = new JPanel();
@@ -390,7 +485,11 @@ class DefenderTileMarkerEditor extends JPanel
 			if (refreshing) return;
 
 			ComboItem item = (ComboItem) markerCombo.getSelectedItem();
-			selectedMarkerId = item == null ? null : item.id;
+			selectedMarkerIds.clear();
+			if (item != null && item.id != null)
+			{
+				selectedMarkerIds.add(item.id);
+			}
 			loadSelectedMarker();
 		});
 		markerSelectorPanel.add(markerCombo);
@@ -424,7 +523,7 @@ class DefenderTileMarkerEditor extends JPanel
 		JPanel row = new JPanel(new BorderLayout(6, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		fixedSize(row, SIDE_WIDTH, CONTROL_HEIGHT);
-		row.add(label("Select a Marker"), BorderLayout.CENTER);
+		row.add(label("Markers", true), BorderLayout.CENTER);
 
 		deleteMarkerButton.setIcon(BaIcons.trashIcon());
 		deleteMarkerButton.setToolTipText("Delete selected marker");
@@ -468,6 +567,17 @@ class DefenderTileMarkerEditor extends JPanel
 		panel.add(Box.createVerticalStrut(3));
 		fixedSize(component, (SIDE_WIDTH - 6) / 2, CONTROL_HEIGHT);
 		panel.add(component);
+		return panel;
+	}
+
+	private JPanel createStrategyPanel()
+	{
+		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		panel.add(label("Strategy", true));
+		panel.add(Box.createVerticalStrut(3));
+		strategyName.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Enter strategy name...");
+		fixedSize(strategyName, SIDE_WIDTH, CONTROL_HEIGHT);
+		panel.add(strategyName);
 		return panel;
 	}
 
@@ -546,11 +656,12 @@ class DefenderTileMarkerEditor extends JPanel
 		try
 		{
 			markerCombo.removeAllItems();
+			markerCombo.addItem(new ComboItem(null, "Select a marker..."));
 			for (DefenderMarker marker : markers)
 			{
 				markerCombo.addItem(new ComboItem(marker.getId(), getMarkerDisplayText(marker)));
 			}
-			selectMarkerComboValue(selectedMarkerId);
+			selectMarkerComboValue(getSingleSelectedMarkerId());
 		}
 		finally
 		{
@@ -569,6 +680,8 @@ class DefenderTileMarkerEditor extends JPanel
 		{
 			selectComboValue(waveCombo, String.valueOf(waveSupplier.getAsInt()));
 			refreshStrategyCombo();
+			String name = strategyNameSupplier.get();
+			strategyName.setText(name == null ? "" : name);
 			numberOfLogs.setSelectedItem(numberOfLogsSupplier.getAsInt());
 			String strategyNotes = notesSupplier.get();
 			notes.setText(strategyNotes == null ? "" : strategyNotes);
@@ -604,8 +717,10 @@ class DefenderTileMarkerEditor extends JPanel
 			}
 		}
 
-		markerCombo.setSelectedIndex(-1);
-		selectedMarkerId = null;
+		if (markerCombo.getItemCount() > 0)
+		{
+			markerCombo.setSelectedIndex(0);
+		}
 	}
 
 	private void loadSelectedMarker()
@@ -637,6 +752,7 @@ class DefenderTileMarkerEditor extends JPanel
 
 		updateMarkerDetailEnabled();
 		updateMarkerColorButton();
+		updateFloatingSelectionControls();
 		mapPanel.repaint();
 	}
 
@@ -692,6 +808,14 @@ class DefenderTileMarkerEditor extends JPanel
 		}
 	}
 
+	private void updateStrategyNameFromField()
+	{
+		if (!refreshing)
+		{
+			strategyNameChanged.accept(strategyName.getText());
+		}
+	}
+
 	private void chooseMarkerColor()
 	{
 		RuneliteColorPicker colorPicker = colorPickerManager.create(this, markerColor, "Marker Color", true);
@@ -722,6 +846,7 @@ class DefenderTileMarkerEditor extends JPanel
 
 	private DefenderMarker getSelectedMarker()
 	{
+		String selectedMarkerId = getSingleSelectedMarkerId();
 		if (selectedMarkerId == null)
 		{
 			return null;
@@ -736,6 +861,11 @@ class DefenderTileMarkerEditor extends JPanel
 		}
 
 		return null;
+	}
+
+	private String getSingleSelectedMarkerId()
+	{
+		return selectedMarkerIds.size() == 1 ? selectedMarkerIds.iterator().next() : null;
 	}
 
 	private int getNumberOfLogs()
@@ -759,7 +889,6 @@ class DefenderTileMarkerEditor extends JPanel
 		if (!editable || !mapPanel.isEnabled()) return;
 
 		DefenderMapLayout layout = DefenderMapLayout.forWave(waveSupplier.getAsInt());
-		DefenderMarker selected = getSelectedMarker();
 
 		if (!mapPanel.isSelectableMapTile(layout, mapX, mapY))
 		{
@@ -772,16 +901,21 @@ class DefenderTileMarkerEditor extends JPanel
 					&& layout.toMapX(marker.getTile()) == mapX
 					&& layout.toMapY(marker.getTile()) == mapY)
 			{
-				if (selected != null && selected.getId().equals(marker.getId()))
+				if (selectedMarkerIds.contains(marker.getId()))
 				{
 					if (canLeftClickDelete(marker))
 					{
 						deleteMarker(marker);
 					}
+					else
+					{
+						selectedMarkerIds.remove(marker.getId());
+						refreshMarkerControls();
+					}
 				}
 				else
 				{
-					selectedMarkerId = marker.getId();
+					selectedMarkerIds.add(marker.getId());
 					refreshMarkerControls();
 				}
 				return;
@@ -799,7 +933,7 @@ class DefenderTileMarkerEditor extends JPanel
 		);
 		markers.add(marker);
 		persistCurrentMarkerStyle();
-		selectedMarkerId = marker.getId();
+		selectedMarkerIds.add(marker.getId());
 		refreshMarkerControls();
 		mapPanel.repaint();
 		notifyMarkersChanged();
@@ -822,10 +956,144 @@ class DefenderTileMarkerEditor extends JPanel
 	private void deleteMarker(DefenderMarker marker)
 	{
 		markers.remove(marker);
-		selectedMarkerId = null;
+		selectedMarkerIds.remove(marker.getId());
 		refreshMarkerControls();
 		mapPanel.repaint();
 		notifyMarkersChanged();
+	}
+
+	private void pruneSelectedMarkers()
+	{
+		selectedMarkerIds.removeIf(id -> markers.stream().noneMatch(marker -> id.equals(marker.getId())));
+	}
+
+	private void copySelectedMarkersToClipboard()
+	{
+		List<DefenderMarker> selectedMarkers = getSelectedMarkers();
+		String json = markerClipboardExporter.exportMarkers(waveSupplier.getAsInt(), selectedMarkers);
+
+		if (json == null)
+		{
+			JOptionPane.showMessageDialog(this, "Select one or more markers to copy.", "Copy Markers", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(json), null);
+	}
+
+	private void pasteMarkersFromClipboard()
+	{
+		if (!editable)
+		{
+			return;
+		}
+
+		String json;
+
+		try
+		{
+			json = (String) Toolkit.getDefaultToolkit()
+					.getSystemClipboard()
+					.getData(DataFlavor.stringFlavor);
+		}
+		catch (UnsupportedFlavorException | IOException ex)
+		{
+			JOptionPane.showMessageDialog(this, "Clipboard does not contain copied markers.", "Paste Markers", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		List<DefenderMarker> pastedMarkers = markerClipboardImporter.importMarkers(waveSupplier.getAsInt(), json);
+
+		if (pastedMarkers == null || pastedMarkers.isEmpty())
+		{
+			JOptionPane.showMessageDialog(this, "Clipboard does not contain copied markers.", "Paste Markers", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		DefenderMapLayout layout = DefenderMapLayout.forWave(waveSupplier.getAsInt());
+		selectedMarkerIds.clear();
+
+		for (DefenderMarker marker : pastedMarkers)
+		{
+			if (marker == null || !layout.contains(marker.getTile()))
+			{
+				continue;
+			}
+
+			int mapX = layout.toMapX(marker.getTile());
+			int mapY = layout.toMapY(marker.getTile());
+
+			if (!mapPanel.isSelectableMapTile(layout, mapX, mapY))
+			{
+				continue;
+			}
+
+			DefenderMarker existing = findMarkerAt(layout, mapX, mapY);
+			if (existing != null)
+			{
+				markers.remove(existing);
+			}
+
+			DefenderMarker pasted = new DefenderMarker(
+					userMarkerId(mapX, mapY),
+					layout.toTile(mapX, mapY),
+					marker.getName(),
+					marker.getLabel(),
+					marker.getColor(),
+					marker.getOpacityPercent(),
+					marker.getBorderWidth()
+			);
+			markers.add(pasted);
+			selectedMarkerIds.add(pasted.getId());
+		}
+
+		if (selectedMarkerIds.isEmpty())
+		{
+			JOptionPane.showMessageDialog(this, "No copied markers fit on this map.", "Paste Markers", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		refreshMarkerControls();
+		mapPanel.repaint();
+		notifyMarkersChanged();
+	}
+
+	private List<DefenderMarker> getSelectedMarkers()
+	{
+		List<DefenderMarker> selectedMarkers = new ArrayList<>();
+
+		for (DefenderMarker marker : markers)
+		{
+			if (selectedMarkerIds.contains(marker.getId()))
+			{
+				selectedMarkers.add(marker);
+			}
+		}
+
+		return selectedMarkers;
+	}
+
+	private DefenderMarker findMarkerAt(DefenderMapLayout layout, int mapX, int mapY)
+	{
+		for (DefenderMarker marker : markers)
+		{
+			if (layout.contains(marker.getTile())
+					&& layout.toMapX(marker.getTile()) == mapX
+					&& layout.toMapY(marker.getTile()) == mapY)
+			{
+				return marker;
+			}
+		}
+
+		return null;
+	}
+
+	private void updateFloatingSelectionControls()
+	{
+		int selectedCount = selectedMarkerIds.size();
+		selectedCountLabel.setText(selectedCount == 0 ? "" : selectedCount + " selected");
+		copyMarkersButton.setEnabled(selectedCount > 0);
+		pasteMarkersButton.setEnabled(editable);
 	}
 
 	private boolean canLeftClickDelete(DefenderMarker marker)
@@ -1065,6 +1333,16 @@ class DefenderTileMarkerEditor extends JPanel
 	interface MarkerStyleChanged
 	{
 		void accept(String color, int opacityPercent, float borderWidth);
+	}
+
+	interface MarkerClipboardExporter
+	{
+		String exportMarkers(int wave, List<DefenderMarker> markers);
+	}
+
+	interface MarkerClipboardImporter
+	{
+		List<DefenderMarker> importMarkers(int wave, String json);
 	}
 
 }

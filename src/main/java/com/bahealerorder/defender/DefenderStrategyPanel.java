@@ -5,7 +5,6 @@ import com.bahealerorder.defender.strategies.DefenderRunPreset;
 import com.bahealerorder.defender.strategies.DefenderStrategyManager;
 import com.bahealerorder.defender.strategies.DefenderWaveStrategy;
 import com.bahealerorder.common.BaIcons;
-import com.formdev.flatlaf.FlatClientProperties;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -215,13 +214,6 @@ public class DefenderStrategyPanel extends JPanel
 		section.add(editStrategyCombo);
 		section.add(Box.createVerticalStrut(6));
 
-		strategyName.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Enter strategy name...");
-		fixedSize(strategyName, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
-		section.add(label("Name"));
-		section.add(Box.createVerticalStrut(3));
-		section.add(strategyName);
-		section.add(Box.createVerticalStrut(6));
-
 		section.add(createConfigureMarkersButton());
 		section.add(Box.createVerticalStrut(6));
 
@@ -243,7 +235,7 @@ public class DefenderStrategyPanel extends JPanel
 
 	private JButton createConfigureMarkersButton()
 	{
-		JButton button = action("Configure Tile Markers", this::openMarkerEditorDialog);
+		JButton button = action("Configure in Popout", () -> openMarkerEditorDialog(false));
 		button.setIcon(new PopoutIcon());
 		button.setHorizontalTextPosition(SwingConstants.LEADING);
 		button.setIconTextGap(8);
@@ -261,6 +253,8 @@ public class DefenderStrategyPanel extends JPanel
 					this::getEditStrategyOptions,
 					this::getSelectedEditStrategyId,
 					this::selectEditStrategyFromMarkerEditor,
+					() -> strategyName.getText(),
+					this::onMarkerEditorStrategyNameChanged,
 					this::getNumberOfLogs,
 					this::onMarkerEditorNumberOfLogsChanged,
 					() -> notes.getText(),
@@ -269,6 +263,8 @@ public class DefenderStrategyPanel extends JPanel
 					this::importWaveStrategyTemplateFromClipboard,
 					this::exportWaveStrategyTemplateToClipboard,
 					this::saveWaveStrategyFromMarkerEditor,
+					strategyManager::exportMarkerClipboardJson,
+					strategyManager::importMarkerClipboardJson,
 					strategyManager.getLastMarkerColor(),
 					strategyManager.getLastMarkerOpacityPercent(),
 					strategyManager.getLastMarkerBorderWidth(),
@@ -283,10 +279,19 @@ public class DefenderStrategyPanel extends JPanel
 
 	private void openMarkerEditorDialog()
 	{
+		openMarkerEditorDialog(false);
+	}
+
+	private void openMarkerEditorDialog(boolean focusStrategyName)
+	{
 		if (markerEditorDialog != null && markerEditorDialog.isDisplayable())
 		{
 			markerEditorDialog.toFront();
 			markerEditorDialog.requestFocus();
+			if (focusStrategyName)
+			{
+				getMarkerEditor().focusStrategyName();
+			}
 			return;
 		}
 
@@ -302,6 +307,10 @@ public class DefenderStrategyPanel extends JPanel
 		markerEditorDialog.pack();
 		markerEditorDialog.setMinimumSize(new Dimension(980, 720));
 		markerEditorDialog.setLocationRelativeTo(null);
+		if (focusStrategyName)
+		{
+			SwingUtilities.invokeLater(editor::focusStrategyName);
+		}
 		markerEditorDialog.setVisible(true);
 		markerEditorDialog = null;
 	}
@@ -383,7 +392,14 @@ public class DefenderStrategyPanel extends JPanel
 
 	private void selectEditWaveFromMarkerEditor(int wave)
 	{
-		selectEditWaveStrategy(wave, null);
+		selectEditWaveStrategy(wave, getSelectedPresetWaveStrategyId(wave));
+	}
+
+	private String getSelectedPresetWaveStrategyId(int wave)
+	{
+		ComboItem item = (ComboItem) presetCombo.getSelectedItem();
+		DefenderRunPreset preset = item == null ? null : strategyManager.findRunPreset(item.id);
+		return preset == null ? null : preset.getWaveStrategyId(wave);
 	}
 
 	private List<DefenderTileMarkerEditor.StrategyOption> getEditStrategyOptions()
@@ -416,6 +432,18 @@ public class DefenderStrategyPanel extends JPanel
 
 		refreshingEditor = true;
 		editNumberOfLogs = logs;
+		refreshingEditor = false;
+	}
+
+	private void onMarkerEditorStrategyNameChanged(String name)
+	{
+		if (refreshingEditor)
+		{
+			return;
+		}
+
+		refreshingEditor = true;
+		strategyName.setText(name == null ? "" : name);
 		refreshingEditor = false;
 	}
 
@@ -672,13 +700,9 @@ public class DefenderStrategyPanel extends JPanel
 
 		if (name.isEmpty())
 		{
-			name = promptName(parent, "Strategy name", "");
-			if (name == null)
-			{
-				return false;
-			}
-
-			strategyName.setText(name);
+			Toolkit.getDefaultToolkit().beep();
+			openMarkerEditorDialog(true);
+			return false;
 		}
 
 		int wave = getEditWave();

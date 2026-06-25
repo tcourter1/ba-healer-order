@@ -159,6 +159,62 @@ public class DefenderStrategyManagerTest
 		assertEquals(2.5f, restoredManager.getLastMarkerBorderWidth(), 0.001f);
 	}
 
+	@Test
+	public void markerClipboardRoundTripPreservesEditorLocationsAndStyles()
+	{
+		DefenderStrategyManager manager = new DefenderStrategyManager(new DefenderStrategyStore(), new Gson());
+		String json = manager.exportMarkerClipboardJson(9, Arrays.asList(
+				new DefenderMarker(
+						"m1",
+						DefenderMapLayout.WAVES_1_TO_9.toTile(49, 30),
+						"mainstack",
+						"4 good",
+						"#50aaff",
+						60,
+						3.0f
+				),
+				new DefenderMarker(
+						"m2",
+						DefenderMapLayout.WAVES_1_TO_9.toTile(45, 26),
+						"trap",
+						"1 bad",
+						"#ffee00",
+						80,
+						1.5f
+				)
+		));
+
+		assertFalse(json.contains("\"wave\""));
+		assertFalse(json.contains("\"regionId\""));
+
+		java.util.List<DefenderMarker> imported = manager.importMarkerClipboardJson(10, json);
+
+		assertNotNull(imported);
+		assertEquals(2, imported.size());
+		assertEquals("mainstack", imported.get(0).getName());
+		assertEquals("4 good", imported.get(0).getLabel());
+		assertEquals("#50aaff", imported.get(0).getColor());
+		assertEquals(Integer.valueOf(60), imported.get(0).getOpacityPercent());
+		assertEquals(Float.valueOf(3.0f), imported.get(0).getBorderWidth());
+		assertEquals(DefenderMapLayout.WAVE_10.toTile(49, 30).getRegionId(), imported.get(0).getTile().getRegionId());
+		assertEquals(49, DefenderMapLayout.WAVE_10.toMapX(imported.get(0).getTile()));
+		assertEquals(30, DefenderMapLayout.WAVE_10.toMapY(imported.get(0).getTile()));
+		assertEquals("trap", imported.get(1).getName());
+		assertEquals("1 bad", imported.get(1).getLabel());
+		assertEquals("#ffee00", imported.get(1).getColor());
+		assertEquals(Integer.valueOf(80), imported.get(1).getOpacityPercent());
+		assertEquals(Float.valueOf(1.5f), imported.get(1).getBorderWidth());
+	}
+
+	@Test
+	public void markerClipboardRejectsEmptyInput()
+	{
+		DefenderStrategyManager manager = new DefenderStrategyManager(new DefenderStrategyStore(), new Gson());
+
+		assertNull(manager.exportMarkerClipboardJson(9, null));
+		assertNull(manager.importMarkerClipboardJson(9, ""));
+	}
+
 	private DefenderWaveStrategy strategy(String id, String name, int wave, String notes)
 	{
 		return new DefenderWaveStrategy(

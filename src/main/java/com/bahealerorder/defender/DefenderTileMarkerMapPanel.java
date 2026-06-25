@@ -11,10 +11,11 @@ import java.awt.Stroke;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
-import java.util.function.BiConsumer;
+import java.util.Set;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 class DefenderTileMarkerMapPanel extends JPanel
 {
@@ -93,20 +94,20 @@ class DefenderTileMarkerMapPanel extends JPanel
 
 	private final IntSupplier waveSupplier;
 	private final Supplier<List<DefenderMarker>> markersSupplier;
-	private final Supplier<DefenderMarker> selectedMarkerSupplier;
+	private final Supplier<Set<String>> selectedMarkerIdsSupplier;
 	private final IntSupplier tileSizeSupplier;
-	private final BiConsumer<Integer, Integer> tileClicked;
+	private final TileClickHandler tileClicked;
 
 	DefenderTileMarkerMapPanel(
 			IntSupplier waveSupplier,
 			Supplier<List<DefenderMarker>> markersSupplier,
-			Supplier<DefenderMarker> selectedMarkerSupplier,
+			Supplier<Set<String>> selectedMarkerIdsSupplier,
 			IntSupplier tileSizeSupplier,
-			BiConsumer<Integer, Integer> tileClicked)
+			TileClickHandler tileClicked)
 	{
 		this.waveSupplier = waveSupplier;
 		this.markersSupplier = markersSupplier;
-		this.selectedMarkerSupplier = selectedMarkerSupplier;
+		this.selectedMarkerIdsSupplier = selectedMarkerIdsSupplier;
 		this.tileSizeSupplier = tileSizeSupplier;
 		this.tileClicked = tileClicked;
 
@@ -116,9 +117,13 @@ class DefenderTileMarkerMapPanel extends JPanel
 			@Override
 			public void mousePressed(MouseEvent event)
 			{
-				int tileSize = getTileSize();
-				int x = MAP_BOUNDS.minX + event.getX() / tileSize;
-				int y = MAP_BOUNDS.maxY - 1 - event.getY() / tileSize;
+				if (!SwingUtilities.isLeftMouseButton(event))
+				{
+					return;
+				}
+
+				int x = toMapX(event.getX());
+				int y = toMapY(event.getY());
 
 				if (MAP_BOUNDS.contains(x, y))
 				{
@@ -210,7 +215,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 
 	private void drawMarkers(Graphics graphics, DefenderMapLayout layout)
 	{
-		DefenderMarker selected = selectedMarkerSupplier.get();
+		Set<String> selectedMarkerIds = selectedMarkerIdsSupplier.get();
 		for (DefenderMarker marker : markersSupplier.get())
 		{
 			if (!layout.contains(marker.getTile()) || !MAP_BOUNDS.contains(layout.toMapX(marker.getTile()), layout.toMapY(marker.getTile())))
@@ -225,7 +230,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 			graphics.fillRect(x, y, getTileSize(), getTileSize());
 			drawMarkerBorder(graphics, x, y, color, marker.getBorderWidthOrDefault());
 
-			if (selected != null && selected.getId().equals(marker.getId()))
+			if (selectedMarkerIds != null && selectedMarkerIds.contains(marker.getId()))
 			{
 				graphics.setColor(Color.WHITE);
 				graphics.drawRect(x, y, getTileSize() - 1, getTileSize() - 1);
@@ -424,6 +429,18 @@ class DefenderTileMarkerMapPanel extends JPanel
 		return (MAP_BOUNDS.maxY - mapY - 1) * getTileSize();
 	}
 
+	private int toMapX(int screenX)
+	{
+		int clampedX = Math.max(0, Math.min(getMapWidthPixels() - 1, screenX));
+		return MAP_BOUNDS.minX + clampedX / getTileSize();
+	}
+
+	private int toMapY(int screenY)
+	{
+		int clampedY = Math.max(0, Math.min(getMapHeightPixels() - 1, screenY));
+		return MAP_BOUNDS.maxY - 1 - clampedY / getTileSize();
+	}
+
 	private boolean isCannonHillTile(int mapX, int mapY)
 	{
 		return DefenderMapLayout.forWave(waveSupplier.getAsInt()) != DefenderMapLayout.WAVE_10
@@ -505,5 +522,10 @@ class DefenderTileMarkerMapPanel extends JPanel
 	private interface TileGroup
 	{
 		boolean contains(int mapX, int mapY);
+	}
+
+	interface TileClickHandler
+	{
+		void accept(int mapX, int mapY);
 	}
 }
