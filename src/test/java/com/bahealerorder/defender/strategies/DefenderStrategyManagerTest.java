@@ -4,15 +4,117 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import com.google.gson.Gson;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.Test;
 
 public class DefenderStrategyManagerTest
 {
+	@Test
+	public void builtInLibraryIncludesPromotedPresetsAndWaveStrategies()
+	{
+		DefenderStrategyManager manager = new DefenderStrategyManager(new DefenderStrategyStore(), new Gson());
+
+		List<DefenderRunPreset> presets = manager.getRunPresets();
+		assertEquals(2, presets.size());
+		assertEquals("Beginner", presets.get(0).getName());
+		assertEquals("Intermediate", presets.get(1).getName());
+		assertTrue(presets.get(0).isBuiltIn());
+		assertTrue(presets.get(1).isBuiltIn());
+
+		DefenderRunPreset intermediate = manager.findRunPreset("user:defender:preset:intermediate");
+		assertNotNull(intermediate);
+		assertEquals("user:defender:wave:9-wall-split", intermediate.getWaveStrategyId(9));
+		assertEquals("user:defender:wave:10-auk", intermediate.getWaveStrategyId(10));
+
+		List<DefenderWaveStrategy> strategies = manager.getWaveStrategies();
+		assertEquals(21, strategies.size());
+		for (DefenderWaveStrategy strategy : strategies)
+		{
+			assertTrue(strategy.isBuiltIn());
+		}
+
+		DefenderWaveStrategy b9 = manager.findWaveStrategy("user:defender:wave:9-nw-food");
+		assertNotNull(b9);
+		assertEquals("B9", b9.getName());
+		assertEquals(2, b9.getNumberOfLogs());
+		assertEquals(6, b9.getMarkers().size());
+		assertTrue(b9.getNotes().contains("28.2 - If broken"));
+
+		DefenderWaveStrategy auk = manager.findWaveStrategy("user:defender:wave:10-auk");
+		assertNotNull(auk);
+		assertEquals("Auk", auk.getName());
+		assertEquals(5, auk.getMarkers().size());
+		assertTrue(auk.getNotes().contains("Run to cannon and split reserves."));
+	}
+
+	@Test
+	public void builtInPresetsCanBeApplied()
+	{
+		DefenderStrategyManager manager = new DefenderStrategyManager(new DefenderStrategyStore(), new Gson());
+
+		manager.applyRunPreset("user:defender:preset:intermediate");
+
+		assertEquals("user:defender:preset:intermediate", manager.getActiveRunPresetId());
+		assertEquals("user:defender:wave:9-wall-split", manager.getActiveWaveStrategyId(9));
+		assertEquals("2-1-5*-2", manager.getActiveWaveStrategy(9).getName());
+	}
+
+	@Test
+	public void builtInWaveStrategyEditsPreserveNameAndCanReset()
+	{
+		DefenderStrategyStore store = new DefenderStrategyStore();
+		DefenderStrategyManager manager = new DefenderStrategyManager(store, new Gson());
+		DefenderWaveStrategy edited = strategy("user:defender:wave:1-beginner", "Renamed", 2, "changed notes");
+		edited.setNumberOfLogs(4);
+
+		assertTrue(manager.updateBuiltInWaveStrategy("user:defender:wave:1-beginner", edited));
+
+		DefenderWaveStrategy saved = manager.findWaveStrategy("user:defender:wave:1-beginner");
+		assertNotNull(saved);
+		assertTrue(saved.isBuiltIn());
+		assertEquals("Beginner", saved.getName());
+		assertEquals(1, saved.getWave());
+		assertEquals("changed notes", saved.getNotes());
+		assertEquals(4, saved.getNumberOfLogs());
+
+		assertTrue(manager.resetBuiltInWaveStrategy("user:defender:wave:1-beginner"));
+		DefenderWaveStrategy reset = manager.findWaveStrategy("user:defender:wave:1-beginner");
+		assertNotNull(reset);
+		assertEquals("Beginner", reset.getName());
+		assertEquals(1, reset.getWave());
+		assertEquals("test", reset.getNotes());
+	}
+
+	@Test
+	public void storedCopiesWithPromotedBuiltInIdsDoNotShadowBuiltIns()
+	{
+		DefenderStrategyStore store = new DefenderStrategyStore();
+		Map<Integer, String> stalePresetStrategies = new HashMap<>();
+		stalePresetStrategies.put(1, "missing");
+		store.getRunPresets().add(new DefenderRunPreset("user:defender:preset:beginner", "Stale Beginner", false, stalePresetStrategies));
+		store.getWaveStrategies().add(strategy("user:defender:wave:1-beginner", "Stale Beginner", 1, "stale notes"));
+
+		DefenderStrategyManager manager = new DefenderStrategyManager(store, new Gson());
+
+		DefenderRunPreset preset = manager.findRunPreset("user:defender:preset:beginner");
+		assertNotNull(preset);
+		assertEquals("Beginner", preset.getName());
+		assertTrue(preset.isBuiltIn());
+		assertEquals("user:defender:wave:1-beginner", preset.getWaveStrategyId(1));
+
+		DefenderWaveStrategy waveOne = manager.findWaveStrategy("user:defender:wave:1-beginner");
+		assertNotNull(waveOne);
+		assertEquals("Beginner", waveOne.getName());
+		assertEquals("test", waveOne.getNotes());
+		assertTrue(waveOne.isBuiltIn());
+	}
+
 	@Test
 	public void importsRunPresetByNameAndReplacesSameNameWaveStrategy()
 	{

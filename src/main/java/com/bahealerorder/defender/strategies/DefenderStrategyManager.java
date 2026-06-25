@@ -22,7 +22,7 @@ public class DefenderStrategyManager
 
 	private final ConfigManager configManager;
 	private final Gson gson;
-	private final DefenderStrategyStore builtIns = DefenderStrategyLibrary.create();
+	private final DefenderStrategyStore builtIns;
 
 	private DefenderStrategyStore userStore = new DefenderStrategyStore();
 
@@ -31,12 +31,14 @@ public class DefenderStrategyManager
 	{
 		this.configManager = configManager;
 		this.gson = gson.newBuilder().setPrettyPrinting().create();
+		this.builtIns = DefenderStrategyLibrary.create();
 	}
 
 	DefenderStrategyManager(DefenderStrategyStore userStore, Gson gson)
 	{
 		this.configManager = null;
 		this.gson = gson.newBuilder().setPrettyPrinting().create();
+		this.builtIns = DefenderStrategyLibrary.create();
 		this.userStore = userStore == null ? new DefenderStrategyStore() : userStore;
 	}
 
@@ -193,8 +195,22 @@ public class DefenderStrategyManager
 	public List<DefenderRunPreset> getRunPresets()
 	{
 		List<DefenderRunPreset> presets = new ArrayList<>();
-		presets.addAll(userStore.getRunPresets());
-		presets.sort(Comparator.comparing(DefenderRunPreset::getName, String.CASE_INSENSITIVE_ORDER));
+
+		for (DefenderRunPreset builtIn : builtIns.getRunPresets())
+		{
+			DefenderRunPreset override = findStoredUserRunPreset(builtIn.getId());
+			presets.add(override != null && override.isBuiltIn() ? override : builtIn);
+		}
+
+		for (DefenderRunPreset userPreset : userStore.getRunPresets())
+		{
+			if (findBuiltInRunPreset(userPreset.getId()) == null)
+			{
+				presets.add(userPreset);
+			}
+		}
+
+		presets.sort(Comparator.comparing(DefenderRunPreset::isBuiltIn).reversed().thenComparing(DefenderRunPreset::getName, String.CASE_INSENSITIVE_ORDER));
 		return presets;
 	}
 
@@ -221,7 +237,7 @@ public class DefenderStrategyManager
 		for (DefenderWaveStrategy builtIn : builtIns.getWaveStrategies())
 		{
 			DefenderWaveStrategy override = findStoredUserWaveStrategy(builtIn.getId());
-			strategies.add(override == null ? builtIn : override);
+			strategies.add(override != null && override.isBuiltIn() ? override : builtIn);
 		}
 
 		for (DefenderWaveStrategy userStrategy : userStore.getWaveStrategies())
@@ -263,7 +279,7 @@ public class DefenderStrategyManager
 			return null;
 		}
 
-		for (DefenderRunPreset preset : userStore.getRunPresets())
+		for (DefenderRunPreset preset : getRunPresets())
 		{
 			if (preset.getWaveStrategyIds().equals(activeStrategies))
 			{
@@ -419,10 +435,11 @@ public class DefenderStrategyManager
 	public DefenderRunPreset createUserPreset(String name, Map<Integer, String> waveStrategyIds)
 	{
 		DefenderRunPreset existingPreset = findRunPresetByName(name);
+		boolean builtIn = existingPreset != null && existingPreset.isBuiltIn();
 		DefenderRunPreset preset = new DefenderRunPreset(
 				existingPreset == null ? userId("preset", name) : existingPreset.getId(),
 				name,
-				false,
+				builtIn,
 				new HashMap<>(waveStrategyIds)
 		);
 		upsertRunPreset(preset);
@@ -482,6 +499,15 @@ public class DefenderStrategyManager
 			return false;
 		}
 
+		DefenderRunPreset builtIn = findBuiltInRunPreset(id);
+
+		if (builtIn != null)
+		{
+			upsertRunPreset(new DefenderRunPreset(id, name, true, waveStrategyIds));
+			save();
+			return true;
+		}
+
 		for (DefenderRunPreset preset : userStore.getRunPresets())
 		{
 			if (id.equals(preset.getId()))
@@ -536,7 +562,15 @@ public class DefenderStrategyManager
 			return false;
 		}
 
-		DefenderWaveStrategy updated = withUserIdentity(strategy, builtIn.getId(), true);
+		DefenderWaveStrategy updated = new DefenderWaveStrategy(
+				builtIn.getId(),
+				builtIn.getName(),
+				builtIn.getWave(),
+				true,
+				strategy.getNotes(),
+				strategy.getNumberOfLogs(),
+				strategy.getMarkers()
+		);
 		List<DefenderWaveStrategy> strategies = new ArrayList<>(userStore.getWaveStrategies());
 
 		for (int i = 0; i < strategies.size(); i++)
@@ -649,10 +683,24 @@ public class DefenderStrategyManager
 	{
 		DefenderWaveStrategy existingUserStrategy = findStoredUserWaveStrategy(imported.getWave(), imported.getName());
 		DefenderWaveStrategy builtInStrategy = findBuiltInWaveStrategy(imported.getWave(), imported.getName());
-		String id = existingUserStrategy != null
-				? existingUserStrategy.getId()
-				: builtInStrategy != null ? builtInStrategy.getId() : userId("wave", imported.getWave() + "-" + imported.getName());
-		boolean builtIn = existingUserStrategy != null ? existingUserStrategy.isBuiltIn() : builtInStrategy != null;
+		boolean replacingBuiltIn = builtInStrategy != null
+				&& (existingUserStrategy == null || builtInStrategy.getId().equals(existingUserStrategy.getId()));
+		String id;
+
+		if (replacingBuiltIn)
+		{
+			id = builtInStrategy.getId();
+		}
+		else if (existingUserStrategy != null)
+		{
+			id = existingUserStrategy.getId();
+		}
+		else
+		{
+			id = userId("wave", imported.getWave() + "-" + imported.getName());
+		}
+
+		boolean builtIn = replacingBuiltIn || (existingUserStrategy != null && existingUserStrategy.isBuiltIn());
 		DefenderWaveStrategy updated = copy(imported, id, builtIn);
 		List<DefenderWaveStrategy> storedStrategies = new ArrayList<>(userStore.getWaveStrategies());
 
@@ -697,7 +745,8 @@ public class DefenderStrategyManager
 
 		DefenderRunPreset existingPreset = findRunPresetByName(importedPreset.getName());
 		String id = existingPreset == null ? userId("preset", importedPreset.getName()) : existingPreset.getId();
-		return new DefenderRunPreset(id, importedPreset.getName(), false, localStrategyIds);
+		boolean builtIn = existingPreset != null && existingPreset.isBuiltIn();
+		return new DefenderRunPreset(id, importedPreset.getName(), builtIn, localStrategyIds);
 	}
 
 	private void upsertRunPreset(DefenderRunPreset importedPreset)
@@ -716,6 +765,42 @@ public class DefenderStrategyManager
 
 		presets.add(importedPreset);
 		userStore.setRunPresets(presets);
+	}
+
+	private DefenderRunPreset findStoredUserRunPreset(String id)
+	{
+		if (id == null)
+		{
+			return null;
+		}
+
+		for (DefenderRunPreset preset : userStore.getRunPresets())
+		{
+			if (id.equals(preset.getId()))
+			{
+				return preset;
+			}
+		}
+
+		return null;
+	}
+
+	private DefenderRunPreset findBuiltInRunPreset(String id)
+	{
+		if (id == null)
+		{
+			return null;
+		}
+
+		for (DefenderRunPreset preset : builtIns.getRunPresets())
+		{
+			if (id.equals(preset.getId()))
+			{
+				return preset;
+			}
+		}
+
+		return null;
 	}
 
 	private DefenderWaveStrategy withUserIdentity(DefenderWaveStrategy strategy, String id, boolean builtIn)
@@ -798,15 +883,16 @@ public class DefenderStrategyManager
 			return null;
 		}
 
-		for (DefenderWaveStrategy strategy : getWaveStrategies())
+		DefenderWaveStrategy userStrategy = findStoredUserWaveStrategy(wave, name);
+		DefenderWaveStrategy builtInStrategy = findBuiltInWaveStrategy(wave, name);
+
+		if (userStrategy != null
+				&& (builtInStrategy == null || !builtInStrategy.getId().equals(userStrategy.getId()) || userStrategy.isBuiltIn()))
 		{
-			if (sameWaveStrategyName(strategy, wave, name))
-			{
-				return strategy;
-			}
+			return userStrategy;
 		}
 
-		return null;
+		return builtInStrategy;
 	}
 
 	private DefenderRunPreset findRunPresetByName(String name)

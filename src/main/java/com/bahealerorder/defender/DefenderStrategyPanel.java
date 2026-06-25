@@ -77,7 +77,7 @@ public class DefenderStrategyPanel extends JPanel
 	private JButton deleteStrategyAction;
 	private DefenderTileMarkerEditor markerEditor;
 	private JDialog markerEditorDialog;
-	private boolean editorFieldsEditable = true;
+	private boolean strategyNameEditable = true;
 	private boolean refreshing;
 	private boolean refreshingEditor;
 
@@ -271,7 +271,7 @@ public class DefenderStrategyPanel extends JPanel
 					strategyManager::setLastMarkerStyle,
 					colorPickerManager
 			);
-			markerEditor.setEditorEnabled(editorFieldsEditable);
+			markerEditor.setStrategyNameEditable(strategyNameEditable);
 		}
 
 		return markerEditor;
@@ -297,7 +297,7 @@ public class DefenderStrategyPanel extends JPanel
 
 		DefenderTileMarkerEditor editor = getMarkerEditor();
 		editor.setMarkers(editMarkers);
-		editor.setEditorEnabled(editorFieldsEditable);
+		editor.setStrategyNameEditable(strategyNameEditable);
 		editor.resetView();
 
 		Window owner = SwingUtilities.getWindowAncestor(this);
@@ -336,12 +336,6 @@ public class DefenderStrategyPanel extends JPanel
 
 	private void importWaveStrategyTemplateFromClipboard()
 	{
-		if (!editorFieldsEditable)
-		{
-			JOptionPane.showMessageDialog(markerEditorDialog, "Select an editable strategy before importing.", "Import Wave Strategy", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-
 		String json;
 
 		try
@@ -386,7 +380,7 @@ public class DefenderStrategyPanel extends JPanel
 		}
 
 		markerEditor.setMarkers(editMarkers);
-		markerEditor.setEditorEnabled(editorFieldsEditable);
+		markerEditor.setStrategyNameEditable(strategyNameEditable);
 		markerEditor.refreshMap();
 	}
 
@@ -437,7 +431,7 @@ public class DefenderStrategyPanel extends JPanel
 
 	private void onMarkerEditorStrategyNameChanged(String name)
 	{
-		if (refreshingEditor)
+		if (refreshingEditor || !strategyNameEditable)
 		{
 			return;
 		}
@@ -524,7 +518,7 @@ public class DefenderStrategyPanel extends JPanel
 		if (selectedId == null)
 		{
 			clearStrategyFields();
-			setEditFieldsEditable(true);
+			setStrategyNameEditable(true);
 			updateDeleteStrategyAction(null);
 			return;
 		}
@@ -534,7 +528,7 @@ public class DefenderStrategyPanel extends JPanel
 		if (strategy == null)
 		{
 			clearStrategyFields();
-			setEditFieldsEditable(true);
+			setStrategyNameEditable(true);
 			updateDeleteStrategyAction(null);
 			return;
 		}
@@ -546,7 +540,7 @@ public class DefenderStrategyPanel extends JPanel
 			editNumberOfLogs = strategy.getNumberOfLogs();
 			notes.setText(strategy.getNotes() == null ? "" : strategy.getNotes());
 			editMarkers = new ArrayList<>(strategy.getMarkers());
-			setEditFieldsEditable(!strategy.isBuiltIn());
+			setStrategyNameEditable(!strategy.isBuiltIn());
 			updateDeleteStrategyAction(strategy);
 			refreshMarkerEditor();
 		}
@@ -561,7 +555,9 @@ public class DefenderStrategyPanel extends JPanel
 		refreshingEditor = true;
 		try
 		{
-			strategyName.setText(strategy.getName() == null ? "" : strategy.getName());
+			DefenderWaveStrategy selectedStrategy = strategyManager.findWaveStrategy(getSelectedEditStrategyId());
+			String name = selectedStrategy != null && selectedStrategy.isBuiltIn() ? selectedStrategy.getName() : strategy.getName();
+			strategyName.setText(name == null ? "" : name);
 			editNumberOfLogs = strategy.getNumberOfLogs();
 			notes.setText(strategy.getNotes() == null ? "" : strategy.getNotes());
 			editMarkers = new ArrayList<>(strategy.getMarkers());
@@ -696,7 +692,9 @@ public class DefenderStrategyPanel extends JPanel
 			return false;
 		}
 
-		String name = strategyName.getText().trim();
+		String selectedId = getSelectedEditStrategyId();
+		DefenderWaveStrategy selectedStrategy = strategyManager.findWaveStrategy(selectedId);
+		String name = selectedStrategy != null && selectedStrategy.isBuiltIn() ? selectedStrategy.getName() : strategyName.getText().trim();
 
 		if (name.isEmpty())
 		{
@@ -706,8 +704,6 @@ public class DefenderStrategyPanel extends JPanel
 		}
 
 		int wave = getEditWave();
-		String selectedId = getSelectedEditStrategyId();
-		DefenderWaveStrategy selectedStrategy = strategyManager.findWaveStrategy(selectedId);
 		DefenderWaveStrategy strategy = buildStrategyFromFields(wave, name, selectedId, selectedStrategy != null && selectedStrategy.isBuiltIn());
 		DefenderWaveStrategy savedStrategy;
 
@@ -753,7 +749,8 @@ public class DefenderStrategyPanel extends JPanel
 	{
 		String selectedId = getSelectedEditStrategyId();
 		DefenderWaveStrategy selectedStrategy = strategyManager.findWaveStrategy(selectedId);
-		return buildStrategyFromFields(getEditWave(), strategyName.getText().trim(), selectedId, selectedStrategy != null && selectedStrategy.isBuiltIn());
+		String name = selectedStrategy != null && selectedStrategy.isBuiltIn() ? selectedStrategy.getName() : strategyName.getText().trim();
+		return buildStrategyFromFields(getEditWave(), name, selectedId, selectedStrategy != null && selectedStrategy.isBuiltIn());
 	}
 
 	private void deleteOrResetSelectedStrategy()
@@ -792,7 +789,7 @@ public class DefenderStrategyPanel extends JPanel
 	{
 		editStrategyCombo.setSelectedIndex(0);
 		clearStrategyFields();
-		setEditFieldsEditable(true);
+		setStrategyNameEditable(true);
 		updateDeleteStrategyAction(null);
 	}
 
@@ -807,14 +804,13 @@ public class DefenderStrategyPanel extends JPanel
 		refreshingEditor = false;
 	}
 
-	private void setEditFieldsEditable(boolean editable)
+	private void setStrategyNameEditable(boolean nameEditable)
 	{
-		editorFieldsEditable = editable;
-		strategyName.setEditable(editable);
-		notes.setEditable(editable);
+		strategyNameEditable = nameEditable;
+		strategyName.setEditable(nameEditable);
 		if (markerEditor != null)
 		{
-			markerEditor.setEditorEnabled(editable);
+			markerEditor.setStrategyNameEditable(nameEditable);
 		}
 	}
 

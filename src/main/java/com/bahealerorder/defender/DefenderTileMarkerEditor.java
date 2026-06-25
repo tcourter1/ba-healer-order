@@ -133,7 +133,7 @@ class DefenderTileMarkerEditor extends JPanel
 	private final Set<String> selectedMarkerIds = new LinkedHashSet<>();
 	private Color markerColor = DefenderTileMarkerMapPanel.DEFAULT_MARKER_COLOR;
 	private boolean refreshing;
-	private boolean editable = true;
+	private boolean strategyNameEditable = true;
 
 	DefenderTileMarkerEditor(
 			IntSupplier waveSupplier,
@@ -217,20 +217,11 @@ class DefenderTileMarkerEditor extends JPanel
 		refreshMap();
 	}
 
-	void setEditorEnabled(boolean editable)
+	void setStrategyNameEditable(boolean strategyNameEditable)
 	{
-		this.editable = editable;
-		markerCombo.setEnabled(editable && !markers.isEmpty());
-		numberOfLogs.setEnabled(editable);
-		strategyName.setEditable(editable);
-		strategyName.setEnabled(editable);
-		notes.setEditable(editable);
-		importButton.setEnabled(editable);
-		exportButton.setEnabled(true);
-		saveButton.setEnabled(editable);
-		updateFloatingSelectionControls();
+		this.strategyNameEditable = strategyNameEditable;
+		strategyName.setEditable(strategyNameEditable);
 		updateMarkerDetailEnabled();
-		mapPanel.setEnabled(editable);
 	}
 
 	void resetView()
@@ -256,7 +247,10 @@ class DefenderTileMarkerEditor extends JPanel
 
 	void focusStrategyName()
 	{
-		strategyName.requestFocusInWindow();
+		if (strategyNameEditable)
+		{
+			strategyName.requestFocusInWindow();
+		}
 	}
 
 	private JPanel createInstructionRow()
@@ -759,15 +753,15 @@ class DefenderTileMarkerEditor extends JPanel
 	private void updateMarkerDetailEnabled()
 	{
 		boolean hasMarker = getSelectedMarker() != null;
-		markerCombo.setEnabled(editable && !markers.isEmpty());
-		markerName.setEditable(editable && hasMarker);
+		markerCombo.setEnabled(!markers.isEmpty());
+		markerName.setEditable(hasMarker);
 		markerName.setEnabled(hasMarker);
-		markerLabel.setEditable(editable && hasMarker);
+		markerLabel.setEditable(hasMarker);
 		markerLabel.setEnabled(hasMarker);
-		markerColorButton.setEnabled(editable && hasMarker);
-		markerOpacity.setEnabled(editable && hasMarker);
-		markerBorderWidth.setEnabled(editable && hasMarker);
-		deleteMarkerButton.setEnabled(editable && hasMarker);
+		markerColorButton.setEnabled(hasMarker);
+		markerOpacity.setEnabled(hasMarker);
+		markerBorderWidth.setEnabled(hasMarker);
+		deleteMarkerButton.setEnabled(hasMarker);
 	}
 
 	private void updateSelectedMarkerFromFields()
@@ -810,7 +804,7 @@ class DefenderTileMarkerEditor extends JPanel
 
 	private void updateStrategyNameFromField()
 	{
-		if (!refreshing)
+		if (!refreshing && strategyNameEditable)
 		{
 			strategyNameChanged.accept(strategyName.getText());
 		}
@@ -886,8 +880,6 @@ class DefenderTileMarkerEditor extends JPanel
 
 	private void addOrSelectMarkerAt(int mapX, int mapY)
 	{
-		if (!editable || !mapPanel.isEnabled()) return;
-
 		DefenderMapLayout layout = DefenderMapLayout.forWave(waveSupplier.getAsInt());
 
 		if (!mapPanel.isSelectableMapTile(layout, mapX, mapY))
@@ -941,11 +933,6 @@ class DefenderTileMarkerEditor extends JPanel
 
 	private void deleteSelectedMarker()
 	{
-		if (!editable)
-		{
-			return;
-		}
-
 		DefenderMarker marker = getSelectedMarker();
 		if (marker != null)
 		{
@@ -983,11 +970,6 @@ class DefenderTileMarkerEditor extends JPanel
 
 	private void pasteMarkersFromClipboard()
 	{
-		if (!editable)
-		{
-			return;
-		}
-
 		String json;
 
 		try
@@ -1093,7 +1075,7 @@ class DefenderTileMarkerEditor extends JPanel
 		int selectedCount = selectedMarkerIds.size();
 		selectedCountLabel.setText(selectedCount == 0 ? "" : selectedCount + " selected");
 		copyMarkersButton.setEnabled(selectedCount > 0);
-		pasteMarkersButton.setEnabled(editable);
+		pasteMarkersButton.setEnabled(true);
 	}
 
 	private boolean canLeftClickDelete(DefenderMarker marker)
