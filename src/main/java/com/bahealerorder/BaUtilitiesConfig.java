@@ -464,18 +464,33 @@ public interface BaUtilitiesConfig extends Config
 		return new Color(0, 255, 0);
 	}
 
+	@Range(
+			min = -200,
+			max = 300
+	)
+	@ConfigItem(
+			keyName = "foodCountHeight",
+			name = "Food Count Height",
+			description = "Adjusts the vertical position of food-count text displayed on Penance Healers",
+			section = healerSection,
+			position = 17
+	)
+	default int foodCountHeight()
+	{
+		return 35;
+	}
+
 	@ConfigItem(
 			keyName = "healerTtkDisplay",
 			name = "Healer TTK",
 			description = "Shows when currently poisoned Penance Healers are expected to die",
 			section = healerSection,
-			position = 17
+			position = 18
 	)
 	default HealerTtkDisplayMode healerTtkDisplay()
 	{
 		return HealerTtkDisplayMode.OFF;
 	}
-
 	@ConfigItem(
 			keyName = "enableBaPartySync",
 			name = "Enable BA Party Sync",

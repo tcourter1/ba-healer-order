@@ -37,7 +37,6 @@ public class HealerOverlay extends Overlay
 	private static final int HEALER_LABEL_TEXT_SIZE = 16;
 	private static final int STACKED_LABEL_SPACING = 28;
 	private static final int FOOD_COUNT_TEXT_SIZE = 16;
-	private static final int FOOD_COUNT_Z_OFFSET = 35;
 
 	private HealerController controller;
 	private final BaUtilitiesConfig config;
@@ -268,7 +267,7 @@ public class HealerOverlay extends Overlay
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,
 				text,
-				npc.getLogicalHeight() + TEXT_Z_OFFSET
+				(npc.getLogicalHeight() / 2) + config.foodCountHeight()
 		);
 
 		if (textLocation == null)
@@ -290,7 +289,7 @@ public class HealerOverlay extends Overlay
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,
 				text,
-				(npc.getLogicalHeight() / 2) + FOOD_COUNT_Z_OFFSET
+				(npc.getLogicalHeight() / 2) + config.foodCountHeight()
 		);
 
 		if (textLocation == null)
@@ -307,7 +306,7 @@ public class HealerOverlay extends Overlay
 
 	private void renderHealerTtk(Graphics2D graphics, NPC npc, String text, int xOffset, boolean hasFoodCount)
 	{
-		int zOffset = (npc.getLogicalHeight() / 2) + FOOD_COUNT_Z_OFFSET;
+		int zOffset = (npc.getLogicalHeight() / 2) + config.foodCountHeight();
 
 		if (hasFoodCount)
 		{
