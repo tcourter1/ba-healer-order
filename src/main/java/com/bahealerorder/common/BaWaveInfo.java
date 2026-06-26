@@ -46,7 +46,9 @@ public final class BaWaveInfo
 
 		for (int i = labels.size() + 1; i <= total; i++)
 		{
-			labels.add("R" + (i - initial));
+			int respawnNumber = i - initial;
+			int spawnTimeSeconds = i * 6;
+			labels.add(spawnTimeSeconds + "s (R" + respawnNumber + ")");
 		}
 
 		return Collections.unmodifiableList(labels);

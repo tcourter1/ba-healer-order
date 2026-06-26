@@ -989,7 +989,7 @@ public class HealerController
 		}
 
 		String label = labelsForWave.get(healerOrder - 1);
-		return label.endsWith("s") ? label.substring(0, label.length() - 1) : label;
+		return label.replaceFirst("^(\\d+)s(.*)$", "$1$2");
 	}
 
 	private String getHealerMenuSuffix(int healerOrder)

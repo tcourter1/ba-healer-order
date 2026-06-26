@@ -29,14 +29,15 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 public class HealerOverlay extends Overlay
 {
 	private static final Color TEXT_SHADOW_COLOR = Color.BLACK;
-	private static final int TEXT_Z_OFFSET = 60;
+	private static final int HEALER_LABEL_Z_OFFSET = 95;
 	private static final float HULL_STROKE_WIDTH = 2.0f;
 	private static final float TILE_STROKE_WIDTH = 1.0f;
 	private static final int TILE_ALPHA = 50;
 	private static final int TTK_Y_OFFSET = 33;
-	private static final int HEALER_LABEL_TEXT_SIZE = 16;
+	private static final int HEALER_LABEL_TEXT_SIZE = 20;
 	private static final int STACKED_LABEL_SPACING = 28;
 	private static final int FOOD_COUNT_TEXT_SIZE = 16;
+	private static final int FOOD_COUNT_Z_OFFSET = 35;
 
 	private HealerController controller;
 	private final BaUtilitiesConfig config;
@@ -267,7 +268,7 @@ public class HealerOverlay extends Overlay
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,
 				text,
-				(npc.getLogicalHeight() / 2) + config.foodCountHeight()
+				npc.getLogicalHeight() + HEALER_LABEL_Z_OFFSET
 		);
 
 		if (textLocation == null)
@@ -306,7 +307,7 @@ public class HealerOverlay extends Overlay
 
 	private void renderHealerTtk(Graphics2D graphics, NPC npc, String text, int xOffset, boolean hasFoodCount)
 	{
-		int zOffset = (npc.getLogicalHeight() / 2) + config.foodCountHeight();
+		int zOffset = (npc.getLogicalHeight() / 2) + FOOD_COUNT_Z_OFFSET;
 
 		if (hasFoodCount)
 		{
