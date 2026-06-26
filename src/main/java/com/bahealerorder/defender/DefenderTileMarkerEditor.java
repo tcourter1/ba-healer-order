@@ -119,6 +119,7 @@ class DefenderTileMarkerEditor extends JPanel
 	private final JButton exportButton = new JButton("Export");
 	private final JButton saveButton = new JButton("Save Wave Strategy");
 	private final JLabel selectedCountLabel = new JLabel();
+	private final JLabel markerSelectionSummary = new JLabel();
 	private final JButton copyMarkersButton = new JButton();
 	private final JButton pasteMarkersButton = new JButton();
 	private final JComboBox<Integer> numberOfLogs = new JComboBox<>(new Integer[]{0, 1, 2, 3, 4});
@@ -128,6 +129,7 @@ class DefenderTileMarkerEditor extends JPanel
 	private final JScrollPane mapScrollPane;
 	private final JPanel markerSelectorPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 	private final JPanel markerDetailPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+	private final JPanel markerTextPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 
 	private List<DefenderMarker> markers = new ArrayList<>();
 	private final Set<String> selectedMarkerIds = new LinkedHashSet<>();
@@ -487,16 +489,22 @@ class DefenderTileMarkerEditor extends JPanel
 			loadSelectedMarker();
 		});
 		markerSelectorPanel.add(markerCombo);
+		markerSelectionSummary.setForeground(ColorScheme.TEXT_COLOR);
+		markerSelectionSummary.setFont(FontManager.getRunescapeSmallFont());
+		markerSelectionSummary.setHorizontalAlignment(SwingConstants.CENTER);
+		fixedSize(markerSelectionSummary, SIDE_WIDTH, CONTROL_HEIGHT);
+		markerSelectorPanel.add(markerSelectionSummary);
 		return markerSelectorPanel;
 	}
 
 	private JPanel createMarkerDetailPanel()
 	{
-		markerDetailPanel.add(createTextFieldRow("Marker Name", markerName));
-		markerDetailPanel.add(Box.createVerticalStrut(6));
+		markerTextPanel.add(createTextFieldRow("Marker Name", markerName));
+		markerTextPanel.add(Box.createVerticalStrut(6));
 
-		markerDetailPanel.add(createTextFieldRow("Tile Label", markerLabel));
-		markerDetailPanel.add(Box.createVerticalStrut(6));
+		markerTextPanel.add(createTextFieldRow("Tile Label", markerLabel));
+		markerTextPanel.add(Box.createVerticalStrut(6));
+		markerDetailPanel.add(markerTextPanel);
 
 		markerColorButton.addActionListener(event -> chooseMarkerColor());
 		updateMarkerColorButton();
@@ -520,10 +528,10 @@ class DefenderTileMarkerEditor extends JPanel
 		row.add(label("Markers", true), BorderLayout.CENTER);
 
 		deleteMarkerButton.setIcon(BaIcons.trashIcon());
-		deleteMarkerButton.setToolTipText("Delete selected marker");
+		deleteMarkerButton.setToolTipText("Delete selected markers");
 		SwingUtil.removeButtonDecorations(deleteMarkerButton);
 		fixedSize(deleteMarkerButton, TRASH_BUTTON_WIDTH, CONTROL_HEIGHT);
-		deleteMarkerButton.addActionListener(event -> deleteSelectedMarker());
+		deleteMarkerButton.addActionListener(event -> deleteSelectedMarkers());
 		row.add(deleteMarkerButton, BorderLayout.EAST);
 		return row;
 	}
@@ -720,6 +728,7 @@ class DefenderTileMarkerEditor extends JPanel
 	private void loadSelectedMarker()
 	{
 		DefenderMarker marker = getSelectedMarker();
+		DefenderMarker styleMarker = marker == null ? getFirstSelectedMarker() : marker;
 		boolean wasRefreshing = refreshing;
 		refreshing = true;
 
@@ -734,9 +743,13 @@ class DefenderTileMarkerEditor extends JPanel
 			{
 				markerName.setText(marker.getName() == null ? "" : marker.getName());
 				markerLabel.setText(marker.getLabel() == null ? "" : marker.getLabel());
-				markerColor = parseColor(marker.getColor(), DefenderTileMarkerMapPanel.DEFAULT_MARKER_COLOR);
-				markerOpacity.setValue(clampOpacity(marker.getOpacityPercentOrDefault()));
-				markerBorderWidth.setValue((double) clampBorderWidth(marker.getBorderWidthOrDefault()));
+			}
+
+			if (styleMarker != null)
+			{
+				markerColor = parseColor(styleMarker.getColor(), DefenderTileMarkerMapPanel.DEFAULT_MARKER_COLOR);
+				markerOpacity.setValue(clampOpacity(styleMarker.getOpacityPercentOrDefault()));
+				markerBorderWidth.setValue((double) clampBorderWidth(styleMarker.getBorderWidthOrDefault()));
 			}
 		}
 		finally
@@ -752,16 +765,24 @@ class DefenderTileMarkerEditor extends JPanel
 
 	private void updateMarkerDetailEnabled()
 	{
-		boolean hasMarker = getSelectedMarker() != null;
-		markerCombo.setEnabled(!markers.isEmpty());
-		markerName.setEditable(hasMarker);
-		markerName.setEnabled(hasMarker);
-		markerLabel.setEditable(hasMarker);
-		markerLabel.setEnabled(hasMarker);
-		markerColorButton.setEnabled(hasMarker);
-		markerOpacity.setEnabled(hasMarker);
-		markerBorderWidth.setEnabled(hasMarker);
-		deleteMarkerButton.setEnabled(hasMarker);
+		int selectedCount = selectedMarkerIds.size();
+		boolean hasSelection = selectedCount > 0;
+		boolean hasSingleSelection = selectedCount == 1;
+		boolean hasMultipleSelections = selectedCount > 1;
+
+		markerCombo.setVisible(!hasMultipleSelections);
+		markerCombo.setEnabled(!markers.isEmpty() && !hasMultipleSelections);
+		markerSelectionSummary.setText(hasMultipleSelections ? selectedCount + " markers selected" : "");
+		markerSelectionSummary.setVisible(hasMultipleSelections);
+		markerTextPanel.setVisible(!hasMultipleSelections);
+		markerName.setEditable(hasSingleSelection);
+		markerName.setEnabled(hasSingleSelection);
+		markerLabel.setEditable(hasSingleSelection);
+		markerLabel.setEnabled(hasSingleSelection);
+		markerColorButton.setEnabled(hasSelection);
+		markerOpacity.setEnabled(hasSelection);
+		markerBorderWidth.setEnabled(hasSelection);
+		deleteMarkerButton.setEnabled(hasSelection);
 	}
 
 	private void updateSelectedMarkerFromFields()
@@ -780,9 +801,6 @@ class DefenderTileMarkerEditor extends JPanel
 
 		marker.setName(markerName.getText().trim());
 		marker.setLabel(markerLabel.getText().trim());
-		marker.setColor(toHex(markerColor));
-		marker.setOpacityPercent(getMarkerOpacityPercent());
-		marker.setBorderWidth(getMarkerBorderWidth());
 		updateMarkerComboLabel(marker);
 		mapPanel.repaint();
 		notifyMarkersChanged();
@@ -790,7 +808,27 @@ class DefenderTileMarkerEditor extends JPanel
 
 	private void updateSelectedMarkerStyleFromFields()
 	{
-		updateSelectedMarkerFromFields();
+		if (refreshing)
+		{
+			return;
+		}
+
+		List<DefenderMarker> selectedMarkers = getSelectedMarkers();
+		if (!selectedMarkers.isEmpty())
+		{
+			String color = toHex(markerColor);
+			int opacity = getMarkerOpacityPercent();
+			float borderWidth = getMarkerBorderWidth();
+			for (DefenderMarker marker : selectedMarkers)
+			{
+				marker.setColor(color);
+				marker.setOpacityPercent(opacity);
+				marker.setBorderWidth(borderWidth);
+			}
+			mapPanel.repaint();
+			notifyMarkersChanged();
+		}
+
 		persistCurrentMarkerStyle();
 	}
 
@@ -849,6 +887,19 @@ class DefenderTileMarkerEditor extends JPanel
 		for (DefenderMarker marker : markers)
 		{
 			if (selectedMarkerId.equals(marker.getId()))
+			{
+				return marker;
+			}
+		}
+
+		return null;
+	}
+
+	private DefenderMarker getFirstSelectedMarker()
+	{
+		for (DefenderMarker marker : markers)
+		{
+			if (selectedMarkerIds.contains(marker.getId()))
 			{
 				return marker;
 			}
@@ -925,25 +976,31 @@ class DefenderTileMarkerEditor extends JPanel
 		);
 		markers.add(marker);
 		persistCurrentMarkerStyle();
+		selectedMarkerIds.clear();
 		selectedMarkerIds.add(marker.getId());
 		refreshMarkerControls();
 		mapPanel.repaint();
 		notifyMarkersChanged();
 	}
 
-	private void deleteSelectedMarker()
-	{
-		DefenderMarker marker = getSelectedMarker();
-		if (marker != null)
-		{
-			deleteMarker(marker);
-		}
-	}
-
 	private void deleteMarker(DefenderMarker marker)
 	{
 		markers.remove(marker);
 		selectedMarkerIds.remove(marker.getId());
+		refreshMarkerControls();
+		mapPanel.repaint();
+		notifyMarkersChanged();
+	}
+
+	private void deleteSelectedMarkers()
+	{
+		if (selectedMarkerIds.isEmpty())
+		{
+			return;
+		}
+
+		markers.removeIf(marker -> selectedMarkerIds.contains(marker.getId()));
+		selectedMarkerIds.clear();
 		refreshMarkerControls();
 		mapPanel.repaint();
 		notifyMarkersChanged();

@@ -28,6 +28,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 	static final Color QUEEN_TRAPDOOR_COLOR = new Color(120, 80, 45);
 	static final Color DISABLED_TILE_COLOR = Color.BLACK;
 	static final Color CANNON_HILL_COLOR = new Color(190, 160, 105);
+	private static final Color SELECTED_MARKER_BORDER_COLOR = new Color(0, 175, 255);
 
 	private static final MapBounds MAP_BOUNDS = new MapBounds(24, 50, 15, 42);
 	private static final int CANNON_HILL_X = 38;
@@ -229,15 +230,18 @@ class DefenderTileMarkerMapPanel extends JPanel
 			graphics.setColor(withOpacity(color, marker.getOpacityPercentOrDefault()));
 			graphics.fillRect(x, y, getTileSize(), getTileSize());
 			drawMarkerBorder(graphics, x, y, color, marker.getBorderWidthOrDefault());
+			drawMarkerText(graphics, marker, x, y);
 
 			if (selectedMarkerIds != null && selectedMarkerIds.contains(marker.getId()))
 			{
-				graphics.setColor(Color.WHITE);
-				graphics.drawRect(x, y, getTileSize() - 1, getTileSize() - 1);
+				drawMarkerBorder(graphics, x, y, SELECTED_MARKER_BORDER_COLOR, selectedMarkerBorderWidth());
 			}
-
-			drawMarkerText(graphics, marker, x, y);
 		}
+	}
+
+	private float selectedMarkerBorderWidth()
+	{
+		return Math.max(3f, Math.min(5f, getTileSize() / 8f));
 	}
 
 	private void drawMarkerBorder(Graphics graphics, int x, int y, Color color, float borderWidth)
