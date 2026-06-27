@@ -310,6 +310,18 @@ public interface BaUtilitiesConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "showDefenderTileMarkersForAllRoles",
+			name = "Show Tile Markers for All Roles",
+			description = "Shows defender strategy tile markers for the current wave while playing any BA role",
+			section = defenderSection,
+			position = 2
+	)
+	default boolean showDefenderTileMarkersForAllRoles()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 			keyName = "highlightStyle",
 			name = "Highlight Style",
 			description = "Choose how tracked Penance Healers are highlighted",

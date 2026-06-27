@@ -193,9 +193,18 @@ public class DefenderController
 
 	public boolean shouldShowStrategyTiles()
 	{
-		return isDefenderRole()
-				&& waveLifecycleService.isWaveActive()
-				&& (getCurrentWaveStrategy() != null || !getHighlightedGroundItems().isEmpty());
+		if (!waveLifecycleService.isWaveActive())
+		{
+			return false;
+		}
+
+		DefenderWaveStrategy strategy = getCurrentWaveStrategy();
+		if (isDefenderRole())
+		{
+			return strategy != null || !getHighlightedGroundItems().isEmpty();
+		}
+
+		return config.showDefenderTileMarkersForAllRoles() && strategy != null;
 	}
 
 	public DefenderWaveStrategy getCurrentWaveStrategy()
