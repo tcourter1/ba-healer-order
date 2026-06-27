@@ -213,6 +213,11 @@ BA Utilities does not automate gameplay. It provides visual tracking, menu organ
 <details>
 <summary>Show version history</summary>
 
+### 2.1.1
+* Re-added food count height config
+* Added time codes to reserve Healer labeling
+* Fixed horizontal alignment over Attacker caves
+
 ### 2.1.0
 * Added Wave Overview and Recent Runs in side panel
 * Reworked TTK calculations to use precise food tracking when possible, but switch to HP-ratio-estimate mode when necessary

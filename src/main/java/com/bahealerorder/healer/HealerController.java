@@ -775,6 +775,11 @@ public class HealerController
 			return label + "s";
 		}
 
+		if (label.matches("\\d+\\s+\\(R\\d+\\)"))
+		{
+			return label.replaceFirst("^(\\d+)(\\s+\\(R\\d+\\))$", "$1s$2");
+		}
+
 		return label;
 	}
 
@@ -978,15 +983,49 @@ public class HealerController
 			return String.valueOf(healerOrder);
 		}
 
-		List<String> labelsForWave = BaWaveInfo.getLabels(getCurrentWave(), BaOverviewNpcType.HEALER);
+		int wave = getCurrentWave();
+		List<String> labelsForWave = BaWaveInfo.getLabels(wave, BaOverviewNpcType.HEALER);
 
 		if (healerOrder <= 0 || healerOrder > labelsForWave.size())
 		{
 			return String.valueOf(healerOrder);
 		}
 
+		int initialHealerCount = BaWaveInfo.getInitialCount(wave, BaOverviewNpcType.HEALER);
+
+		if (healerOrder > initialHealerCount)
+		{
+			return getReserveHealerLabel(wave, healerOrder, false);
+		}
+
 		String label = labelsForWave.get(healerOrder - 1);
-		return label.endsWith("s") ? label.substring(0, label.length() - 1) : label;
+		return label.replaceFirst("^(\\d+)s(.*)$", "$1$2");
+	}
+
+	private String getReserveHealerLabel(int wave, int healerOrder, boolean includeSecondsSuffix)
+	{
+		int initialHealerCount = BaWaveInfo.getInitialCount(wave, BaOverviewNpcType.HEALER);
+		int reserveNumber = healerOrder - initialHealerCount;
+
+		if (reserveNumber <= 0)
+		{
+			return String.valueOf(healerOrder);
+		}
+
+		int spawnTick = sharedState.getSpawnTick(healerOrder);
+
+		if (spawnTick < 0)
+		{
+			return "R" + reserveNumber;
+		}
+
+		String secondsSuffix = includeSecondsSuffix ? "s" : "";
+		return formatWaveTickAsNearestWholeSeconds(spawnTick) + secondsSuffix + " (R" + reserveNumber + ")";
+	}
+
+	private int formatWaveTickAsNearestWholeSeconds(int waveTick)
+	{
+		return Math.round(Math.max(0, waveTick) * 0.6f);
 	}
 
 	private String getHealerMenuSuffix(int healerOrder)

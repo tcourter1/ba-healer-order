@@ -29,7 +29,7 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 public class HealerOverlay extends Overlay
 {
 	private static final Color TEXT_SHADOW_COLOR = Color.BLACK;
-	private static final int TEXT_Z_OFFSET = 60;
+	private static final int HEALER_LABEL_Z_OFFSET = 95;
 	private static final float HULL_STROKE_WIDTH = 2.0f;
 	private static final float TILE_STROKE_WIDTH = 1.0f;
 	private static final int TILE_ALPHA = 50;
@@ -268,7 +268,7 @@ public class HealerOverlay extends Overlay
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,
 				text,
-				npc.getLogicalHeight() + TEXT_Z_OFFSET
+				npc.getLogicalHeight() + HEALER_LABEL_Z_OFFSET
 		);
 
 		if (textLocation == null)
@@ -290,7 +290,7 @@ public class HealerOverlay extends Overlay
 		Point textLocation = npc.getCanvasTextLocation(
 				graphics,
 				text,
-				(npc.getLogicalHeight() / 2) + FOOD_COUNT_Z_OFFSET
+				(npc.getLogicalHeight() / 2) + config.foodCountHeight()
 		);
 
 		if (textLocation == null)

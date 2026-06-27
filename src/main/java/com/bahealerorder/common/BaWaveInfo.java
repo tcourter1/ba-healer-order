@@ -31,6 +31,11 @@ public final class BaWaveInfo
 		return getValue(wave, getTotalCounts(type));
 	}
 
+	public static int getInitialCount(int wave, BaOverviewNpcType type)
+	{
+		return getValue(wave, getInitialCounts(type));
+	}
+
 	public static List<String> getLabels(int wave, BaOverviewNpcType type)
 	{
 		if (!isValidWave(wave)) return Collections.emptyList();
@@ -46,7 +51,16 @@ public final class BaWaveInfo
 
 		for (int i = labels.size() + 1; i <= total; i++)
 		{
-			labels.add("R" + (i - initial));
+			int reserveNumber = i - initial;
+
+			if (type == BaOverviewNpcType.HEALER)
+			{
+				labels.add("(R" + reserveNumber + ")");
+				continue;
+			}
+
+			int spawnTimeSeconds = i * 6;
+			labels.add(spawnTimeSeconds + "s (R" + reserveNumber + ")");
 		}
 
 		return Collections.unmodifiableList(labels);
