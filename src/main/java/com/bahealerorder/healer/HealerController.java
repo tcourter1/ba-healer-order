@@ -1015,16 +1015,15 @@ public class HealerController
 			return String.valueOf(healerOrder);
 		}
 
-		String reserveLabel = "(R" + reserveNumber + ")";
 		int spawnTick = sharedState.getSpawnTick(healerOrder);
 
 		if (spawnTick < 0)
 		{
-			return reserveLabel;
+			return "R" + reserveNumber;
 		}
 
 		String secondsSuffix = includeSecondsSuffix ? "s" : "";
-		return formatWaveTickAsNearestWholeSeconds(spawnTick) + secondsSuffix + " " + reserveLabel;
+		return formatWaveTickAsNearestWholeSeconds(spawnTick) + secondsSuffix + " (R" + reserveNumber + ")";
 	}
 
 	private int formatWaveTickAsNearestWholeSeconds(int waveTick)
