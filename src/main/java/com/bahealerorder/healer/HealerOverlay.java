@@ -34,7 +34,7 @@ public class HealerOverlay extends Overlay
 	private static final float TILE_STROKE_WIDTH = 1.0f;
 	private static final int TILE_ALPHA = 50;
 	private static final int TTK_Y_OFFSET = 33;
-	private static final int HEALER_LABEL_TEXT_SIZE = 20;
+	private static final int HEALER_LABEL_TEXT_SIZE = 16;
 	private static final int STACKED_LABEL_SPACING = 28;
 	private static final int FOOD_COUNT_TEXT_SIZE = 16;
 	private static final int FOOD_COUNT_Z_OFFSET = 35;

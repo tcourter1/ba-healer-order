@@ -201,11 +201,26 @@ public class WaveOverviewPanel extends JPanel
 		List<String> labels = BaWaveInfo.getLabels(snapshot.getWave(), type);
 		for (int i = 0; i < labels.size(); i++)
 		{
-			panel.add(createWaveOverviewEntry(snapshot, type, i + 1, labels.get(i), columnCount));
+			panel.add(createWaveOverviewEntry(snapshot, type, i + 1, formatWaveOverviewLabel(labels.get(i)), columnCount));
 			panel.add(Box.createVerticalStrut(OVERVIEW_CELL_GAP));
 		}
 
 		return panel;
+	}
+
+	private String formatWaveOverviewLabel(String label)
+	{
+		if (label == null)
+		{
+			return "";
+		}
+
+		if (label.matches("^\\(R\\d+\\)$"))
+		{
+			return label.substring(1, label.length() - 1);
+		}
+
+		return label.replaceFirst("\\s*\\(R\\d+\\)$", "");
 	}
 
 	private JPanel createWaveOverviewEntry(BaWaveOverviewSnapshot snapshot, BaOverviewNpcType type, int order, String label, int columnCount)
