@@ -110,7 +110,7 @@ public final class DefenderStrategyLibrary
 				marker("marker:6:35:35:3", 7509, 35, 43, 0, "Mainstack", "4 good", "#50aaff", null, null),
 				marker("marker:6:29:38:4", 7509, 29, 46, 0, "West Relure Food", "1 bad", "#50aaff", null, null)
 		);
-		addStrategy(waveStrategies, "user:defender:wave:6-no-log", "Wall Split", 6, "45.0 - Move 2E of trap, soft crash\n48.0 - Move to 1E of trap, drop food\n54.0 - Step 1 south and multi", 1,
+		addStrategy(waveStrategies, "user:defender:wave:6-no-log", "Wall Split", 6, "44.4 - Move 2E of trap, soft crash\n48.0 - Move to 1E of trap, drop food\n54.0 - Step 1 south and multi", 1,
 				marker("marker:6:39:31:0", 7509, 39, 39, 0, "Trail", "", "#77e2ff", 10, 0.5f),
 				marker("marker:6:35:35:1", 7509, 35, 43, 0, "Mainstack", "", "#77e2ff", 10, 0.5f),
 				marker("marker:6:45:27:2", 7509, 45, 35, 0, "Trap", "", "#77e2ff", 10, 0.5f),
