@@ -1,9 +1,10 @@
 package com.bahealerorder.healer.codes;
 
+import com.bahealerorder.common.strategies.WaveRunPreset;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RunPreset
+public class RunPreset implements WaveRunPreset
 {
 	private String id;
 	private String name;
@@ -65,6 +66,18 @@ public class RunPreset
 	public void setWaveCodeIds(Map<Integer, String> waveCodeIds)
 	{
 		this.waveCodes = waveCodeIds == null ? new HashMap<>() : new HashMap<>(waveCodeIds);
+	}
+
+	@Override
+	public Map<Integer, String> getWaveStrategyIds()
+	{
+		return getWaveCodeIds();
+	}
+
+	@Override
+	public void setWaveStrategyIds(Map<Integer, String> waveStrategyIds)
+	{
+		setWaveCodeIds(waveStrategyIds);
 	}
 
 	public String getWaveCodeId(int wave)

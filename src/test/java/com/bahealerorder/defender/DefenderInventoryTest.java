@@ -16,7 +16,5 @@ public class DefenderInventoryTest
 		assertTrue(DefenderInventory.isImcandoHammer(ItemID.IMCANDO_HAMMER, null));
 		assertTrue(DefenderInventory.isImcandoHammer(ItemID.IMCANDO_HAMMER_OFFHAND, null));
 		assertFalse(DefenderInventory.isHammer(ItemID.LOGS, "Logs"));
-		assertTrue(DefenderInventory.isLogs(ItemID.LOGS, null));
-		assertTrue(DefenderInventory.isLogs(12345, "Logs"));
 	}
 }

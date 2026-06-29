@@ -13,6 +13,7 @@ import com.bahealerorder.common.BaWaveOverviewService;
 import com.bahealerorder.common.BaWaveOverviewSyncMessage;
 import com.bahealerorder.defender.DefenderController;
 import com.bahealerorder.healer.HealerController;
+import com.bahealerorder.tilemarkers.GeneralTileMarkerController;
 import com.google.inject.Provides;
 import javax.inject.Inject;
 import net.runelite.api.ChatMessageType;
@@ -64,6 +65,9 @@ public class BaHealerOrderPlugin extends Plugin
 	private DefenderController defenderController;
 
 	@Inject
+	private GeneralTileMarkerController generalTileMarkerController;
+
+	@Inject
 	private BaRoleDetector roleDetector;
 
 	@Inject
@@ -84,6 +88,7 @@ public class BaHealerOrderPlugin extends Plugin
 		partySyncService.startUp();
 		attackerController.startUp();
 		defenderController.startUp();
+		generalTileMarkerController.startUp();
 		healerController.startUp();
 	}
 
@@ -91,6 +96,7 @@ public class BaHealerOrderPlugin extends Plugin
 	protected void shutDown()
 	{
 		healerController.shutDown();
+		generalTileMarkerController.shutDown();
 		defenderController.shutDown();
 		attackerController.shutDown();
 		partySyncService.shutDown();

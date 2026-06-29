@@ -1,24 +1,27 @@
-package com.bahealerorder.defender.strategies;
+package com.bahealerorder.tilemarkers;
 
+import com.bahealerorder.defender.TileMarkerWaveMap;
+import com.bahealerorder.defender.strategies.DefenderMapLayout;
+import com.bahealerorder.defender.strategies.DefenderMarker;
 import java.util.ArrayList;
 import java.util.List;
 
-class DefenderMarkerClipboard
+class TileMarkerClipboard
 {
 	private List<MarkerTemplate> markers = new ArrayList<>();
 
-	public DefenderMarkerClipboard()
+	public TileMarkerClipboard()
 	{
 	}
 
-	private DefenderMarkerClipboard(List<MarkerTemplate> markers)
+	private TileMarkerClipboard(List<MarkerTemplate> markers)
 	{
 		this.markers = markers == null ? new ArrayList<>() : new ArrayList<>(markers);
 	}
 
-	static DefenderMarkerClipboard fromMarkers(int wave, List<DefenderMarker> markers)
+	static TileMarkerClipboard fromMarkers(TileMarkerWaveMap waveMap, List<DefenderMarker> markers)
 	{
-		DefenderMapLayout layout = DefenderMapLayout.forWave(wave);
+		DefenderMapLayout layout = waveMap.getLayout();
 		List<MarkerTemplate> templates = new ArrayList<>();
 
 		if (markers != null)
@@ -42,25 +45,25 @@ class DefenderMarkerClipboard
 			}
 		}
 
-		return new DefenderMarkerClipboard(templates);
+		return new TileMarkerClipboard(templates);
 	}
 
-	List<DefenderMarker> toMarkers(int wave)
+	List<DefenderMarker> toMarkers(TileMarkerWaveMap waveMap)
 	{
-		DefenderMapLayout layout = DefenderMapLayout.forWave(wave);
-		List<DefenderMarker> strategyMarkers = new ArrayList<>();
-		List<MarkerTemplate> markerTemplates = markers == null ? new ArrayList<>() : markers;
+		DefenderMapLayout layout = waveMap.getLayout();
+		List<DefenderMarker> copiedMarkers = new ArrayList<>();
+		List<MarkerTemplate> templates = markers == null ? new ArrayList<>() : markers;
 
-		for (int i = 0; i < markerTemplates.size(); i++)
+		for (int i = 0; i < templates.size(); i++)
 		{
-			MarkerTemplate marker = markerTemplates.get(i);
+			MarkerTemplate marker = templates.get(i);
 			if (marker == null)
 			{
 				continue;
 			}
 
-			strategyMarkers.add(new DefenderMarker(
-					"clipboard:" + wave + ":" + marker.mapX + ":" + marker.mapY + ":" + i,
+			copiedMarkers.add(new DefenderMarker(
+					"clipboard:" + waveMap.name() + ":" + marker.mapX + ":" + marker.mapY + ":" + i,
 					layout.toTile(marker.mapX, marker.mapY),
 					marker.name,
 					marker.label,
@@ -70,7 +73,7 @@ class DefenderMarkerClipboard
 			));
 		}
 
-		return strategyMarkers;
+		return copiedMarkers;
 	}
 
 	private static class MarkerTemplate

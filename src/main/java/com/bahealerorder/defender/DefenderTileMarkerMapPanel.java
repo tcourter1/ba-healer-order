@@ -12,7 +12,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Set;
-import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -23,90 +22,48 @@ class DefenderTileMarkerMapPanel extends JPanel
 	static final Color TRAP_COLOR = new Color(190, 70, 70);
 	static final Color LOGS_COLOR = new Color(210, 180, 80);
 	static final Color HAMMER_COLOR = new Color(145, 105, 55);
+	static final Color RANGER_CAVE_COLOR = new Color(0xFF, 0x50, 0x78);
+	static final Color FIGHTER_CAVE_COLOR = new Color(0x79, 0x18, 0x2F);
 	static final Color RUNNER_CAVE_COLOR = new Color(125, 125, 220);
 	static final Color HEALER_CAVE_COLOR = new Color(75, 175, 125);
 	static final Color QUEEN_TRAPDOOR_COLOR = new Color(120, 80, 45);
 	static final Color DISABLED_TILE_COLOR = Color.BLACK;
 	static final Color CANNON_HILL_COLOR = new Color(190, 160, 105);
+	static final Color CANNON_COLOR = new Color(95, 95, 95);
+	static final Color DISPENSER_COLOR = new Color(180, 180, 180);
+	static final Color HORN_COLOR = new Color(205, 155, 60);
+	static final Color START_TILE_COLOR = new Color(115, 190, 205);
 	private static final Color SELECTED_MARKER_BORDER_COLOR = new Color(0, 175, 255);
 
-	private static final MapBounds MAP_BOUNDS = new MapBounds(24, 50, 15, 42);
-	private static final int CANNON_HILL_X = 38;
+	private static final MapBounds DEFENDER_MAP_BOUNDS = new MapBounds(24, 50, 15, 42);
+	private static final MapBounds FULL_ARENA_MAP_BOUNDS = new MapBounds(8, 56, 5, 42);
+	private static final int WEST_CANNON_X = 21;
+	private static final int WEST_CANNON_Y = 26;
+	private static final int EAST_CANNON_X = 40;
+	private static final int EAST_CANNON_Y = 26;
+	private static final int WEST_CANNON_HILL_X = 19;
+	private static final int EAST_CANNON_HILL_X = 38;
 	private static final int CANNON_HILL_Y = 24;
-	// Decoded from BaSim BarbarianAssaultMap collision flags for this east-side editor slice.
-	private static final String[] MAP_MASK_WAVES_1_TO_9 = {
-			"##########################",
-			"#####...##################",
-			"..............############",
-			"....................######",
-			".....................#####",
-			"......................####",
-			"......................####",
-			"......................####",
-			".......................###",
-			"........................##",
-			"........................##",
-			".......................###",
-			".......................###",
-			".......................###",
-			"..............#...#....###",
-			"................##......##",
-			".........................#",
-			"..............#...#......#",
-			".........................#",
-			".........................#",
-			".........................#",
-			".........................#",
-			".........................#",
-			".........................#",
-			".........................#",
-			".........................#",
-			"........................##",
-	};
-	private static final String[] MAP_MASK_WAVE_10 = {
-			"##########################",
-			"#####...##################",
-			"..............############",
-			"....................######",
-			".....................#####",
-			"......................####",
-			".....................#.###",
-			".......................###",
-			".....................##.##",
-			".....................##..#",
-			".......................#.#",
-			".....................#....",
-			"........................##",
-			"........................##",
-			"..........................",
-			"..........................",
-			"..........................",
-			".........................#",
-			"..........................",
-			"..........................",
-			"..........................",
-			"......................#...",
-			".........................#",
-			"......................##..",
-			"...................#..##..",
-			"....................#....#",
-			"........................##",
-	};
+	private static final int HORN_OF_GLORY_X = 52;
+	private static final int HORN_OF_GLORY_Y = 10;
 
-	private final IntSupplier waveSupplier;
+	private final Supplier<DefenderMapLayout> layoutSupplier;
+	private final Supplier<TileMarkerMapMode> mapModeSupplier;
 	private final Supplier<List<DefenderMarker>> markersSupplier;
 	private final Supplier<Set<String>> selectedMarkerIdsSupplier;
-	private final IntSupplier tileSizeSupplier;
+	private final java.util.function.IntSupplier tileSizeSupplier;
 	private final TileClickHandler tileClicked;
 
 	DefenderTileMarkerMapPanel(
-			IntSupplier waveSupplier,
+			Supplier<DefenderMapLayout> layoutSupplier,
+			Supplier<TileMarkerMapMode> mapModeSupplier,
 			Supplier<List<DefenderMarker>> markersSupplier,
 			Supplier<Set<String>> selectedMarkerIdsSupplier,
-			IntSupplier tileSizeSupplier,
+			java.util.function.IntSupplier tileSizeSupplier,
 			TileClickHandler tileClicked)
 	{
-		this.waveSupplier = waveSupplier;
+		this.layoutSupplier = layoutSupplier;
+		this.mapModeSupplier = mapModeSupplier;
 		this.markersSupplier = markersSupplier;
 		this.selectedMarkerIdsSupplier = selectedMarkerIdsSupplier;
 		this.tileSizeSupplier = tileSizeSupplier;
@@ -126,7 +83,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 				int x = toMapX(event.getX());
 				int y = toMapY(event.getY());
 
-				if (MAP_BOUNDS.contains(x, y))
+				if (mapBounds().contains(x, y))
 				{
 					tileClicked.accept(x, y);
 				}
@@ -136,12 +93,12 @@ class DefenderTileMarkerMapPanel extends JPanel
 
 	int getMapWidthPixels()
 	{
-		return MAP_BOUNDS.width() * getTileSize();
+		return mapBounds().width() * getTileSize();
 	}
 
 	int getMapHeightPixels()
 	{
-		return MAP_BOUNDS.height() * getTileSize();
+		return mapBounds().height() * getTileSize();
 	}
 
 	int getTileSize()
@@ -152,38 +109,28 @@ class DefenderTileMarkerMapPanel extends JPanel
 	void scrollToTrap()
 	{
 		int tileSize = getTileSize();
-		int x = Math.max(0, toScreenX(45) - (tileSize * 4));
-		int y = Math.max(0, toScreenY(26) - (tileSize * 4));
+		int centerX = mapMode().isFullArena() ? 32 : 45;
+		int centerY = mapMode().isFullArena() ? 24 : 26;
+		int x = Math.max(0, toScreenX(centerX) - (tileSize * 4));
+		int y = Math.max(0, toScreenY(centerY) - (tileSize * 4));
 		scrollRectToVisible(new Rectangle(x, y, tileSize * 9, tileSize * 9));
 	}
 
 	boolean isSelectableMapTile(DefenderMapLayout layout, int mapX, int mapY)
 	{
-		if (!MAP_BOUNDS.contains(mapX, mapY))
+		if (!mapBounds().contains(mapX, mapY))
 		{
 			return false;
 		}
 
-		if (isCannonHillTile(mapX, mapY))
-		{
-			return true;
-		}
-
-		String[] rows = layout == DefenderMapLayout.WAVE_10 ? MAP_MASK_WAVE_10 : MAP_MASK_WAVES_1_TO_9;
-		int row = MAP_BOUNDS.maxY - 1 - mapY;
-		int column = mapX - MAP_BOUNDS.minX;
-		return row >= 0
-				&& row < rows.length
-				&& column >= 0
-				&& column < rows[row].length()
-				&& rows[row].charAt(column) == '.';
+		return BaArenaMapTopology.isUsableTile(layout, mapX, mapY);
 	}
 
 	@Override
 	protected void paintComponent(Graphics graphics)
 	{
 		super.paintComponent(graphics);
-		DefenderMapLayout layout = DefenderMapLayout.forWave(waveSupplier.getAsInt());
+		DefenderMapLayout layout = currentLayout();
 		int tileSize = getTileSize();
 		int width = getMapWidthPixels();
 		int height = getMapHeightPixels();
@@ -199,17 +146,19 @@ class DefenderTileMarkerMapPanel extends JPanel
 
 	private void drawGrid(Graphics graphics, int tileSize, int width, int height)
 	{
-		for (int x = MAP_BOUNDS.minX; x <= MAP_BOUNDS.maxX; x++)
+		MapBounds bounds = mapBounds();
+
+		for (int x = bounds.minX; x <= bounds.maxX; x++)
 		{
 			graphics.setColor(x % 5 == 0 ? new Color(82, 82, 82) : new Color(58, 58, 58));
-			int screenX = (x - MAP_BOUNDS.minX) * tileSize;
+			int screenX = (x - bounds.minX) * tileSize;
 			graphics.drawLine(screenX, 0, screenX, height);
 		}
 
-		for (int y = MAP_BOUNDS.minY; y <= MAP_BOUNDS.maxY; y++)
+		for (int y = bounds.minY; y <= bounds.maxY; y++)
 		{
 			graphics.setColor(y % 5 == 0 ? new Color(82, 82, 82) : new Color(58, 58, 58));
-			int screenY = (MAP_BOUNDS.maxY - y) * tileSize;
+			int screenY = (bounds.maxY - y) * tileSize;
 			graphics.drawLine(0, screenY, width, screenY);
 		}
 	}
@@ -219,13 +168,15 @@ class DefenderTileMarkerMapPanel extends JPanel
 		Set<String> selectedMarkerIds = selectedMarkerIdsSupplier.get();
 		for (DefenderMarker marker : markersSupplier.get())
 		{
-			if (!layout.contains(marker.getTile()) || !MAP_BOUNDS.contains(layout.toMapX(marker.getTile()), layout.toMapY(marker.getTile())))
+			int mapX = layout.toMapX(marker.getTile());
+			int mapY = layout.toMapY(marker.getTile());
+			if (!layout.contains(marker.getTile()) || !mapBounds().contains(mapX, mapY) || !isSelectableMapTile(layout, mapX, mapY))
 			{
 				continue;
 			}
 
-			int x = toScreenX(layout.toMapX(marker.getTile()));
-			int y = toScreenY(layout.toMapY(marker.getTile()));
+			int x = toScreenX(mapX);
+			int y = toScreenY(mapY);
 			Color color = parseColor(marker.getColor(), DEFAULT_MARKER_COLOR);
 			graphics.setColor(withOpacity(color, marker.getOpacityPercentOrDefault()));
 			graphics.fillRect(x, y, getTileSize(), getTileSize());
@@ -263,6 +214,17 @@ class DefenderTileMarkerMapPanel extends JPanel
 
 	private void drawLandmarks(Graphics graphics, DefenderMapLayout layout)
 	{
+		if (mapMode().isFullArena())
+		{
+			drawFullArenaLandmarks(graphics, layout);
+			return;
+		}
+
+		drawDefenderLandmarks(graphics, layout);
+	}
+
+	private void drawDefenderLandmarks(Graphics graphics, DefenderMapLayout layout)
+	{
 		if (layout == DefenderMapLayout.WAVE_10)
 		{
 			drawQueenTrapdoor(graphics);
@@ -281,6 +243,92 @@ class DefenderTileMarkerMapPanel extends JPanel
 		drawLandmark(graphics, 32, 34, HAMMER_COLOR);
 		drawLandmark(graphics, 36, 39, RUNNER_CAVE_COLOR);
 		drawLandmark(graphics, 42, 37, HEALER_CAVE_COLOR);
+		drawLandmark(graphics, EAST_CANNON_X, EAST_CANNON_Y, CANNON_COLOR);
+	}
+
+	private void drawFullArenaLandmarks(Graphics graphics, DefenderMapLayout layout)
+	{
+		drawTrapLandmarks(graphics);
+		drawResourceLandmarks(graphics, layout);
+		drawCaveLandmarks(graphics, layout);
+		drawStartLandmarks(graphics, layout);
+		drawRoleDispensers(graphics);
+		drawLandmark(graphics, HORN_OF_GLORY_X, HORN_OF_GLORY_Y, HORN_COLOR);
+		drawLandmark(graphics, WEST_CANNON_X, WEST_CANNON_Y, CANNON_COLOR);
+
+		if (layout == DefenderMapLayout.WAVE_10)
+		{
+			drawQueenTrapdoor(graphics);
+			return;
+		}
+
+		drawLandmark(graphics, EAST_CANNON_X, EAST_CANNON_Y, CANNON_COLOR);
+	}
+
+	private void drawTrapLandmarks(Graphics graphics)
+	{
+		drawLandmark(graphics, 15, 25, TRAP_COLOR);
+		drawLandmark(graphics, 45, 26, TRAP_COLOR);
+	}
+
+	private void drawResourceLandmarks(Graphics graphics, DefenderMapLayout layout)
+	{
+		if (layout == DefenderMapLayout.WAVE_10)
+		{
+			drawLandmark(graphics, 29, 39, LOGS_COLOR);
+			drawLandmark(graphics, 30, 38, LOGS_COLOR);
+		}
+		else
+		{
+			drawLandmark(graphics, 28, 39, LOGS_COLOR);
+			drawLandmark(graphics, 29, 38, LOGS_COLOR);
+		}
+
+		drawLandmark(graphics, 32, 34, HAMMER_COLOR);
+	}
+
+	private void drawCaveLandmarks(Graphics graphics, DefenderMapLayout layout)
+	{
+		drawLandmark(graphics, 18, layout == DefenderMapLayout.WAVE_10 ? 38 : 37, RANGER_CAVE_COLOR);
+		drawLandmark(graphics, 24, 39, FIGHTER_CAVE_COLOR);
+
+		if (layout == DefenderMapLayout.WAVE_10)
+		{
+			drawLandmark(graphics, 42, 38, RUNNER_CAVE_COLOR);
+			drawLandmark(graphics, 36, 39, HEALER_CAVE_COLOR);
+		}
+		else
+		{
+			drawLandmark(graphics, 36, 39, RUNNER_CAVE_COLOR);
+			drawLandmark(graphics, 42, 37, HEALER_CAVE_COLOR);
+		}
+	}
+
+	private void drawStartLandmarks(Graphics graphics, DefenderMapLayout layout)
+	{
+		if (layout == DefenderMapLayout.WAVE_10)
+		{
+			drawLandmark(graphics, 28, 8, START_TILE_COLOR);
+			drawLandmark(graphics, 32, 8, START_TILE_COLOR);
+			drawLandmark(graphics, 30, 10, START_TILE_COLOR);
+			drawLandmark(graphics, 29, 9, START_TILE_COLOR);
+			drawLandmark(graphics, 31, 9, START_TILE_COLOR);
+			return;
+		}
+
+		drawLandmark(graphics, 33, 8, START_TILE_COLOR);
+		drawLandmark(graphics, 29, 8, START_TILE_COLOR);
+		drawLandmark(graphics, 31, 10, START_TILE_COLOR);
+		drawLandmark(graphics, 30, 9, START_TILE_COLOR);
+		drawLandmark(graphics, 32, 9, START_TILE_COLOR);
+	}
+
+	private void drawRoleDispensers(Graphics graphics)
+	{
+		drawLandmark(graphics, 33, 6, DISPENSER_COLOR);
+		drawLandmark(graphics, 34, 6, DISPENSER_COLOR);
+		drawLandmark(graphics, 35, 6, DISPENSER_COLOR);
+		drawLandmark(graphics, 36, 6, DISPENSER_COLOR);
 	}
 
 	private void drawQueenTrapdoor(Graphics graphics)
@@ -291,10 +339,11 @@ class DefenderTileMarkerMapPanel extends JPanel
 	private void drawDisabledTiles(Graphics graphics, DefenderMapLayout layout)
 	{
 		int tileSize = getTileSize();
+		MapBounds bounds = mapBounds();
 
-		for (int x = MAP_BOUNDS.minX; x < MAP_BOUNDS.maxX; x++)
+		for (int x = bounds.minX; x < bounds.maxX; x++)
 		{
-			for (int y = MAP_BOUNDS.minY; y < MAP_BOUNDS.maxY; y++)
+			for (int y = bounds.minY; y < bounds.maxY; y++)
 			{
 				if (isSelectableMapTile(layout, x, y))
 				{
@@ -309,22 +358,30 @@ class DefenderTileMarkerMapPanel extends JPanel
 
 	private void drawCannonHills(Graphics graphics, DefenderMapLayout layout)
 	{
-		if (layout == DefenderMapLayout.WAVE_10)
+		if (mapMode().isFullArena())
 		{
+			drawCannonHill(graphics, WEST_CANNON_HILL_X);
+			if (layout != DefenderMapLayout.WAVE_10)
+			{
+				drawCannonHill(graphics, EAST_CANNON_HILL_X);
+			}
 			return;
 		}
 
-		drawCannonHill(graphics);
+		if (layout != DefenderMapLayout.WAVE_10)
+		{
+			drawCannonHill(graphics, EAST_CANNON_HILL_X);
+		}
 	}
 
-	private void drawCannonHill(Graphics graphics)
+	private void drawCannonHill(Graphics graphics, int hillX)
 	{
 		drawTileGroupOutline(
 				graphics,
 				CANNON_HILL_COLOR,
-				this::isCannonHillShapeTile,
-				CANNON_HILL_X,
-				CANNON_HILL_X + 5,
+				(mapX, mapY) -> isCannonHillShapeTile(hillX, mapX, mapY),
+				hillX,
+				hillX + 5,
 				CANNON_HILL_Y - 2,
 				CANNON_HILL_Y + 4
 		);
@@ -381,18 +438,12 @@ class DefenderTileMarkerMapPanel extends JPanel
 
 	private void drawLandmark(Graphics graphics, int mapX, int mapY, Color color)
 	{
-		if (!drawFilledTile(graphics, mapX, mapY, color))
-		{
-			return;
-		}
-
-		graphics.setColor(Color.WHITE);
-		graphics.drawRect(toScreenX(mapX), toScreenY(mapY), getTileSize() - 1, getTileSize() - 1);
+		drawFilledTile(graphics, mapX, mapY, color);
 	}
 
 	private boolean drawFilledTile(Graphics graphics, int mapX, int mapY, Color color)
 	{
-		if (!MAP_BOUNDS.contains(mapX, mapY))
+		if (!mapBounds().contains(mapX, mapY))
 		{
 			return false;
 		}
@@ -425,36 +476,47 @@ class DefenderTileMarkerMapPanel extends JPanel
 
 	private int toScreenX(int mapX)
 	{
-		return (mapX - MAP_BOUNDS.minX) * getTileSize();
+		return (mapX - mapBounds().minX) * getTileSize();
 	}
 
 	private int toScreenY(int mapY)
 	{
-		return (MAP_BOUNDS.maxY - mapY - 1) * getTileSize();
+		return (mapBounds().maxY - mapY - 1) * getTileSize();
 	}
 
 	private int toMapX(int screenX)
 	{
 		int clampedX = Math.max(0, Math.min(getMapWidthPixels() - 1, screenX));
-		return MAP_BOUNDS.minX + clampedX / getTileSize();
+		return mapBounds().minX + clampedX / getTileSize();
 	}
 
 	private int toMapY(int screenY)
 	{
 		int clampedY = Math.max(0, Math.min(getMapHeightPixels() - 1, screenY));
-		return MAP_BOUNDS.maxY - 1 - clampedY / getTileSize();
+		return mapBounds().maxY - 1 - clampedY / getTileSize();
 	}
 
-	private boolean isCannonHillTile(int mapX, int mapY)
+	private MapBounds mapBounds()
 	{
-		return DefenderMapLayout.forWave(waveSupplier.getAsInt()) != DefenderMapLayout.WAVE_10
-				&& isCannonHillShapeTile(mapX, mapY);
+		return mapMode().isFullArena() ? FULL_ARENA_MAP_BOUNDS : DEFENDER_MAP_BOUNDS;
 	}
 
-	private boolean isCannonHillShapeTile(int mapX, int mapY)
+	private DefenderMapLayout currentLayout()
 	{
-		return mapX >= CANNON_HILL_X && mapX < CANNON_HILL_X + 5 && mapY >= CANNON_HILL_Y && mapY < CANNON_HILL_Y + 4
-				|| mapX >= CANNON_HILL_X + 1 && mapX < CANNON_HILL_X + 4 && mapY >= CANNON_HILL_Y - 2 && mapY < CANNON_HILL_Y;
+		DefenderMapLayout layout = layoutSupplier.get();
+		return layout == null ? DefenderMapLayout.WAVES_1_TO_9 : layout;
+	}
+
+	private TileMarkerMapMode mapMode()
+	{
+		TileMarkerMapMode mode = mapModeSupplier.get();
+		return mode == null ? TileMarkerMapMode.EAST_SIDE_ONLY : mode;
+	}
+
+	private boolean isCannonHillShapeTile(int hillX, int mapX, int mapY)
+	{
+		return mapX >= hillX && mapX < hillX + 5 && mapY >= CANNON_HILL_Y && mapY < CANNON_HILL_Y + 4
+				|| mapX >= hillX + 1 && mapX < hillX + 4 && mapY >= CANNON_HILL_Y - 2 && mapY < CANNON_HILL_Y;
 	}
 
 	private boolean isQueenTrapdoorTile(int mapX, int mapY)

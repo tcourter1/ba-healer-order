@@ -7,8 +7,7 @@ class DefenderGroundItem
 {
 	enum Type
 	{
-		HAMMER,
-		LOGS
+		HAMMER
 	}
 
 	private final Tile tile;

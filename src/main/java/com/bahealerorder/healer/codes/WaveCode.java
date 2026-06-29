@@ -1,10 +1,11 @@
 package com.bahealerorder.healer.codes;
 
+import com.bahealerorder.common.strategies.WaveStrategy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class WaveCode
+public class WaveCode implements WaveStrategy
 {
 	private String id;
 	private String name;

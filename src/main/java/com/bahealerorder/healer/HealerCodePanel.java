@@ -1,43 +1,33 @@
 package com.bahealerorder.healer;
 
+import com.bahealerorder.common.BaPanelUi;
+import com.bahealerorder.common.BaPanelUi.ComboOption;
+import com.bahealerorder.common.WavePresetSection;
 import com.bahealerorder.healer.codes.RunPreset;
 import com.bahealerorder.healer.codes.WaveCode;
 import com.formdev.flatlaf.FlatClientProperties;
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.BorderFactory;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.DynamicGridLayout;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 
 @Singleton
@@ -46,22 +36,17 @@ public class HealerCodePanel extends JPanel
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
 	private static final int CREATE_CODE_GAP = 24;
-	private static final int PRESET_BUTTON_WAVE_GAP = 26;
 	private static final int WAVE_LABEL_WIDTH = 48;
-	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
-	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
 
 	private final HealerCodeManager codeManager;
-	private final JComboBox<ComboItem> presetCombo = new JComboBox<>();
-	private final Map<Integer, JComboBox<ComboItem>> waveCombos = new HashMap<>();
-	private final JComboBox<ComboItem> importWaveCombo = new JComboBox<>();
-	private final JComboBox<ComboItem> userWaveCodeCombo = new JComboBox<>();
+	private final JComboBox<ComboOption> importWaveCombo = new JComboBox<>();
+	private final JComboBox<ComboOption> userWaveCodeCombo = new JComboBox<>();
 	private final JTextField importName = new JTextField();
 	private final JTextArea importCode = new JTextArea();
 	private final JPanel contentPanel = new JPanel();
+	private WavePresetSection presetSection;
 	private JButton deleteWaveCodeAction;
 
-	private boolean refreshing;
 	private boolean refreshingImport;
 
 	@Inject
@@ -79,7 +64,8 @@ public class HealerCodePanel extends JPanel
 		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 		add(contentPanel, BorderLayout.NORTH);
 
-		contentPanel.add(createPresetSection());
+		presetSection = createPresetSection();
+		contentPanel.add(presetSection);
 		contentPanel.add(Box.createVerticalStrut(CREATE_CODE_GAP));
 		contentPanel.add(createImportCodeSection());
 
@@ -88,11 +74,8 @@ public class HealerCodePanel extends JPanel
 
 	public void refreshAll()
 	{
-		refreshing = true;
-		refreshPresetCombo();
-		refreshWaveCombos();
+		presetSection.refreshAll();
 		refreshUserWaveCodeCombo();
-		refreshing = false;
 	}
 
 	public void refreshLater()
@@ -100,82 +83,38 @@ public class HealerCodePanel extends JPanel
 		SwingUtilities.invokeLater(this::refreshAll);
 	}
 
-	private JPanel createPresetSection()
+	private WavePresetSection createPresetSection()
 	{
-		JPanel section = section("Healer Codes");
-		styleCombo(presetCombo, CONTENT_WIDTH - 16);
-		presetCombo.addActionListener(event ->
-		{
-			if (refreshing) return;
-
-			ComboItem item = (ComboItem) presetCombo.getSelectedItem();
-			if (item == null || item.id == null)
-			{
-				codeManager.clearActiveSelections();
-			}
-			else
-			{
-				codeManager.applyRunPreset(item.id);
-			}
-			refreshAll();
-		});
-		section.add(presetCombo);
-		section.add(Box.createVerticalStrut(6));
-		section.add(action("Save Current Selections", this::saveCurrentPreset));
-		section.add(Box.createVerticalStrut(5));
-
-		JPanel presetActionRow = horizontalActionRow();
-		presetActionRow.add(action("Delete", this::deleteSelectedPreset));
-		presetActionRow.add(action("Clear", () ->
-		{
-			codeManager.clearActiveSelections();
-			refreshAll();
-		}));
-		section.add(presetActionRow);
-		section.add(Box.createVerticalStrut(5));
-
-		JPanel jsonActionRow = horizontalActionRow();
-		jsonActionRow.add(action("Import", this::importRunPresetFromClipboard));
-		jsonActionRow.add(action("Export", this::exportSelectedRunPresetToClipboard));
-		section.add(jsonActionRow);
-		section.add(Box.createVerticalStrut(PRESET_BUTTON_WAVE_GAP));
-		addWaveSelectors(section);
-		return section;
-	}
-
-	private void addWaveSelectors(JPanel section)
-	{
-		for (int wave = 1; wave <= 10; wave++)
-		{
-			JComboBox<ComboItem> comboBox = new JComboBox<>();
-			final int selectedWave = wave;
-			styleCombo(comboBox, CONTENT_WIDTH - 16 - WAVE_LABEL_WIDTH - 6);
-			comboBox.addActionListener(event ->
-			{
-				if (refreshing) return;
-
-				ComboItem item = (ComboItem) comboBox.getSelectedItem();
-				codeManager.setActiveWaveCodeId(selectedWave, item == null ? null : item.id);
-				selectImportWaveCode(selectedWave, item == null ? null : item.id);
-				refreshing = true;
-				refreshPresetCombo();
-				refreshing = false;
-			});
-			waveCombos.put(wave, comboBox);
-			section.add(comboRow("Wave " + wave, comboBox));
-			section.add(Box.createVerticalStrut(6));
-		}
+		return new WavePresetSection(
+				"Healer Codes",
+				CONTENT_WIDTH,
+				CONTROL_HEIGHT,
+				WAVE_LABEL_WIDTH,
+				WavePresetSection.managerAdapter(
+						codeManager,
+						this::refreshAll,
+						(wave, strategyId) ->
+						{
+							selectImportWaveCode(wave, strategyId);
+							presetSection.refreshPresetCombo();
+						},
+						this::saveCurrentPreset,
+						this::deleteSelectedPreset,
+						this::importRunPresetFromClipboard,
+						this::exportSelectedRunPresetToClipboard
+				)
+		);
 	}
 
 	private JPanel createImportCodeSection()
 	{
-		JPanel section = section("Create Wave Code");
+		JPanel section = BaPanelUi.section("Create Wave Code", CONTENT_WIDTH, CONTROL_HEIGHT);
 
 		for (int wave = 1; wave <= 10; wave++)
 		{
-			importWaveCombo.addItem(new ComboItem(String.valueOf(wave), "Wave " + wave));
+			importWaveCombo.addItem(new ComboOption(String.valueOf(wave), "Wave " + wave));
 		}
-		styleCombo(importWaveCombo, CONTENT_WIDTH - 16);
+		BaPanelUi.styleCombo(importWaveCombo, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		importWaveCombo.addActionListener(event ->
 		{
 			if (!refreshingImport)
@@ -183,12 +122,12 @@ public class HealerCodePanel extends JPanel
 				refreshUserWaveCodeCombo();
 			}
 		});
-		section.add(label("Wave"));
+		section.add(BaPanelUi.label("Wave"));
 		section.add(Box.createVerticalStrut(3));
 		section.add(importWaveCombo);
 		section.add(Box.createVerticalStrut(6));
 
-		styleCombo(userWaveCodeCombo, CONTENT_WIDTH - 16);
+		BaPanelUi.styleCombo(userWaveCodeCombo, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		userWaveCodeCombo.addActionListener(event ->
 		{
 			if (!refreshingImport)
@@ -196,66 +135,32 @@ public class HealerCodePanel extends JPanel
 				loadSelectedUserWaveCode();
 			}
 		});
-		section.add(label("Existing Code"));
+		section.add(BaPanelUi.label("Existing Code"));
 		section.add(Box.createVerticalStrut(3));
 		section.add(userWaveCodeCombo);
 		section.add(Box.createVerticalStrut(6));
 
 		importName.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Enter new code name...");
-		fixedSize(importName, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
-		section.add(label("Name"));
+		BaPanelUi.fixedSize(importName, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
+		section.add(BaPanelUi.label("Name"));
 		section.add(Box.createVerticalStrut(3));
 		section.add(importName);
 		section.add(Box.createVerticalStrut(6));
 
-		styleTextArea(importCode, 7);
-		section.add(label("Code"));
+		BaPanelUi.styleTextArea(importCode, 7);
+		section.add(BaPanelUi.label("Code"));
 		section.add(Box.createVerticalStrut(3));
-		section.add(wrapTextArea(importCode, 120));
+		section.add(BaPanelUi.wrapTextArea(importCode, CONTENT_WIDTH - 16, 120));
 		section.add(Box.createVerticalStrut(6));
-		section.add(action("Save Wave Code", this::saveImportedWaveCode));
+		section.add(BaPanelUi.action("Save Wave Code", this::saveImportedWaveCode, CONTENT_WIDTH - 16, CONTROL_HEIGHT));
 		section.add(Box.createVerticalStrut(5));
 
-		JPanel saveDeleteRow = horizontalActionRow();
-		deleteWaveCodeAction = action("Delete", this::deleteOrResetSelectedWaveCode);
+		JPanel saveDeleteRow = BaPanelUi.horizontalActionRow(CONTENT_WIDTH - 16, CONTROL_HEIGHT);
+		deleteWaveCodeAction = BaPanelUi.action("Delete", this::deleteOrResetSelectedWaveCode, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		saveDeleteRow.add(deleteWaveCodeAction);
-		saveDeleteRow.add(action("Clear", this::clearImportForm));
+		saveDeleteRow.add(BaPanelUi.action("Clear", this::clearImportForm, CONTENT_WIDTH - 16, CONTROL_HEIGHT));
 		section.add(saveDeleteRow);
 		return section;
-	}
-
-	private void refreshPresetCombo()
-	{
-		String activePresetId = codeManager.getActiveRunPresetId();
-		List<ComboItem> items = new ArrayList<>();
-		items.add(new ComboItem(null, ""));
-
-		for (RunPreset preset : codeManager.getRunPresets())
-		{
-			items.add(new ComboItem(preset.getId(), preset.getName()));
-		}
-
-		setComboItems(presetCombo, items, activePresetId);
-	}
-
-	private void refreshWaveCombos()
-	{
-		for (Map.Entry<Integer, JComboBox<ComboItem>> entry : waveCombos.entrySet())
-		{
-			int wave = entry.getKey();
-			JComboBox<ComboItem> comboBox = entry.getValue();
-			String selectedCodeId = codeManager.getActiveWaveCodeId(wave);
-
-			List<ComboItem> items = new ArrayList<>();
-			items.add(new ComboItem(null, ""));
-
-			for (WaveCode code : codeManager.getWaveCodesForWave(wave))
-			{
-				items.add(new ComboItem(code.getId(), code.getName()));
-			}
-
-			setComboItems(comboBox, items, selectedCodeId);
-		}
 	}
 
 	private void refreshUserWaveCodeCombo()
@@ -266,7 +171,7 @@ public class HealerCodePanel extends JPanel
 	private void selectImportWaveCode(int wave, String waveCodeId)
 	{
 		refreshingImport = true;
-		selectComboValue(importWaveCombo, String.valueOf(wave));
+		BaPanelUi.selectComboValue(importWaveCombo, String.valueOf(wave));
 		refreshingImport = false;
 		refreshUserWaveCodeCombo(waveCodeId);
 	}
@@ -274,15 +179,15 @@ public class HealerCodePanel extends JPanel
 	private void refreshUserWaveCodeCombo(String selectedWaveCodeId)
 	{
 		refreshingImport = true;
-		List<ComboItem> items = new ArrayList<>();
-		items.add(new ComboItem(null, "-- New --"));
+		List<ComboOption> items = new ArrayList<>();
+		items.add(new ComboOption(null, "-- New --"));
 
 		for (WaveCode code : codeManager.getWaveCodesForWave(getImportWave()))
 		{
-			items.add(new ComboItem(code.getId(), code.getName()));
+			items.add(new ComboOption(code.getId(), code.getName()));
 		}
 
-		setComboItems(userWaveCodeCombo, items, selectedWaveCodeId);
+		BaPanelUi.setComboItems(userWaveCodeCombo, items, selectedWaveCodeId);
 		refreshingImport = false;
 		loadSelectedUserWaveCode();
 	}
@@ -317,8 +222,7 @@ public class HealerCodePanel extends JPanel
 
 	private void saveCurrentPreset()
 	{
-		ComboItem selectedPreset = (ComboItem) presetCombo.getSelectedItem();
-		RunPreset currentPreset = selectedPreset == null ? null : codeManager.findRunPreset(selectedPreset.id);
+		RunPreset currentPreset = codeManager.findRunPreset(codeManager.getActiveRunPresetId());
 		String name = promptName("Preset name", currentPreset == null ? "" : currentPreset.getName());
 
 		if (name == null) return;
@@ -339,31 +243,27 @@ public class HealerCodePanel extends JPanel
 		refreshAll();
 	}
 
-	private void deleteSelectedPreset()
+	private void deleteSelectedPreset(String presetId)
 	{
-		ComboItem item = (ComboItem) presetCombo.getSelectedItem();
-
-		if (item == null || item.id == null) return;
+		if (presetId == null) return;
 
 		int result = JOptionPane.showConfirmDialog(this, "Delete this run preset?", "Delete Preset", JOptionPane.OK_CANCEL_OPTION);
 
 		if (result != JOptionPane.OK_OPTION) return;
 
-		codeManager.deleteUserPreset(item.id);
+		codeManager.deleteUserPreset(presetId);
 		refreshAll();
 	}
 
-	private void exportSelectedRunPresetToClipboard()
+	private void exportSelectedRunPresetToClipboard(String presetId)
 	{
-		ComboItem item = (ComboItem) presetCombo.getSelectedItem();
-
-		if (item == null || item.id == null)
+		if (presetId == null)
 		{
 			JOptionPane.showMessageDialog(this, "Select a run preset to export.", "Export Preset", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 
-		String json = codeManager.exportRunPresetJson(item.id);
+		String json = codeManager.exportRunPresetJson(presetId);
 
 		if (json == null)
 		{
@@ -453,7 +353,7 @@ public class HealerCodePanel extends JPanel
 		}
 
 		refreshAll();
-		selectComboValue(userWaveCodeCombo, waveCode == null ? selectedId : waveCode.getId());
+		BaPanelUi.selectComboValue(userWaveCodeCombo, waveCode == null ? selectedId : waveCode.getId());
 		loadSelectedUserWaveCode();
 	}
 
@@ -499,7 +399,7 @@ public class HealerCodePanel extends JPanel
 
 		codeManager.resetBuiltInWaveCode(selectedCode.getId());
 		refreshAll();
-		selectComboValue(userWaveCodeCombo, selectedCode.getId());
+		BaPanelUi.selectComboValue(userWaveCodeCombo, selectedCode.getId());
 		loadSelectedUserWaveCode();
 	}
 
@@ -519,7 +419,7 @@ public class HealerCodePanel extends JPanel
 	private String promptName(String title, String defaultValue)
 	{
 		JTextField field = new JTextField(defaultValue);
-		fixedSize(field, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(field, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		int result = JOptionPane.showConfirmDialog(this, field, title, JOptionPane.OK_CANCEL_OPTION);
 
 		if (result != JOptionPane.OK_OPTION || field.getText().trim().isEmpty()) return null;
@@ -529,169 +429,12 @@ public class HealerCodePanel extends JPanel
 
 	private int getImportWave()
 	{
-		ComboItem waveItem = (ComboItem) importWaveCombo.getSelectedItem();
-
-		if (waveItem == null || waveItem.id == null) return 1;
-
-		return Integer.parseInt(waveItem.id);
+		String waveId = BaPanelUi.selectedId(importWaveCombo);
+		return waveId == null ? 1 : Integer.parseInt(waveId);
 	}
 
 	private String getSelectedUserWaveCodeId()
 	{
-		ComboItem item = (ComboItem) userWaveCodeCombo.getSelectedItem();
-		return item == null ? null : item.id;
-	}
-
-	private JPanel section(String title)
-	{
-		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setBorder(new EmptyBorder(8, 8, 8, 8));
-		panel.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-		panel.setAlignmentX(LEFT_ALIGNMENT);
-		panel.add(centeredLabelRow(title, true, ColorScheme.DARKER_GRAY_COLOR));
-		panel.add(Box.createVerticalStrut(6));
-		return panel;
-	}
-
-	private JPanel centeredLabelRow(String text, boolean bold, Color background)
-	{
-		JLabel label = label(text, bold);
-		label.setHorizontalAlignment(SwingConstants.CENTER);
-
-		JPanel row = new JPanel(new BorderLayout());
-		row.setBackground(background);
-		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setAlignmentX(LEFT_ALIGNMENT);
-		row.add(label, BorderLayout.CENTER);
-		return row;
-	}
-
-	private JPanel comboRow(String text, JComboBox<ComboItem> comboBox)
-	{
-		JLabel rowLabel = label(text);
-		rowLabel.setPreferredSize(new Dimension(WAVE_LABEL_WIDTH, CONTROL_HEIGHT));
-		rowLabel.setMaximumSize(new Dimension(WAVE_LABEL_WIDTH, CONTROL_HEIGHT));
-
-		JPanel row = new JPanel(new BorderLayout(6, 0));
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setAlignmentX(LEFT_ALIGNMENT);
-		row.add(rowLabel, BorderLayout.WEST);
-		row.add(comboBox, BorderLayout.CENTER);
-		return row;
-	}
-
-	private JLabel label(String text)
-	{
-		return label(text, false);
-	}
-
-	private JLabel label(String text, boolean bold)
-	{
-		JLabel label = new JLabel(text);
-		label.setForeground(ColorScheme.TEXT_COLOR);
-		label.setFont(bold ? TITLE_FONT : LABEL_FONT);
-		label.setAlignmentX(LEFT_ALIGNMENT);
-		return label;
-	}
-
-	private JButton action(String text, Runnable runnable)
-	{
-		JButton button = new JButton(text);
-		button.addActionListener(event -> runnable.run());
-		fixedSize(button, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
-		return button;
-	}
-
-	private JPanel horizontalActionRow()
-	{
-		JPanel panel = new JPanel(new DynamicGridLayout(1, 2, 6, 0));
-		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		panel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		panel.setAlignmentX(LEFT_ALIGNMENT);
-		return panel;
-	}
-
-	private static JPanel verticalPanel(Color background)
-	{
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		panel.setBackground(background);
-		return panel;
-	}
-
-	private JScrollPane wrapTextArea(JTextArea area, int height)
-	{
-		JScrollPane scrollPane = new JScrollPane(area);
-		scrollPane.setBorder(BorderFactory.createLineBorder(ColorScheme.DARK_GRAY_COLOR));
-		fixedSize(scrollPane, CONTENT_WIDTH - 16, height);
-		return scrollPane;
-	}
-
-	private void styleCombo(JComboBox<ComboItem> comboBox, int width)
-	{
-		comboBox.setFocusable(false);
-		fixedSize(comboBox, width, CONTROL_HEIGHT);
-	}
-
-	private void styleTextArea(JTextArea area, int rows)
-	{
-		area.setRows(rows);
-		area.setLineWrap(true);
-		area.setWrapStyleWord(true);
-	}
-
-	private static void fixedSize(JComponent component, int width, int height)
-	{
-		Dimension size = new Dimension(width, height);
-		component.setPreferredSize(size);
-		component.setMinimumSize(size);
-		component.setMaximumSize(size);
-		component.setAlignmentX(Component.LEFT_ALIGNMENT);
-	}
-
-	private void selectComboValue(JComboBox<ComboItem> comboBox, String id)
-	{
-		for (int i = 0; i < comboBox.getItemCount(); i++)
-		{
-			ComboItem item = comboBox.getItemAt(i);
-			if ((id == null && item.id == null) || (id != null && id.equals(item.id)))
-			{
-				comboBox.setSelectedIndex(i);
-				return;
-			}
-		}
-
-		if (comboBox.getItemCount() > 0)
-		{
-			comboBox.setSelectedIndex(0);
-		}
-	}
-
-	private void setComboItems(JComboBox<ComboItem> comboBox, List<ComboItem> items, String selectedId)
-	{
-		comboBox.setModel(new DefaultComboBoxModel<>(items.toArray(new ComboItem[0])));
-		selectComboValue(comboBox, selectedId);
-	}
-
-	private static class ComboItem
-	{
-		private final String id;
-		private final String label;
-
-		private ComboItem(String id, String label)
-		{
-			this.id = id;
-			this.label = label;
-		}
-
-		@Override
-		public String toString()
-		{
-			return label;
-		}
+		return BaPanelUi.selectedId(userWaveCodeCombo);
 	}
 }

@@ -1,10 +1,6 @@
 package com.bahealerorder.common;
 
 import com.bahealerorder.BaUtilitiesConfig;
-import com.bahealerorder.defender.DefenderController;
-import com.bahealerorder.defender.strategies.DefenderTimedNotes;
-import com.bahealerorder.defender.strategies.DefenderWaveStrategy;
-import com.bahealerorder.defender.strategies.TimedDefenderNote;
 import com.bahealerorder.healer.HealerController;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -31,11 +27,9 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 {
     private static final Color DEFAULT_PANEL_BACKGROUND = ComponentConstants.STANDARD_BACKGROUND_COLOR;
     private static final Color TITLE_COLOR = new Color(0, 255, 0);
-    private static final Color DEFENDER_TITLE_COLOR = new Color(80, 170, 255);
     private static final Color TEXT_COLOR = Color.WHITE;
     private static final Color TTK_COLOR = Color.ORANGE;
     private static final Color DEAD_COLOR = Color.GRAY;
-    private static final Color ACTIVE_DEFENDER_NOTE_COLOR = new Color(255, 220, 90);
 
     private static final int BASE_OVERLAY_TEXT_SIZE = 16;
     private static final int BASE_PANEL_WIDTH = 240;
@@ -54,7 +48,6 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     private ConfigManager configManager;
 
     private HealerController healerController;
-    private DefenderController defenderController;
     private boolean codeTogglePressed;
     private final Rectangle codeToggleBounds = new Rectangle();
     private LineComponent codeToggleLine;
@@ -72,22 +65,12 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         this.healerController = controller;
     }
 
-    public void setDefenderController(DefenderController controller)
-    {
-        this.defenderController = controller;
-    }
-
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (!config.showOverlayPanel() || (healerController == null && defenderController == null))
+        if (!config.showOverlayPanel() || healerController == null)
         {
             return hidePanel();
-        }
-
-        if (defenderController != null && defenderController.isDefenderRole())
-        {
-            return shouldRenderDefenderPanel() ? renderDefenderPanel(graphics) : hidePanel();
         }
 
         if (!shouldRenderHealerPanel())
@@ -169,85 +152,6 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
                 && healerController.isHealerRole()
                 && healerController.getFoodPanelStyle() != BaUtilitiesConfig.FoodPanelStyle.NONE
                 && healerController.isWaveActive();
-    }
-
-    private boolean shouldRenderDefenderPanel()
-    {
-        return defenderController != null
-                && defenderController.shouldShowStrategyPanel()
-                && hasDefenderNotes(defenderController.getCurrentWaveStrategy());
-    }
-
-    private Dimension renderDefenderPanel(Graphics2D graphics)
-    {
-        DefenderWaveStrategy strategy = defenderController.getCurrentWaveStrategy();
-        if (!hasDefenderNotes(strategy))
-        {
-            return hidePanel();
-        }
-
-        Font originalFont = preparePanel(graphics);
-
-        try
-        {
-            panelComponent.getChildren().add(
-                    TitleComponent.builder()
-                            .text(getDefenderPanelTitle(strategy))
-                            .color(DEFENDER_TITLE_COLOR)
-                            .build()
-            );
-
-            addDefenderNotes(strategy);
-            return renderPanel(graphics);
-        }
-        finally
-        {
-            graphics.setFont(originalFont);
-        }
-    }
-
-    private boolean hasDefenderNotes(DefenderWaveStrategy strategy)
-    {
-        return strategy != null && strategy.getNotes() != null && !strategy.getNotes().trim().isEmpty();
-    }
-
-    private String getDefenderPanelTitle(DefenderWaveStrategy strategy)
-    {
-        return "Wave " + defenderController.getCurrentWave() + " (" + strategy.getName() + ")";
-    }
-
-    private void addDefenderNotes(DefenderWaveStrategy strategy)
-    {
-        List<TimedDefenderNote> notes = DefenderTimedNotes.parse(strategy.getNotes());
-        int currentWaveTick = defenderController.getCurrentWaveTick();
-        int activeIndex = DefenderTimedNotes.getActiveTimedIndex(notes, currentWaveTick);
-
-        for (int i = 0; i < notes.size(); i++)
-        {
-            TimedDefenderNote note = notes.get(i);
-            String text = note.getText() == null || note.getText().isEmpty() ? " " : note.getText();
-            panelComponent.getChildren().add(
-                    LineComponent.builder()
-                            .left(text)
-                            .leftColor(getDefenderNoteColor(note, i, activeIndex, currentWaveTick))
-                            .build()
-            );
-        }
-    }
-
-    private Color getDefenderNoteColor(TimedDefenderNote note, int index, int activeIndex, int currentWaveTick)
-    {
-        if (index == activeIndex)
-        {
-            return ACTIVE_DEFENDER_NOTE_COLOR;
-        }
-
-        if (note.isTimed() && note.getTick() < currentWaveTick)
-        {
-            return DEAD_COLOR;
-        }
-
-        return TEXT_COLOR;
     }
 
     private Font preparePanel(Graphics2D graphics)

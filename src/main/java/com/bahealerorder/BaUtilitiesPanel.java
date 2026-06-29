@@ -2,10 +2,11 @@ package com.bahealerorder;
 
 import com.bahealerorder.common.BaPartySyncMemberStatus;
 import com.bahealerorder.common.BaHealerFoodCounts;
+import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.WaveOverviewPanel;
-import com.bahealerorder.defender.DefenderStrategyPanel;
 import com.bahealerorder.healer.HealerCodePanel;
+import com.bahealerorder.tilemarkers.GeneralTileMarkerPanel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -52,14 +53,14 @@ public class BaUtilitiesPanel extends PluginPanel
 	private static final String CALLED_FOOD_HTML_COLOR = "#00dc00";
 	private static final String OVERVIEW_TAB = "overview";
 	private static final String HEALER_TAB = "healer";
-	private static final String DEFENDER_TAB = "defender";
+	private static final String TILE_MARKERS_TAB = "tile-markers";
 
 	private final ItemManager itemManager;
 	private final BaUtilitiesConfig config;
 	private final ConfigManager configManager;
 	private final WaveOverviewPanel waveOverviewPanel;
 	private final HealerCodePanel healerCodePanel;
-	private final DefenderStrategyPanel defenderStrategyPanel;
+	private final GeneralTileMarkerPanel generalTileMarkerPanel;
 	private final JPanel contentPanel = new JPanel();
 	private final JPanel tabDisplayPanel = new JPanel(new BorderLayout());
 	private final MaterialTabGroup tabGroup = new MaterialTabGroup(tabDisplayPanel);
@@ -76,14 +77,14 @@ public class BaUtilitiesPanel extends PluginPanel
 			ConfigManager configManager,
 			WaveOverviewPanel waveOverviewPanel,
 			HealerCodePanel healerCodePanel,
-			DefenderStrategyPanel defenderStrategyPanel)
+			GeneralTileMarkerPanel generalTileMarkerPanel)
 	{
 		this.itemManager = itemManager;
 		this.config = config;
 		this.configManager = configManager;
 		this.waveOverviewPanel = waveOverviewPanel;
 		this.healerCodePanel = healerCodePanel;
-		this.defenderStrategyPanel = defenderStrategyPanel;
+		this.generalTileMarkerPanel = generalTileMarkerPanel;
 
 		setLayout(new BorderLayout());
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -107,7 +108,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	{
 		waveOverviewPanel.refreshAll();
 		healerCodePanel.refreshAll();
-		defenderStrategyPanel.refreshAll();
+		generalTileMarkerPanel.refreshAll();
 	}
 
 	public void refreshLater()
@@ -303,9 +304,9 @@ public class BaUtilitiesPanel extends PluginPanel
 	private JPanel createTabSection()
 	{
 		List<SidePanelTab> tabs = new ArrayList<>();
-		tabs.add(new SidePanelTab(OVERVIEW_TAB, ItemID.MIRROR, "Wave Overview", waveOverviewPanel));
-		tabs.add(new SidePanelTab(HEALER_TAB, ItemID.BARBASSAULT_PENANCE_HEALER_HAT, "Healer Codes", healerCodePanel));
-		tabs.add(new SidePanelTab(DEFENDER_TAB, ItemID.BARBASSAULT_PENANCE_RUNNER_HAT, "Defender Strategies", defenderStrategyPanel));
+		tabs.add(SidePanelTab.item(OVERVIEW_TAB, ItemID.MIRROR, "Wave Overview", waveOverviewPanel));
+		tabs.add(SidePanelTab.item(HEALER_TAB, BaRole.HEALER.getPlayerIconItemId(), "Healer Codes", healerCodePanel));
+		tabs.add(SidePanelTab.icon(TILE_MARKERS_TAB, BaIcons.tileMarkerIcon(TAB_ICON_SIZE), "Tile Markers", generalTileMarkerPanel));
 
 		tabGroup.setLayout(new DynamicGridLayout(1, tabs.size(), 6, 0));
 		tabGroup.setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -374,10 +375,17 @@ public class BaUtilitiesPanel extends PluginPanel
 		tab.setPreferredSize(new Dimension((CONTENT_WIDTH - 6 * (tabCount - 1)) / tabCount, 32));
 		tab.setMaximumSize(new Dimension((CONTENT_WIDTH - 6 * (tabCount - 1)) / tabCount, 32));
 
-		AsyncBufferedImage icon = itemManager.getImage(sidePanelTab.itemId);
-		if (icon != null)
+		if (sidePanelTab.icon != null)
 		{
-			icon.onLoaded(() -> SwingUtilities.invokeLater(() -> tab.setIcon(scaledIcon(icon))));
+			tab.setIcon(sidePanelTab.icon);
+		}
+		else if (sidePanelTab.itemId != null)
+		{
+			AsyncBufferedImage icon = itemManager.getImage(sidePanelTab.itemId);
+			if (icon != null)
+			{
+				icon.onLoaded(() -> SwingUtilities.invokeLater(() -> tab.setIcon(scaledIcon(icon))));
+			}
 		}
 
 		return tab;
@@ -396,14 +404,26 @@ public class BaUtilitiesPanel extends PluginPanel
 	private static class SidePanelTab
 	{
 		private final String id;
-		private final int itemId;
+		private final Integer itemId;
+		private final ImageIcon icon;
 		private final String tooltip;
 		private final JComponent content;
 
-		private SidePanelTab(String id, int itemId, String tooltip, JComponent content)
+		private static SidePanelTab item(String id, int itemId, String tooltip, JComponent content)
+		{
+			return new SidePanelTab(id, itemId, null, tooltip, content);
+		}
+
+		private static SidePanelTab icon(String id, ImageIcon icon, String tooltip, JComponent content)
+		{
+			return new SidePanelTab(id, null, icon, tooltip, content);
+		}
+
+		private SidePanelTab(String id, Integer itemId, ImageIcon icon, String tooltip, JComponent content)
 		{
 			this.id = id;
 			this.itemId = itemId;
+			this.icon = icon;
 			this.tooltip = tooltip;
 			this.content = content;
 		}

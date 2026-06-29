@@ -4,11 +4,8 @@ import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.common.BaOverviewNpcType;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.BaRoleDetector;
-import com.bahealerorder.common.BaRolePanelOverlay;
 import com.bahealerorder.common.BaWaveLifecycleService;
 import com.bahealerorder.common.BaWaveOverviewService;
-import com.bahealerorder.defender.strategies.DefenderStrategyManager;
-import com.bahealerorder.defender.strategies.DefenderWaveStrategy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,9 +50,7 @@ public class DefenderController
 	private final BaWaveOverviewService waveOverviewService;
 	private final BaWaveLifecycleService waveLifecycleService;
 	private final BaRoleDetector roleDetector;
-	private final DefenderStrategyManager strategyManager;
-	private final DefenderStrategyOverlay strategyOverlay;
-	private final BaRolePanelOverlay rolePanelOverlay;
+	private final DefenderGroundItemOverlay groundItemOverlay;
 	private final Map<NPC, BaOverviewNpcType> visibleRunnerNpcs = new HashMap<>();
 	private final List<DefenderGroundItem> groundItems = new ArrayList<>();
 
@@ -68,9 +63,7 @@ public class DefenderController
 			BaWaveOverviewService waveOverviewService,
 			BaWaveLifecycleService waveLifecycleService,
 			BaRoleDetector roleDetector,
-			DefenderStrategyManager strategyManager,
-			DefenderStrategyOverlay strategyOverlay,
-			BaRolePanelOverlay rolePanelOverlay)
+			DefenderGroundItemOverlay groundItemOverlay)
 	{
 		this.client = client;
 		this.config = config;
@@ -79,24 +72,19 @@ public class DefenderController
 		this.waveOverviewService = waveOverviewService;
 		this.waveLifecycleService = waveLifecycleService;
 		this.roleDetector = roleDetector;
-		this.strategyManager = strategyManager;
-		this.strategyOverlay = strategyOverlay;
-		this.rolePanelOverlay = rolePanelOverlay;
+		this.groundItemOverlay = groundItemOverlay;
 	}
 
 	public void startUp()
 	{
-		strategyManager.load();
 		resetState();
-		strategyOverlay.setController(this);
-		rolePanelOverlay.setDefenderController(this);
-		overlayManager.add(strategyOverlay);
+		groundItemOverlay.setController(this);
+		overlayManager.add(groundItemOverlay);
 	}
 
 	public void shutDown()
 	{
-		overlayManager.remove(strategyOverlay);
-		rolePanelOverlay.setDefenderController(null);
+		overlayManager.remove(groundItemOverlay);
 		resetState();
 	}
 
@@ -184,47 +172,11 @@ public class DefenderController
 		resetWaveState();
 	}
 
-	public boolean shouldShowStrategyPanel()
+	public boolean shouldShowGroundItemOverlay()
 	{
 		return isDefenderRole()
 				&& waveLifecycleService.isWaveActive()
-				&& getCurrentWaveStrategy() != null;
-	}
-
-	public boolean shouldShowStrategyTiles()
-	{
-		if (!waveLifecycleService.isWaveActive())
-		{
-			return false;
-		}
-
-		DefenderWaveStrategy strategy = getCurrentWaveStrategy();
-		if (isDefenderRole())
-		{
-			return strategy != null || !getHighlightedGroundItems().isEmpty();
-		}
-
-		return config.showDefenderTileMarkersForAllRoles() && strategy != null;
-	}
-
-	public DefenderWaveStrategy getCurrentWaveStrategy()
-	{
-		return strategyManager.getActiveWaveStrategy(getCurrentWave());
-	}
-
-	public int getCurrentWave()
-	{
-		return waveLifecycleService.getWave();
-	}
-
-	public int getCurrentWaveTick()
-	{
-		if (!waveLifecycleService.isWaveActive())
-		{
-			return 0;
-		}
-
-		return Math.max(client.getTickCount() - waveLifecycleService.getStartTick(), 0);
+				&& !getHighlightedGroundItems().isEmpty();
 	}
 
 	public List<DefenderGroundItem> getHighlightedGroundItems()
@@ -234,11 +186,9 @@ public class DefenderController
 			return Collections.emptyList();
 		}
 
-		DefenderWaveStrategy strategy = getCurrentWaveStrategy();
 		boolean highlightHammer = config.highlightDefenderHammer() && !hasHammer();
-		boolean highlightLogs = strategy != null && getInventoryLogCount() < strategy.getNumberOfLogs();
 
-		if (!highlightHammer && !highlightLogs)
+		if (!highlightHammer)
 		{
 			return Collections.emptyList();
 		}
@@ -247,8 +197,7 @@ public class DefenderController
 
 		for (DefenderGroundItem groundItem : groundItems)
 		{
-			if (groundItem.getType() == DefenderGroundItem.Type.HAMMER && highlightHammer
-					|| groundItem.getType() == DefenderGroundItem.Type.LOGS && highlightLogs)
+			if (groundItem.getType() == DefenderGroundItem.Type.HAMMER && highlightHammer)
 			{
 				highlighted.add(groundItem);
 			}
@@ -335,38 +284,6 @@ public class DefenderController
 		return DefenderInventory.isImcandoHammer(itemId, getItemName(itemId));
 	}
 
-	private int getInventoryLogCount()
-	{
-		ItemContainer inventory = client.getItemContainer(InventoryID.INVENTORY);
-
-		if (inventory == null)
-		{
-			return 0;
-		}
-
-		int count = 0;
-
-		for (Item item : inventory.getItems())
-		{
-			if (isLogs(item))
-			{
-				count += Math.max(1, item.getQuantity());
-			}
-		}
-
-		return count;
-	}
-
-	private boolean isLogs(Item item)
-	{
-		if (item == null || item.getId() <= 0)
-		{
-			return false;
-		}
-
-		return DefenderInventory.isLogs(item.getId(), getItemName(item.getId()));
-	}
-
 	private DefenderGroundItem createGroundItem(Tile tile, TileItem item)
 	{
 		if (tile == null || item == null || item.getId() <= 0)
@@ -379,11 +296,6 @@ public class DefenderController
 		if (DefenderInventory.isHammer(item.getId(), name))
 		{
 			return new DefenderGroundItem(tile, item, DefenderGroundItem.Type.HAMMER);
-		}
-
-		if (DefenderInventory.isLogs(item.getId(), name))
-		{
-			return new DefenderGroundItem(tile, item, DefenderGroundItem.Type.LOGS);
 		}
 
 		return null;
