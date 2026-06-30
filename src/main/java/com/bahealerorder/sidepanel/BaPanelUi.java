@@ -1,4 +1,4 @@
-package com.bahealerorder.common;
+package com.bahealerorder.sidepanel;
 
 import java.awt.BorderLayout;
 import java.awt.Color;

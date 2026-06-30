@@ -1,5 +1,6 @@
-package com.bahealerorder.healer;
+package com.bahealerorder.sidepanel.healercodes;
 
+import com.bahealerorder.healer.HealerCodeManager;
 import com.bahealerorder.healer.codes.RunPreset;
 import com.bahealerorder.healer.codes.WaveCode;
 import com.formdev.flatlaf.FlatClientProperties;

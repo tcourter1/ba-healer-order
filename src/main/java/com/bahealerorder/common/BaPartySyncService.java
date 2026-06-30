@@ -1,7 +1,7 @@
 package com.bahealerorder.common;
 
 import com.bahealerorder.BaUtilitiesConfig;
-import com.bahealerorder.BaUtilitiesPanel;
+import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;

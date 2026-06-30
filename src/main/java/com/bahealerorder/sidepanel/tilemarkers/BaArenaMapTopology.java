@@ -1,4 +1,6 @@
-package com.bahealerorder.tilemarkers;
+package com.bahealerorder.sidepanel.tilemarkers;
+
+import com.bahealerorder.tilemarkers.TileMarkerMapLayout;
 
 
 final class BaArenaMapTopology

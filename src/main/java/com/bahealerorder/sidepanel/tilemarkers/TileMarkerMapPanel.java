@@ -1,6 +1,9 @@
-package com.bahealerorder.tilemarkers;
+package com.bahealerorder.sidepanel.tilemarkers;
 
 import com.bahealerorder.common.TileMarkerStyle;
+import com.bahealerorder.tilemarkers.TileMarker;
+import com.bahealerorder.tilemarkers.TileMarkerMapLayout;
+import com.bahealerorder.tilemarkers.TileMarkerMapMode;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;

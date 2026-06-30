@@ -1,7 +1,10 @@
-package com.bahealerorder.tilemarkers;
+package com.bahealerorder.sidepanel.tilemarkers;
 
 import com.bahealerorder.common.BaIcons;
-import com.bahealerorder.common.BaPanelUi;
+import com.bahealerorder.sidepanel.BaPanelUi;
+import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
+import com.bahealerorder.tilemarkers.TileMarkerSet;
+import com.bahealerorder.tilemarkers.TileMarkerWaveMap;
 import java.awt.BorderLayout;
 import java.awt.Cursor;
 import java.awt.GridLayout;

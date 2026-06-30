@@ -1,12 +1,13 @@
-package com.bahealerorder;
+package com.bahealerorder.sidepanel;
 
+import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.common.BaPartySyncMemberStatus;
 import com.bahealerorder.common.BaHealerFoodCounts;
 import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.common.BaRole;
-import com.bahealerorder.common.WaveOverviewPanel;
-import com.bahealerorder.healer.HealerCodePanel;
-import com.bahealerorder.tilemarkers.GeneralTileMarkerPanel;
+import com.bahealerorder.sidepanel.overview.WaveOverviewPanel;
+import com.bahealerorder.sidepanel.healercodes.HealerCodePanel;
+import com.bahealerorder.sidepanel.tilemarkers.GeneralTileMarkerPanel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;

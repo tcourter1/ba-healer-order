@@ -1,7 +1,13 @@
-package com.bahealerorder.tilemarkers;
+package com.bahealerorder.sidepanel.tilemarkers;
 
 import com.bahealerorder.common.BaIcons;
-import com.bahealerorder.common.BaPanelUi;
+import com.bahealerorder.sidepanel.BaPanelUi;
+import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
+import com.bahealerorder.tilemarkers.TileMarkerRoleContext;
+import com.bahealerorder.tilemarkers.TileMarkerSet;
+import com.bahealerorder.tilemarkers.TileMarkerStrategyPreset;
+import com.bahealerorder.tilemarkers.TileMarkerWaveMap;
+import com.bahealerorder.tilemarkers.TileMarkerWaveSelectionTarget;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;

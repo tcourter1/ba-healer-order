@@ -1,6 +1,6 @@
 package com.bahealerorder.common;
 
-import com.bahealerorder.BaUtilitiesPanel;
+import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import com.bahealerorder.healer.HealerSharedState;
 import java.util.List;
 import java.util.Locale;

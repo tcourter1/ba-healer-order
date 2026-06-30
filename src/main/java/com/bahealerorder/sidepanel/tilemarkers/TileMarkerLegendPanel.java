@@ -1,6 +1,6 @@
-package com.bahealerorder.tilemarkers;
+package com.bahealerorder.sidepanel.tilemarkers;
 
-import com.bahealerorder.common.BaPanelUi;
+import com.bahealerorder.sidepanel.BaPanelUi;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;

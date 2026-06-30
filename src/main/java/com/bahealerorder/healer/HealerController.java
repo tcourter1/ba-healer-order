@@ -1,7 +1,7 @@
 package com.bahealerorder.healer;
 
 import com.bahealerorder.BaUtilitiesConfig;
-import com.bahealerorder.BaUtilitiesPanel;
+import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import com.bahealerorder.common.BaHealerFoodCounts;
 import com.bahealerorder.common.BaHealerSyncMessage;
 import com.bahealerorder.common.BaOverviewNpcType;
