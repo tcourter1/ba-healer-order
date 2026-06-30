@@ -63,12 +63,11 @@ public class GeneralTileMarkerPanel extends JPanel
 	private static final int ROLE_ICON_SIZE = 18;
 	private static final int ROLE_TAB_GAP = 6;
 	private static final int PRESET_TO_WAVES_GAP = 26;
+	private static final int STRATEGY_SECTION_BOTTOM_PADDING = 8;
 	private static final int WAVE_ROW_GAP = 8;
 	private static final int WAVE_ROW_HORIZONTAL_PADDING = 8;
 	private static final int WAVE_ROW_CONTROL_WIDTH = CONTENT_WIDTH - WAVE_ROW_HORIZONTAL_PADDING * 2;
 	private static final int WAVE_LABEL_LEFT_PADDING = 2;
-	private static final int WAVE_SEPARATOR_TOP_PADDING = 4;
-	private static final int WAVE_SEPARATOR_BOTTOM_PADDING = 3;
 	private static final int ASSIGNMENT_CONTROL_WIDTH = CONTENT_WIDTH - 16;
 	private static final int ACTION_ROW_GAP = 6;
 	private static final int ACTION_BUTTON_WIDTH = (ASSIGNMENT_CONTROL_WIDTH - ACTION_ROW_GAP) / 2;
@@ -154,7 +153,7 @@ public class GeneralTileMarkerPanel extends JPanel
 	private JPanel createStrategySection()
 	{
 		JPanel section = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		section.setBorder(new EmptyBorder(0, 0, 0, 0));
+		section.setBorder(new EmptyBorder(0, 0, STRATEGY_SECTION_BOTTOM_PADDING, 0));
 		section.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
 		section.setAlignmentX(LEFT_ALIGNMENT);
 
@@ -252,7 +251,7 @@ public class GeneralTileMarkerPanel extends JPanel
 			waveRowsPanel.add(createWaveRow(wave));
 			if (wave < 10)
 			{
-				waveRowsPanel.add(createWaveRowSeparator());
+				waveRowsPanel.add(Box.createVerticalStrut(WAVE_ROW_GAP));
 			}
 		}
 		waveRowsPanel.revalidate();
@@ -310,25 +309,6 @@ public class GeneralTileMarkerPanel extends JPanel
 		row.add(Box.createVerticalStrut(3));
 		row.add(comboBox);
 		return row;
-	}
-
-	private JPanel createWaveRowSeparator()
-	{
-		JPanel separator = new JPanel(new BorderLayout());
-		separator.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		separator.setBorder(new EmptyBorder(
-				WAVE_SEPARATOR_TOP_PADDING,
-				WAVE_ROW_HORIZONTAL_PADDING,
-				WAVE_SEPARATOR_BOTTOM_PADDING,
-				WAVE_ROW_HORIZONTAL_PADDING
-		));
-		BaPanelUi.fixedSize(separator, CONTENT_WIDTH, WAVE_ROW_GAP);
-
-		JPanel line = new JPanel();
-		line.setBackground(ColorScheme.LIGHT_GRAY_COLOR);
-		BaPanelUi.fixedSize(line, WAVE_ROW_CONTROL_WIDTH, 1);
-		separator.add(line, BorderLayout.CENTER);
-		return separator;
 	}
 
 	private JPanel createWaveActionRow(int wave, JComboBox<WaveSelectionOption> comboBox)
