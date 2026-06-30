@@ -1,13 +1,12 @@
 package com.bahealerorder.healer.codes;
 
-import com.bahealerorder.common.strategies.WaveStrategyStore;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class StrategyStore implements WaveStrategyStore<RunPreset, WaveCode>
+public class StrategyStore
 {
 	private String activeRunPresetId;
 	private Map<Integer, String> activeWaveCodeIds = new HashMap<>();
@@ -39,18 +38,6 @@ public class StrategyStore implements WaveStrategyStore<RunPreset, WaveCode>
 		this.activeWaveCodeIds = activeWaveCodeIds == null ? new HashMap<>() : new HashMap<>(activeWaveCodeIds);
 	}
 
-	@Override
-	public Map<Integer, String> getActiveWaveStrategyIds()
-	{
-		return getActiveWaveCodeIds();
-	}
-
-	@Override
-	public void setActiveWaveStrategyIds(Map<Integer, String> activeWaveStrategyIds)
-	{
-		setActiveWaveCodeIds(activeWaveStrategyIds);
-	}
-
 	public List<RunPreset> getRunPresets()
 	{
 		return runPresets == null ? Collections.emptyList() : runPresets;
@@ -69,17 +56,5 @@ public class StrategyStore implements WaveStrategyStore<RunPreset, WaveCode>
 	public void setWaveCodes(List<WaveCode> waveCodes)
 	{
 		this.waveCodes = waveCodes == null ? new ArrayList<>() : new ArrayList<>(waveCodes);
-	}
-
-	@Override
-	public List<WaveCode> getWaveStrategies()
-	{
-		return getWaveCodes();
-	}
-
-	@Override
-	public void setWaveStrategies(List<WaveCode> waveStrategies)
-	{
-		setWaveCodes(waveStrategies);
 	}
 }
