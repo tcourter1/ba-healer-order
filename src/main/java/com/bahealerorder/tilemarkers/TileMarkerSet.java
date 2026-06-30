@@ -1,8 +1,5 @@
 package com.bahealerorder.tilemarkers;
 
-import com.bahealerorder.defender.TileMarkerMapMode;
-import com.bahealerorder.defender.TileMarkerWaveMap;
-import com.bahealerorder.defender.strategies.DefenderMarker;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,7 +11,7 @@ public class TileMarkerSet
 	private String mapMode;
 	private String waveMap;
 	private boolean builtIn;
-	private List<DefenderMarker> markers = new ArrayList<>();
+	private List<TileMarker> markers = new ArrayList<>();
 
 	public TileMarkerSet()
 	{
@@ -25,7 +22,7 @@ public class TileMarkerSet
 			String name,
 			TileMarkerMapMode mapMode,
 			TileMarkerWaveMap waveMap,
-			List<DefenderMarker> markers)
+			List<TileMarker> markers)
 	{
 		this(id, name, mapMode, waveMap, markers, false);
 	}
@@ -35,7 +32,7 @@ public class TileMarkerSet
 			String name,
 			TileMarkerMapMode mapMode,
 			TileMarkerWaveMap waveMap,
-			List<DefenderMarker> markers,
+			List<TileMarker> markers,
 			boolean builtIn)
 	{
 		this.id = id;
@@ -96,12 +93,12 @@ public class TileMarkerSet
 		this.builtIn = builtIn;
 	}
 
-	public List<DefenderMarker> getMarkers()
+	public List<TileMarker> getMarkers()
 	{
 		return markers == null ? Collections.emptyList() : markers;
 	}
 
-	public void setMarkers(List<DefenderMarker> markers)
+	public void setMarkers(List<TileMarker> markers)
 	{
 		this.markers = markers == null ? new ArrayList<>() : new ArrayList<>(markers);
 	}

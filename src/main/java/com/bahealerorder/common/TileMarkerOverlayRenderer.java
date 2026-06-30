@@ -1,7 +1,7 @@
 package com.bahealerorder.common;
 
-import com.bahealerorder.defender.strategies.DefenderMarker;
-import com.bahealerorder.defender.strategies.DefenderTile;
+import com.bahealerorder.tilemarkers.TileMarker;
+import com.bahealerorder.tilemarkers.TileMarkerTile;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -17,20 +17,18 @@ import net.runelite.client.ui.overlay.OverlayUtil;
 
 public final class TileMarkerOverlayRenderer
 {
-	private static final Color DEFAULT_MARKER_COLOR = new Color(80, 170, 255);
-
 	private TileMarkerOverlayRenderer()
 	{
 	}
 
-	public static void renderMarkers(Client client, Graphics2D graphics, Iterable<DefenderMarker> markers)
+	public static void renderMarkers(Client client, Graphics2D graphics, Iterable<TileMarker> markers)
 	{
 		if (markers == null)
 		{
 			return;
 		}
 
-		for (DefenderMarker marker : markers)
+		for (TileMarker marker : markers)
 		{
 			if (marker == null || marker.getTile() == null)
 			{
@@ -41,7 +39,7 @@ public final class TileMarkerOverlayRenderer
 		}
 	}
 
-	private static void renderMarker(Client client, Graphics2D graphics, DefenderMarker marker)
+	private static void renderMarker(Client client, Graphics2D graphics, TileMarker marker)
 	{
 		for (WorldPoint worldPoint : getWorldPoints(client, marker.getTile()))
 		{
@@ -57,13 +55,13 @@ public final class TileMarkerOverlayRenderer
 				continue;
 			}
 
-			Color color = getMarkerColor(marker);
+			Color color = TileMarkerStyle.parseColor(marker.getColor(), TileMarkerStyle.DEFAULT_MARKER_COLOR);
 			renderTile(graphics, tile, color, marker.getOpacityPercentOrDefault(), marker.getBorderWidthOrDefault());
 			renderLabel(client, graphics, localPoint, marker.getLabel(), color);
 		}
 	}
 
-	private static Collection<WorldPoint> getWorldPoints(Client client, DefenderTile tile)
+	private static Collection<WorldPoint> getWorldPoints(Client client, TileMarkerTile tile)
 	{
 		WorldPoint worldPoint = WorldPoint.fromRegion(tile.getRegionId(), tile.getRegionX(), tile.getRegionY(), tile.getZ());
 		return client.isInInstancedRegion()
@@ -75,11 +73,11 @@ public final class TileMarkerOverlayRenderer
 	{
 		Stroke originalStroke = graphics.getStroke();
 		Color originalColor = graphics.getColor();
-		Color fillColor = new Color(color.getRed(), color.getGreen(), color.getBlue(), alphaFromOpacity(opacityPercent));
+		Color fillColor = TileMarkerStyle.withOpacity(color, opacityPercent);
 
 		graphics.setColor(fillColor);
 		graphics.fill(tile);
-		float width = clampBorderWidth(borderWidth);
+		float width = TileMarkerStyle.clampBorderWidth(borderWidth);
 		if (width > 0)
 		{
 			graphics.setColor(color);
@@ -106,27 +104,4 @@ public final class TileMarkerOverlayRenderer
 		OverlayUtil.renderTextLocation(graphics, textLocation, text, color);
 	}
 
-	private static Color getMarkerColor(DefenderMarker marker)
-	{
-		try
-		{
-			return marker.getColor() == null || marker.getColor().trim().isEmpty()
-					? DEFAULT_MARKER_COLOR
-					: Color.decode(marker.getColor());
-		}
-		catch (RuntimeException ex)
-		{
-			return DEFAULT_MARKER_COLOR;
-		}
-	}
-
-	private static int alphaFromOpacity(int opacityPercent)
-	{
-		return Math.round(255 * Math.max(0, Math.min(100, opacityPercent)) / 100f);
-	}
-
-	private static float clampBorderWidth(float borderWidth)
-	{
-		return Math.max(0f, Math.min(8f, borderWidth));
-	}
 }

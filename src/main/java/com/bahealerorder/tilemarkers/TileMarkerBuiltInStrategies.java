@@ -1,6 +1,5 @@
 package com.bahealerorder.tilemarkers;
 
-import com.bahealerorder.defender.TileMarkerWaveMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -9,8 +8,8 @@ import java.util.Map;
 
 final class TileMarkerBuiltInStrategies
 {
-	static final String BEGINNER_DEFENDER_TILES_STRATEGY_ID =
-			"built-in:tile-marker-strategy:beginner-defender-tiles";
+	static final String BEGINNER_TILES_STRATEGY_ID =
+			"built-in:tile-marker-strategy:beginner-tiles";
 	static final String W10_BEGINNER_STRATEGY_ID =
 			"built-in:tile-marker-strategy:w10-beginner";
 	static final String CENTER_FOOD_STRATEGY_ID =
@@ -50,13 +49,10 @@ final class TileMarkerBuiltInStrategies
 	static List<TileMarkerStrategyPreset> createStrategyPresets()
 	{
 		return Arrays.asList(
-				strategy(BEGINNER_DEFENDER_TILES_STRATEGY_ID, "Beginner Defender Tiles", "", TileMarkerWaveMap.WAVES_1_TO_9,
-						TileMarkerBuiltInSets.SAFETY_FOOD_SET_ID,
-						TileMarkerBuiltInSets.N_TRAP_FOOD_SET_ID,
-						TileMarkerBuiltInSets.SHIR_MAINSTACK_TRAIL_SET_ID,
-						TileMarkerBuiltInSets.WEST_RELURE_FOOD_SET_ID),
+				strategy(BEGINNER_TILES_STRATEGY_ID, "Beginner Defender Tiles", "", TileMarkerWaveMap.WAVES_1_TO_9,
+						TileMarkerBuiltInSets.BEGINNER_TILES_SET_ID),
 				strategy(W10_BEGINNER_STRATEGY_ID, "W10 Beginner", "", TileMarkerWaveMap.WAVE_10,
-						TileMarkerBuiltInSets.W10_BEGINNER_DEFENDER_TILES_SET_ID),
+						TileMarkerBuiltInSets.W10_BEGINNER_TILES_SET_ID),
 				strategy(CENTER_FOOD_STRATEGY_ID, "Center Food", "", TileMarkerWaveMap.WAVES_1_TO_9,
 						TileMarkerBuiltInSets.CENTER_TRAP_FOOD_SET_ID,
 						TileMarkerBuiltInSets.SHIR_MAINSTACK_TRAIL_SET_ID),
@@ -113,30 +109,30 @@ final class TileMarkerBuiltInStrategies
 		return new TileMarkerStrategyPreset(id, name, notes, waveMap, Arrays.asList(markerSetIds), true);
 	}
 
-	private static Map<Integer, String> beginnerWaves()
+	private static Map<Integer, TileMarkerWaveSelectionTarget> beginnerWaves()
 	{
-		Map<Integer, String> waves = new HashMap<>();
+		Map<Integer, TileMarkerWaveSelectionTarget> waves = new HashMap<>();
 		for (int wave = 1; wave <= 9; wave++)
 		{
-			waves.put(wave, BEGINNER_DEFENDER_TILES_STRATEGY_ID);
+			waves.put(wave, TileMarkerWaveSelectionTarget.strategyPreset(BEGINNER_TILES_STRATEGY_ID));
 		}
-		waves.put(10, W10_BEGINNER_STRATEGY_ID);
+		waves.put(10, TileMarkerWaveSelectionTarget.strategyPreset(W10_BEGINNER_STRATEGY_ID));
 		return waves;
 	}
 
-	private static Map<Integer, String> intermediateWaves()
+	private static Map<Integer, TileMarkerWaveSelectionTarget> intermediateWaves()
 	{
-		Map<Integer, String> waves = new HashMap<>();
-		waves.put(1, CENTER_FOOD_STRATEGY_ID);
-		waves.put(2, NW_FOOD_STRATEGY_ID);
-		waves.put(3, NW_FOOD_STRATEGY_ID);
-		waves.put(4, NO_LOG_STRATEGY_ID);
-		waves.put(5, NO_LOG_STRATEGY_ID);
-		waves.put(6, WALL_SPLIT_STRATEGY_ID);
-		waves.put(7, HENDI_TRIANGLE_STRATEGY_ID);
-		waves.put(8, HENDI_TRIANGLE_STRATEGY_ID);
-		waves.put(9, TWO_ONE_FIVE_STAR_TWO_STRATEGY_ID);
-		waves.put(10, AUK_W10_STRATEGY_ID);
+		Map<Integer, TileMarkerWaveSelectionTarget> waves = new HashMap<>();
+		waves.put(1, TileMarkerWaveSelectionTarget.strategyPreset(CENTER_FOOD_STRATEGY_ID));
+		waves.put(2, TileMarkerWaveSelectionTarget.strategyPreset(NW_FOOD_STRATEGY_ID));
+		waves.put(3, TileMarkerWaveSelectionTarget.strategyPreset(NW_FOOD_STRATEGY_ID));
+		waves.put(4, TileMarkerWaveSelectionTarget.strategyPreset(NO_LOG_STRATEGY_ID));
+		waves.put(5, TileMarkerWaveSelectionTarget.strategyPreset(NO_LOG_STRATEGY_ID));
+		waves.put(6, TileMarkerWaveSelectionTarget.strategyPreset(WALL_SPLIT_STRATEGY_ID));
+		waves.put(7, TileMarkerWaveSelectionTarget.strategyPreset(HENDI_TRIANGLE_STRATEGY_ID));
+		waves.put(8, TileMarkerWaveSelectionTarget.strategyPreset(HENDI_TRIANGLE_STRATEGY_ID));
+		waves.put(9, TileMarkerWaveSelectionTarget.strategyPreset(TWO_ONE_FIVE_STAR_TWO_STRATEGY_ID));
+		waves.put(10, TileMarkerWaveSelectionTarget.strategyPreset(AUK_W10_STRATEGY_ID));
 		return waves;
 	}
 }

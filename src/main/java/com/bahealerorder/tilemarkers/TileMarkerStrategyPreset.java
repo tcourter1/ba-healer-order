@@ -1,6 +1,5 @@
 package com.bahealerorder.tilemarkers;
 
-import com.bahealerorder.defender.TileMarkerWaveMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

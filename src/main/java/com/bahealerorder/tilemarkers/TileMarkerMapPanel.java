@@ -1,7 +1,6 @@
-package com.bahealerorder.defender;
+package com.bahealerorder.tilemarkers;
 
-import com.bahealerorder.defender.strategies.DefenderMapLayout;
-import com.bahealerorder.defender.strategies.DefenderMarker;
+import com.bahealerorder.common.TileMarkerStyle;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -16,9 +15,9 @@ import java.util.function.Supplier;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
-class DefenderTileMarkerMapPanel extends JPanel
+class TileMarkerMapPanel extends JPanel
 {
-	static final Color DEFAULT_MARKER_COLOR = new Color(80, 170, 255);
+	static final Color DEFAULT_MARKER_COLOR = TileMarkerStyle.DEFAULT_MARKER_COLOR;
 	static final Color TRAP_COLOR = new Color(190, 70, 70);
 	static final Color LOGS_COLOR = new Color(210, 180, 80);
 	static final Color HAMMER_COLOR = new Color(145, 105, 55);
@@ -35,7 +34,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 	static final Color START_TILE_COLOR = new Color(115, 190, 205);
 	private static final Color SELECTED_MARKER_BORDER_COLOR = new Color(0, 175, 255);
 
-	private static final MapBounds DEFENDER_MAP_BOUNDS = new MapBounds(24, 50, 15, 42);
+	private static final MapBounds EAST_SIDE_MAP_BOUNDS = new MapBounds(24, 50, 15, 42);
 	private static final MapBounds FULL_ARENA_MAP_BOUNDS = new MapBounds(8, 56, 5, 42);
 	private static final int WEST_CANNON_X = 21;
 	private static final int WEST_CANNON_Y = 26;
@@ -47,17 +46,17 @@ class DefenderTileMarkerMapPanel extends JPanel
 	private static final int HORN_OF_GLORY_X = 52;
 	private static final int HORN_OF_GLORY_Y = 10;
 
-	private final Supplier<DefenderMapLayout> layoutSupplier;
+	private final Supplier<TileMarkerMapLayout> layoutSupplier;
 	private final Supplier<TileMarkerMapMode> mapModeSupplier;
-	private final Supplier<List<DefenderMarker>> markersSupplier;
+	private final Supplier<List<TileMarker>> markersSupplier;
 	private final Supplier<Set<String>> selectedMarkerIdsSupplier;
 	private final java.util.function.IntSupplier tileSizeSupplier;
 	private final TileClickHandler tileClicked;
 
-	DefenderTileMarkerMapPanel(
-			Supplier<DefenderMapLayout> layoutSupplier,
+	TileMarkerMapPanel(
+			Supplier<TileMarkerMapLayout> layoutSupplier,
 			Supplier<TileMarkerMapMode> mapModeSupplier,
-			Supplier<List<DefenderMarker>> markersSupplier,
+			Supplier<List<TileMarker>> markersSupplier,
 			Supplier<Set<String>> selectedMarkerIdsSupplier,
 			java.util.function.IntSupplier tileSizeSupplier,
 			TileClickHandler tileClicked)
@@ -116,7 +115,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 		scrollRectToVisible(new Rectangle(x, y, tileSize * 9, tileSize * 9));
 	}
 
-	boolean isSelectableMapTile(DefenderMapLayout layout, int mapX, int mapY)
+	boolean isSelectableMapTile(TileMarkerMapLayout layout, int mapX, int mapY)
 	{
 		if (!mapBounds().contains(mapX, mapY))
 		{
@@ -130,7 +129,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 	protected void paintComponent(Graphics graphics)
 	{
 		super.paintComponent(graphics);
-		DefenderMapLayout layout = currentLayout();
+		TileMarkerMapLayout layout = currentLayout();
 		int tileSize = getTileSize();
 		int width = getMapWidthPixels();
 		int height = getMapHeightPixels();
@@ -163,10 +162,10 @@ class DefenderTileMarkerMapPanel extends JPanel
 		}
 	}
 
-	private void drawMarkers(Graphics graphics, DefenderMapLayout layout)
+	private void drawMarkers(Graphics graphics, TileMarkerMapLayout layout)
 	{
 		Set<String> selectedMarkerIds = selectedMarkerIdsSupplier.get();
-		for (DefenderMarker marker : markersSupplier.get())
+		for (TileMarker marker : markersSupplier.get())
 		{
 			int mapX = layout.toMapX(marker.getTile());
 			int mapY = layout.toMapY(marker.getTile());
@@ -177,8 +176,8 @@ class DefenderTileMarkerMapPanel extends JPanel
 
 			int x = toScreenX(mapX);
 			int y = toScreenY(mapY);
-			Color color = parseColor(marker.getColor(), DEFAULT_MARKER_COLOR);
-			graphics.setColor(withOpacity(color, marker.getOpacityPercentOrDefault()));
+			Color color = TileMarkerStyle.parseColor(marker.getColor(), DEFAULT_MARKER_COLOR);
+			graphics.setColor(TileMarkerStyle.withOpacity(color, marker.getOpacityPercentOrDefault()));
 			graphics.fillRect(x, y, getTileSize(), getTileSize());
 			drawMarkerBorder(graphics, x, y, color, marker.getBorderWidthOrDefault());
 			drawMarkerText(graphics, marker, x, y);
@@ -197,7 +196,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 
 	private void drawMarkerBorder(Graphics graphics, int x, int y, Color color, float borderWidth)
 	{
-		float width = clampBorderWidth(borderWidth);
+		float width = TileMarkerStyle.clampBorderWidth(borderWidth);
 		if (width <= 0)
 		{
 			return;
@@ -212,7 +211,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 		graphics2D.dispose();
 	}
 
-	private void drawLandmarks(Graphics graphics, DefenderMapLayout layout)
+	private void drawLandmarks(Graphics graphics, TileMarkerMapLayout layout)
 	{
 		if (mapMode().isFullArena())
 		{
@@ -220,12 +219,12 @@ class DefenderTileMarkerMapPanel extends JPanel
 			return;
 		}
 
-		drawDefenderLandmarks(graphics, layout);
+		drawEastSideLandmarks(graphics, layout);
 	}
 
-	private void drawDefenderLandmarks(Graphics graphics, DefenderMapLayout layout)
+	private void drawEastSideLandmarks(Graphics graphics, TileMarkerMapLayout layout)
 	{
-		if (layout == DefenderMapLayout.WAVE_10)
+		if (layout == TileMarkerMapLayout.WAVE_10)
 		{
 			drawQueenTrapdoor(graphics);
 			drawLandmark(graphics, 45, 26, TRAP_COLOR);
@@ -246,7 +245,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 		drawLandmark(graphics, EAST_CANNON_X, EAST_CANNON_Y, CANNON_COLOR);
 	}
 
-	private void drawFullArenaLandmarks(Graphics graphics, DefenderMapLayout layout)
+	private void drawFullArenaLandmarks(Graphics graphics, TileMarkerMapLayout layout)
 	{
 		drawTrapLandmarks(graphics);
 		drawResourceLandmarks(graphics, layout);
@@ -256,7 +255,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 		drawLandmark(graphics, HORN_OF_GLORY_X, HORN_OF_GLORY_Y, HORN_COLOR);
 		drawLandmark(graphics, WEST_CANNON_X, WEST_CANNON_Y, CANNON_COLOR);
 
-		if (layout == DefenderMapLayout.WAVE_10)
+		if (layout == TileMarkerMapLayout.WAVE_10)
 		{
 			drawQueenTrapdoor(graphics);
 			return;
@@ -271,9 +270,9 @@ class DefenderTileMarkerMapPanel extends JPanel
 		drawLandmark(graphics, 45, 26, TRAP_COLOR);
 	}
 
-	private void drawResourceLandmarks(Graphics graphics, DefenderMapLayout layout)
+	private void drawResourceLandmarks(Graphics graphics, TileMarkerMapLayout layout)
 	{
-		if (layout == DefenderMapLayout.WAVE_10)
+		if (layout == TileMarkerMapLayout.WAVE_10)
 		{
 			drawLandmark(graphics, 29, 39, LOGS_COLOR);
 			drawLandmark(graphics, 30, 38, LOGS_COLOR);
@@ -287,12 +286,12 @@ class DefenderTileMarkerMapPanel extends JPanel
 		drawLandmark(graphics, 32, 34, HAMMER_COLOR);
 	}
 
-	private void drawCaveLandmarks(Graphics graphics, DefenderMapLayout layout)
+	private void drawCaveLandmarks(Graphics graphics, TileMarkerMapLayout layout)
 	{
-		drawLandmark(graphics, 18, layout == DefenderMapLayout.WAVE_10 ? 38 : 37, RANGER_CAVE_COLOR);
+		drawLandmark(graphics, 18, layout == TileMarkerMapLayout.WAVE_10 ? 38 : 37, RANGER_CAVE_COLOR);
 		drawLandmark(graphics, 24, 39, FIGHTER_CAVE_COLOR);
 
-		if (layout == DefenderMapLayout.WAVE_10)
+		if (layout == TileMarkerMapLayout.WAVE_10)
 		{
 			drawLandmark(graphics, 42, 38, RUNNER_CAVE_COLOR);
 			drawLandmark(graphics, 36, 39, HEALER_CAVE_COLOR);
@@ -304,9 +303,9 @@ class DefenderTileMarkerMapPanel extends JPanel
 		}
 	}
 
-	private void drawStartLandmarks(Graphics graphics, DefenderMapLayout layout)
+	private void drawStartLandmarks(Graphics graphics, TileMarkerMapLayout layout)
 	{
-		if (layout == DefenderMapLayout.WAVE_10)
+		if (layout == TileMarkerMapLayout.WAVE_10)
 		{
 			drawLandmark(graphics, 28, 8, START_TILE_COLOR);
 			drawLandmark(graphics, 32, 8, START_TILE_COLOR);
@@ -336,7 +335,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 		drawTileGroupOutline(graphics, QUEEN_TRAPDOOR_COLOR, this::isQueenTrapdoorTile, 27, 35, 20, 28);
 	}
 
-	private void drawDisabledTiles(Graphics graphics, DefenderMapLayout layout)
+	private void drawDisabledTiles(Graphics graphics, TileMarkerMapLayout layout)
 	{
 		int tileSize = getTileSize();
 		MapBounds bounds = mapBounds();
@@ -356,19 +355,19 @@ class DefenderTileMarkerMapPanel extends JPanel
 		}
 	}
 
-	private void drawCannonHills(Graphics graphics, DefenderMapLayout layout)
+	private void drawCannonHills(Graphics graphics, TileMarkerMapLayout layout)
 	{
 		if (mapMode().isFullArena())
 		{
 			drawCannonHill(graphics, WEST_CANNON_HILL_X);
-			if (layout != DefenderMapLayout.WAVE_10)
+			if (layout != TileMarkerMapLayout.WAVE_10)
 			{
 				drawCannonHill(graphics, EAST_CANNON_HILL_X);
 			}
 			return;
 		}
 
-		if (layout != DefenderMapLayout.WAVE_10)
+		if (layout != TileMarkerMapLayout.WAVE_10)
 		{
 			drawCannonHill(graphics, EAST_CANNON_HILL_X);
 		}
@@ -453,7 +452,7 @@ class DefenderTileMarkerMapPanel extends JPanel
 		return true;
 	}
 
-	private void drawMarkerText(Graphics graphics, DefenderMarker marker, int x, int y)
+	private void drawMarkerText(Graphics graphics, TileMarker marker, int x, int y)
 	{
 		String text = marker.getLabel();
 		if (text == null || text.trim().isEmpty())
@@ -461,7 +460,13 @@ class DefenderTileMarkerMapPanel extends JPanel
 			return;
 		}
 
-		drawCenteredText(graphics, text.trim(), x, y, getReadableTextColor(parseColor(marker.getColor(), DEFAULT_MARKER_COLOR)));
+		drawCenteredText(
+				graphics,
+				text.trim(),
+				x,
+				y,
+				TileMarkerStyle.readableTextColor(TileMarkerStyle.parseColor(marker.getColor(), DEFAULT_MARKER_COLOR))
+		);
 	}
 
 	private void drawCenteredText(Graphics graphics, String text, int x, int y, Color color)
@@ -498,13 +503,13 @@ class DefenderTileMarkerMapPanel extends JPanel
 
 	private MapBounds mapBounds()
 	{
-		return mapMode().isFullArena() ? FULL_ARENA_MAP_BOUNDS : DEFENDER_MAP_BOUNDS;
+		return mapMode().isFullArena() ? FULL_ARENA_MAP_BOUNDS : EAST_SIDE_MAP_BOUNDS;
 	}
 
-	private DefenderMapLayout currentLayout()
+	private TileMarkerMapLayout currentLayout()
 	{
-		DefenderMapLayout layout = layoutSupplier.get();
-		return layout == null ? DefenderMapLayout.WAVES_1_TO_9 : layout;
+		TileMarkerMapLayout layout = layoutSupplier.get();
+		return layout == null ? TileMarkerMapLayout.WAVES_1_TO_9 : layout;
 	}
 
 	private TileMarkerMapMode mapMode()
@@ -522,36 +527,6 @@ class DefenderTileMarkerMapPanel extends JPanel
 	private boolean isQueenTrapdoorTile(int mapX, int mapY)
 	{
 		return mapX >= 27 && mapX < 35 && mapY >= 20 && mapY < 28;
-	}
-
-	private static Color parseColor(String color, Color fallback)
-	{
-		try
-		{
-			return color == null || color.trim().isEmpty() ? fallback : Color.decode(color);
-		}
-		catch (RuntimeException ex)
-		{
-			return fallback;
-		}
-	}
-
-	private static Color withOpacity(Color color, int opacityPercent)
-	{
-		int alpha = Math.round(255 * Math.max(0, Math.min(100, opacityPercent)) / 100f);
-		return new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
-	}
-
-	private static float clampBorderWidth(float borderWidth)
-	{
-		return Math.max(0f, Math.min(8f, borderWidth));
-	}
-
-	private static Color getReadableTextColor(Color background)
-	{
-		return (background.getRed() * 299 + background.getGreen() * 587 + background.getBlue() * 114) / 1000 > 140
-				? Color.BLACK
-				: Color.WHITE;
 	}
 
 	private static class MapBounds

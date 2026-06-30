@@ -1,17 +1,17 @@
-package com.bahealerorder.defender.strategies;
+package com.bahealerorder.tilemarkers;
 
-public class DefenderTile
+public class TileMarkerTile
 {
 	private int regionId;
 	private int regionX;
 	private int regionY;
 	private int z;
 
-	public DefenderTile()
+	public TileMarkerTile()
 	{
 	}
 
-	public DefenderTile(int regionId, int regionX, int regionY, int z)
+	public TileMarkerTile(int regionId, int regionX, int regionY, int z)
 	{
 		this.regionId = regionId;
 		this.regionX = regionX;

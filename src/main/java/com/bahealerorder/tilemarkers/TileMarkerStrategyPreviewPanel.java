@@ -1,9 +1,6 @@
-package com.bahealerorder.defender;
+package com.bahealerorder.tilemarkers;
 
-import com.bahealerorder.defender.strategies.DefenderMarker;
-import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
-import com.bahealerorder.tilemarkers.TileMarkerRoleContext;
-import com.bahealerorder.tilemarkers.TileMarkerStrategyPreset;
+import com.bahealerorder.common.BaPanelUi;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -11,8 +8,6 @@ import java.awt.event.MouseWheelEvent;
 import java.util.Collections;
 import java.util.List;
 import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -32,9 +27,9 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 	private static final int MAP_DEFAULT_TILE_SIZE = 20;
 
 	private final TileMarkerWaveMap waveMap;
-	private final List<DefenderMarker> markers;
+	private final List<TileMarker> markers;
 	private final JSlider mapZoom = new JSlider(MAP_MIN_TILE_SIZE, MAP_MAX_TILE_SIZE, MAP_DEFAULT_TILE_SIZE);
-	private final DefenderTileMarkerMapPanel mapPanel;
+	private final TileMarkerMapPanel mapPanel;
 	private final JScrollPane mapScrollPane;
 
 	public TileMarkerStrategyPreviewPanel(
@@ -64,13 +59,13 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 
 	private TileMarkerStrategyPreviewPanel(
 			TileMarkerWaveMap waveMap,
-			List<DefenderMarker> markers,
+			List<TileMarker> markers,
 			String notes,
 			String headerText)
 	{
 		this.waveMap = waveMap == null ? TileMarkerWaveMap.WAVES_1_TO_9 : waveMap;
 		this.markers = markers == null ? Collections.emptyList() : markers;
-		this.mapPanel = new DefenderTileMarkerMapPanel(
+		this.mapPanel = new TileMarkerMapPanel(
 				() -> this.waveMap.getLayout(),
 				() -> TileMarkerMapMode.FULL_MAP,
 				() -> this.markers,
@@ -106,7 +101,7 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 		String name = strategy == null || strategy.getName() == null || strategy.getName().trim().isEmpty()
 				? "current strategy"
 				: escapeHtml(strategy.getName().trim());
-		return "This is a preview of the tile markers and notes that will be visible when using the " + name + ".";
+		return "This is a preview of the tile markers and notes that will be visible when using the " + name + " strategy.";
 	}
 
 	private static String escapeHtml(String text)
@@ -173,7 +168,7 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		panel.setPreferredSize(new Dimension(SIDE_WIDTH, MAP_VIEWPORT_HEIGHT));
 
-		JPanel top = verticalPanel();
+		JPanel top = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		top.add(TileMarkerLegendPanel.create(SIDE_WIDTH));
 		top.add(Box.createVerticalStrut(42));
 		top.add(label("Notes", true));
@@ -194,7 +189,7 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 
 		JScrollPane scrollPane = new JScrollPane(textArea);
 		scrollPane.setBorder(javax.swing.BorderFactory.createLineBorder(ColorScheme.DARK_GRAY_COLOR));
-		fixedSize(scrollPane, SIDE_WIDTH, 240);
+		BaPanelUi.fixedSize(scrollPane, SIDE_WIDTH, 240);
 		return scrollPane;
 	}
 
@@ -231,20 +226,4 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 		return label;
 	}
 
-	private JPanel verticalPanel()
-	{
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		return panel;
-	}
-
-	private static void fixedSize(JComponent component, int width, int height)
-	{
-		Dimension size = new Dimension(width, height);
-		component.setPreferredSize(size);
-		component.setMinimumSize(size);
-		component.setMaximumSize(size);
-		component.setAlignmentX(LEFT_ALIGNMENT);
-	}
 }

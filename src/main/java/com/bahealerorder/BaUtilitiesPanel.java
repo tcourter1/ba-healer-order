@@ -30,7 +30,6 @@ import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
-import net.runelite.api.gameval.ItemID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
@@ -304,7 +303,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	private JPanel createTabSection()
 	{
 		List<SidePanelTab> tabs = new ArrayList<>();
-		tabs.add(SidePanelTab.item(OVERVIEW_TAB, ItemID.MIRROR, "Wave Overview", waveOverviewPanel));
+		tabs.add(SidePanelTab.icon(OVERVIEW_TAB, BaIcons.waveOverviewIcon(TAB_ICON_SIZE), "Wave Overview", waveOverviewPanel));
 		tabs.add(SidePanelTab.item(HEALER_TAB, BaRole.HEALER.getPlayerIconItemId(), "Healer Codes", healerCodePanel));
 		tabs.add(SidePanelTab.icon(TILE_MARKERS_TAB, BaIcons.tileMarkerIcon(TAB_ICON_SIZE), "Tile Markers", generalTileMarkerPanel));
 

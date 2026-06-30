@@ -1,4 +1,4 @@
-package com.bahealerorder.defender;
+package com.bahealerorder.tilemarkers;
 
 public enum TileMarkerMapMode
 {

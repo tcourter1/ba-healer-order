@@ -1,28 +1,28 @@
-package com.bahealerorder.defender.strategies;
+package com.bahealerorder.tilemarkers;
 
-public class DefenderMarker
+public class TileMarker
 {
 	public static final int DEFAULT_OPACITY_PERCENT = 22;
 	public static final float DEFAULT_BORDER_WIDTH = 1.0f;
 
 	private String id;
-	private DefenderTile tile;
+	private TileMarkerTile tile;
 	private String name;
 	private String label;
 	private String color;
 	private Integer opacityPercent;
 	private Float borderWidth;
 
-	public DefenderMarker()
+	public TileMarker()
 	{
 	}
 
-	public DefenderMarker(String id, DefenderTile tile, String name, String label, String color)
+	public TileMarker(String id, TileMarkerTile tile, String name, String label, String color)
 	{
 		this(id, tile, name, label, color, DEFAULT_OPACITY_PERCENT, DEFAULT_BORDER_WIDTH);
 	}
 
-	public DefenderMarker(String id, DefenderTile tile, String name, String label, String color, Integer opacityPercent, Float borderWidth)
+	public TileMarker(String id, TileMarkerTile tile, String name, String label, String color, Integer opacityPercent, Float borderWidth)
 	{
 		this.id = id;
 		this.tile = tile;
@@ -43,12 +43,12 @@ public class DefenderMarker
 		this.id = id;
 	}
 
-	public DefenderTile getTile()
+	public TileMarkerTile getTile()
 	{
 		return tile;
 	}
 
-	public void setTile(DefenderTile tile)
+	public void setTile(TileMarkerTile tile)
 	{
 		this.tile = tile;
 	}

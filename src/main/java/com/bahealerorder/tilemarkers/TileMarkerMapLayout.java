@@ -1,6 +1,6 @@
-package com.bahealerorder.defender.strategies;
+package com.bahealerorder.tilemarkers;
 
-public enum DefenderMapLayout
+public enum TileMarkerMapLayout
 {
 	WAVES_1_TO_9("W1-9", 7509),
 	WAVE_10("W10", 7508);
@@ -12,28 +12,28 @@ public enum DefenderMapLayout
 	private final String name;
 	private final int regionId;
 
-	DefenderMapLayout(String name, int regionId)
+	TileMarkerMapLayout(String name, int regionId)
 	{
 		this.name = name;
 		this.regionId = regionId;
 	}
 
-	public DefenderTile toTile(int mapX, int mapY)
+	public TileMarkerTile toTile(int mapX, int mapY)
 	{
-		return new DefenderTile(regionId, mapX, mapY + REGION_Y_OFFSET, 0);
+		return new TileMarkerTile(regionId, mapX, mapY + REGION_Y_OFFSET, 0);
 	}
 
-	public int toMapX(DefenderTile tile)
+	public int toMapX(TileMarkerTile tile)
 	{
 		return tile == null ? -1 : tile.getRegionX();
 	}
 
-	public int toMapY(DefenderTile tile)
+	public int toMapY(TileMarkerTile tile)
 	{
 		return tile == null ? -1 : tile.getRegionY() - REGION_Y_OFFSET;
 	}
 
-	public boolean contains(DefenderTile tile)
+	public boolean contains(TileMarkerTile tile)
 	{
 		if (tile == null || tile.getRegionId() != regionId)
 		{
@@ -45,7 +45,7 @@ public enum DefenderMapLayout
 		return x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
 	}
 
-	public static DefenderMapLayout forWave(int wave)
+	public static TileMarkerMapLayout forWave(int wave)
 	{
 		return wave == 10 ? WAVE_10 : WAVES_1_TO_9;
 	}

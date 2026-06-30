@@ -9,29 +9,33 @@ public class TileMarkerAssignmentPreset
 	private String name;
 	private String roleContext;
 	private boolean builtIn;
-	private Map<Integer, String> waveStrategyPresetIds = new HashMap<>();
+	private Map<Integer, TileMarkerWaveSelectionTarget> waveSelections = new HashMap<>();
 
 	public TileMarkerAssignmentPreset()
 	{
-	}
-
-	public TileMarkerAssignmentPreset(String id, String name, TileMarkerRoleContext roleContext, Map<Integer, String> waveStrategyPresetIds)
-	{
-		this(id, name, roleContext, waveStrategyPresetIds, false);
 	}
 
 	public TileMarkerAssignmentPreset(
 			String id,
 			String name,
 			TileMarkerRoleContext roleContext,
-			Map<Integer, String> waveStrategyPresetIds,
+			Map<Integer, TileMarkerWaveSelectionTarget> waveSelections)
+	{
+		this(id, name, roleContext, waveSelections, false);
+	}
+
+	public TileMarkerAssignmentPreset(
+			String id,
+			String name,
+			TileMarkerRoleContext roleContext,
+			Map<Integer, TileMarkerWaveSelectionTarget> waveSelections,
 			boolean builtIn)
 	{
 		this.id = id;
 		this.name = name;
 		this.builtIn = builtIn;
 		setRoleContext(roleContext);
-		setWaveStrategyPresetIds(waveStrategyPresetIds);
+		setWaveSelections(waveSelections);
 	}
 
 	public String getId()
@@ -74,18 +78,38 @@ public class TileMarkerAssignmentPreset
 		this.roleContext = (roleContext == null ? TileMarkerRoleContext.DEFENDER : roleContext).name();
 	}
 
-	public Map<Integer, String> getWaveStrategyPresetIds()
+	public Map<Integer, TileMarkerWaveSelectionTarget> getWaveSelections()
 	{
-		if (waveStrategyPresetIds == null)
+		if (waveSelections == null)
 		{
-			waveStrategyPresetIds = new HashMap<>();
+			waveSelections = new HashMap<>();
 		}
-		return waveStrategyPresetIds;
+		return waveSelections;
 	}
 
-	public void setWaveStrategyPresetIds(Map<Integer, String> waveStrategyPresetIds)
+	public void setWaveSelections(Map<Integer, TileMarkerWaveSelectionTarget> waveSelections)
 	{
-		this.waveStrategyPresetIds = waveStrategyPresetIds == null ? new HashMap<>() : new HashMap<>(waveStrategyPresetIds);
+		this.waveSelections = copySelections(waveSelections);
+	}
+
+	private static Map<Integer, TileMarkerWaveSelectionTarget> copySelections(
+			Map<Integer, TileMarkerWaveSelectionTarget> source)
+	{
+		Map<Integer, TileMarkerWaveSelectionTarget> copy = new HashMap<>();
+		if (source == null)
+		{
+			return copy;
+		}
+
+		for (Map.Entry<Integer, TileMarkerWaveSelectionTarget> entry : source.entrySet())
+		{
+			TileMarkerWaveSelectionTarget target = entry.getValue();
+			if (target != null)
+			{
+				copy.put(entry.getKey(), new TileMarkerWaveSelectionTarget(target));
+			}
+		}
+		return copy;
 	}
 
 	@Override

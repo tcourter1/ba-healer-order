@@ -1,17 +1,17 @@
 package com.bahealerorder.tilemarkers;
 
-public class TileMarkerWaveStrategy
+public class TileMarkerWaveSelection
 {
 	private String id;
 	private String roleContext;
 	private int wave;
-	private String strategyPresetId;
+	private TileMarkerWaveSelectionTarget target;
 
-	public TileMarkerWaveStrategy()
+	public TileMarkerWaveSelection()
 	{
 	}
 
-	public TileMarkerWaveStrategy(String id, TileMarkerRoleContext roleContext, int wave)
+	public TileMarkerWaveSelection(String id, TileMarkerRoleContext roleContext, int wave)
 	{
 		this.id = id;
 		this.roleContext = (roleContext == null ? TileMarkerRoleContext.GLOBAL : roleContext).name();
@@ -48,13 +48,13 @@ public class TileMarkerWaveStrategy
 		this.wave = wave;
 	}
 
-	public String getStrategyPresetId()
+	public TileMarkerWaveSelectionTarget getTarget()
 	{
-		return strategyPresetId;
+		return target;
 	}
 
-	public void setStrategyPresetId(String strategyPresetId)
+	public void setTarget(TileMarkerWaveSelectionTarget target)
 	{
-		this.strategyPresetId = strategyPresetId;
+		this.target = target == null ? null : new TileMarkerWaveSelectionTarget(target);
 	}
 }

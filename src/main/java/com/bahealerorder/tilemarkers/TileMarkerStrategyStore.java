@@ -1,8 +1,5 @@
 package com.bahealerorder.tilemarkers;
 
-import com.bahealerorder.defender.TileMarkerMapMode;
-import com.bahealerorder.defender.TileMarkerWaveMap;
-import com.bahealerorder.defender.strategies.DefenderMarker;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,13 +8,15 @@ import java.util.Map;
 public class TileMarkerStrategyStore
 {
 	private String lastMarkerColor = "#50aaff";
-	private int lastMarkerOpacityPercent = DefenderMarker.DEFAULT_OPACITY_PERCENT;
-	private float lastMarkerBorderWidth = DefenderMarker.DEFAULT_BORDER_WIDTH;
+	private int lastMarkerOpacityPercent = TileMarker.DEFAULT_OPACITY_PERCENT;
+	private float lastMarkerBorderWidth = TileMarker.DEFAULT_BORDER_WIDTH;
 	private String lastMapMode = TileMarkerMapMode.FULL_MAP.name();
 	private String lastWaveMap = TileMarkerWaveMap.WAVES_1_TO_9.name();
 	private String selectedRoleContext = TileMarkerRoleContext.DEFENDER.name();
+	private boolean markerEditorHelpVisible = true;
+	private boolean beginnerPromptDismissed;
 	private List<TileMarkerSet> markerSets = new ArrayList<>();
-	private List<TileMarkerWaveStrategy> waveStrategies = new ArrayList<>();
+	private List<TileMarkerWaveSelection> waveSelections = new ArrayList<>();
 	private List<TileMarkerStrategyPreset> strategyPresets = new ArrayList<>();
 	private List<TileMarkerAssignmentPreset> assignmentPresets = new ArrayList<>();
 	private Map<String, String> activeAssignmentPresetIds = new HashMap<>();
@@ -82,6 +81,26 @@ public class TileMarkerStrategyStore
 		this.selectedRoleContext = (selectedRoleContext == null ? TileMarkerRoleContext.DEFENDER : selectedRoleContext).name();
 	}
 
+	public boolean isMarkerEditorHelpVisible()
+	{
+		return markerEditorHelpVisible;
+	}
+
+	public void setMarkerEditorHelpVisible(boolean markerEditorHelpVisible)
+	{
+		this.markerEditorHelpVisible = markerEditorHelpVisible;
+	}
+
+	public boolean isBeginnerPromptDismissed()
+	{
+		return beginnerPromptDismissed;
+	}
+
+	public void setBeginnerPromptDismissed(boolean beginnerPromptDismissed)
+	{
+		this.beginnerPromptDismissed = beginnerPromptDismissed;
+	}
+
 	public List<TileMarkerSet> getMarkerSets()
 	{
 		if (markerSets == null)
@@ -96,18 +115,18 @@ public class TileMarkerStrategyStore
 		this.markerSets = markerSets == null ? new ArrayList<>() : new ArrayList<>(markerSets);
 	}
 
-	public List<TileMarkerWaveStrategy> getWaveStrategies()
+	public List<TileMarkerWaveSelection> getWaveSelections()
 	{
-		if (waveStrategies == null)
+		if (waveSelections == null)
 		{
-			waveStrategies = new ArrayList<>();
+			waveSelections = new ArrayList<>();
 		}
-		return waveStrategies;
+		return waveSelections;
 	}
 
-	public void setWaveStrategies(List<TileMarkerWaveStrategy> waveStrategies)
+	public void setWaveSelections(List<TileMarkerWaveSelection> waveSelections)
 	{
-		this.waveStrategies = waveStrategies == null ? new ArrayList<>() : new ArrayList<>(waveStrategies);
+		this.waveSelections = waveSelections == null ? new ArrayList<>() : new ArrayList<>(waveSelections);
 	}
 
 	public List<TileMarkerStrategyPreset> getStrategyPresets()

@@ -1,16 +1,14 @@
-package com.bahealerorder.defender;
-
-import com.bahealerorder.defender.strategies.DefenderMapLayout;
+package com.bahealerorder.tilemarkers;
 
 public enum TileMarkerWaveMap
 {
-	WAVES_1_TO_9("Wave 1-9", DefenderMapLayout.WAVES_1_TO_9),
-	WAVE_10("Wave 10", DefenderMapLayout.WAVE_10);
+	WAVES_1_TO_9("Wave 1-9", TileMarkerMapLayout.WAVES_1_TO_9),
+	WAVE_10("Wave 10", TileMarkerMapLayout.WAVE_10);
 
 	private final String displayName;
-	private final DefenderMapLayout layout;
+	private final TileMarkerMapLayout layout;
 
-	TileMarkerWaveMap(String displayName, DefenderMapLayout layout)
+	TileMarkerWaveMap(String displayName, TileMarkerMapLayout layout)
 	{
 		this.displayName = displayName;
 		this.layout = layout;
@@ -21,7 +19,7 @@ public enum TileMarkerWaveMap
 		return displayName;
 	}
 
-	public DefenderMapLayout getLayout()
+	public TileMarkerMapLayout getLayout()
 	{
 		return layout;
 	}

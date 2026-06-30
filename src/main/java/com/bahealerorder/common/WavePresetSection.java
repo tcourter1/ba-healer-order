@@ -66,7 +66,7 @@ public class WavePresetSection extends JPanel
 			public List<BaPanelUi.ComboOption> getPresetOptions()
 			{
 				List<BaPanelUi.ComboOption> items = new ArrayList<>();
-				items.add(new BaPanelUi.ComboOption(null, ""));
+				items.add(new BaPanelUi.ComboOption(null, "Select a preset..."));
 
 				for (WaveRunPreset preset : manager.getRunPresets())
 				{

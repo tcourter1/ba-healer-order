@@ -1,11 +1,9 @@
-package com.bahealerorder.defender;
+package com.bahealerorder.tilemarkers;
 
+import com.bahealerorder.common.BaClipboard;
 import com.bahealerorder.common.BaIcons;
-import com.bahealerorder.defender.strategies.DefenderMapLayout;
-import com.bahealerorder.defender.strategies.DefenderMarker;
-import com.bahealerorder.defender.strategies.DefenderTile;
-import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
-import com.bahealerorder.tilemarkers.TileMarkerSet;
+import com.bahealerorder.common.BaPanelUi;
+import com.bahealerorder.common.TileMarkerStyle;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -14,25 +12,18 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.Toolkit;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.Window;
 import java.awt.event.MouseWheelEvent;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
-import javax.swing.JComponent;
 import javax.swing.JLayeredPane;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -45,9 +36,6 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ChangeListener;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-import javax.swing.text.JTextComponent;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.ui.components.colorpicker.RuneliteColorPicker;
@@ -56,6 +44,8 @@ import net.runelite.client.util.SwingUtil;
 public class TileMarkerSetEditor extends JPanel
 {
 	private static final int CONTROL_HEIGHT = 24;
+	private static final int EDITOR_WIDTH = 1080;
+	private static final int EDITOR_BASE_HEIGHT = 780;
 	private static final int SIDE_WIDTH = 250;
 	private static final int MAP_VIEWPORT_WIDTH = 760;
 	private static final int MAP_VIEWPORT_HEIGHT = 660;
@@ -64,12 +54,11 @@ public class TileMarkerSetEditor extends JPanel
 	private static final int MAP_DEFAULT_TILE_SIZE = 30;
 	private static final int FULL_ARENA_DEFAULT_ZOOM_STEPS_OUT = 10;
 	private static final int SECTION_GAP = 14;
+	private static final int MARKER_TO_DETAIL_GAP = (SECTION_GAP + 6) * 2;
 	private static final int MARKER_LABEL_WIDTH = 82;
 	private static final int TRASH_BUTTON_WIDTH = 24;
-	private static final int MAX_OPACITY_PERCENT = 100;
-	private static final double MIN_BORDER_WIDTH = 0.0;
-	private static final double MAX_BORDER_WIDTH = 8.0;
-	private static final Color BUILT_IN_TEXT_COLOR = new Color(0x77E2FF);
+	private static final int HELP_BUTTON_WIDTH = 96;
+	private static final int HELP_HEIGHT = 120;
 
 	private final GeneralTileMarkerStrategyManager strategyManager;
 	private final ColorPickerManager colorPickerManager;
@@ -80,33 +69,37 @@ public class TileMarkerSetEditor extends JPanel
 	private final JTextField markerName = new JTextField();
 	private final JTextField markerLabel = new JTextField();
 	private final JButton markerColorButton = new JButton();
+	private final JButton helpToggleButton = new JButton();
 	private final JButton deleteMarkerButton = new JButton();
 	private final JButton deleteSetButton = new JButton(BaIcons.trashIcon());
-	private final JButton copyMarkersButton = new JButton(BaIcons.copyIcon());
-	private final JButton pasteMarkersButton = new JButton(BaIcons.pasteIcon());
-	private final JLabel selectedCountLabel = new JLabel();
 	private final JLabel markerSelectionSummary = new JLabel();
 	private final JLabel markerOpacityValue = new JLabel();
-	private final JSlider markerOpacity = new JSlider(0, MAX_OPACITY_PERCENT, DefenderMarker.DEFAULT_OPACITY_PERCENT);
+	private final JSlider markerOpacity = new JSlider(
+			TileMarkerStyle.MIN_OPACITY_PERCENT,
+			TileMarkerStyle.MAX_OPACITY_PERCENT,
+			TileMarker.DEFAULT_OPACITY_PERCENT
+	);
 	private final JSpinner markerBorderWidth = new JSpinner(new SpinnerNumberModel(
-			(double) DefenderMarker.DEFAULT_BORDER_WIDTH,
-			MIN_BORDER_WIDTH,
-			MAX_BORDER_WIDTH,
+			(double) TileMarker.DEFAULT_BORDER_WIDTH,
+			(double) TileMarkerStyle.MIN_BORDER_WIDTH,
+			(double) TileMarkerStyle.MAX_BORDER_WIDTH,
 			0.5
 	));
 	private final JSlider mapZoom = new JSlider(MAP_MIN_TILE_SIZE, MAP_MAX_TILE_SIZE, MAP_DEFAULT_TILE_SIZE);
-	private final DefenderTileMarkerMapPanel mapPanel;
+	private final TileMarkerMapPanel mapPanel;
 	private final JScrollPane mapScrollPane;
-	private final JPanel markerTextPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+	private final JPanel markerTextPanel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+	private JPanel helpPanel;
 	private final ButtonGroup mapModeButtonGroup = new ButtonGroup();
 	private final ButtonGroup waveMapButtonGroup = new ButtonGroup();
 
-	private List<DefenderMarker> markers = new ArrayList<>();
+	private List<TileMarker> markers = new ArrayList<>();
 	private final Set<String> selectedMarkerIds = new LinkedHashSet<>();
 	private TileMarkerMapMode mapMode;
 	private TileMarkerWaveMap waveMap;
 	private String selectedSetId;
-	private Color markerColor = DefenderTileMarkerMapPanel.DEFAULT_MARKER_COLOR;
+	private Color markerColor = TileMarkerStyle.DEFAULT_MARKER_COLOR;
+	private boolean helpVisible;
 	private boolean refreshing;
 	private boolean selectedSetBuiltIn;
 	private boolean dirty;
@@ -121,9 +114,10 @@ public class TileMarkerSetEditor extends JPanel
 		this.setsChanged = setsChanged;
 		this.mapMode = strategyManager.getLastMapMode();
 		this.waveMap = strategyManager.getLastWaveMap();
+		this.helpVisible = strategyManager.isMarkerEditorHelpVisible();
 
 		mapZoom.setValue(defaultTileSize(mapMode));
-		mapPanel = new DefenderTileMarkerMapPanel(
+		mapPanel = new TileMarkerMapPanel(
 				() -> waveMap.getLayout(),
 				() -> mapMode,
 				() -> markers,
@@ -132,26 +126,24 @@ public class TileMarkerSetEditor extends JPanel
 				this::addOrSelectMarkerAt
 		);
 		mapScrollPane = new JScrollPane(mapPanel);
-		markerColor = parseColor(strategyManager.getLastMarkerColor(), DefenderTileMarkerMapPanel.DEFAULT_MARKER_COLOR);
+		markerColor = TileMarkerStyle.parseColor(strategyManager.getLastMarkerColor(), TileMarkerStyle.DEFAULT_MARKER_COLOR);
 		markerOpacity.setValue(strategyManager.getLastMarkerOpacityPercent());
 		markerOpacity.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		markerOpacity.setFocusable(false);
 		markerOpacity.setMajorTickSpacing(25);
 		markerOpacity.setMinorTickSpacing(5);
 		markerBorderWidth.setValue((double) strategyManager.getLastMarkerBorderWidth());
-		setCombo.setRenderer(new BuiltInSetRenderer());
-
 		setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		setBorder(new EmptyBorder(10, 10, 10, 10));
 		setLayout(new BorderLayout(0, 10));
-		setPreferredSize(new Dimension(1080, 780));
+		updatePreferredSize();
 
 		add(createHeader(), BorderLayout.NORTH);
 		add(createBody(), BorderLayout.CENTER);
 
-		addTextChangeListener(setName, this::markDirty);
-		addTextChangeListener(markerName, this::updateSelectedMarkerFromFields);
-		addTextChangeListener(markerLabel, this::updateSelectedMarkerFromFields);
+		BaPanelUi.addTextChangeListener(setName, this::markDirty);
+		BaPanelUi.addTextChangeListener(markerName, this::updateSelectedMarkerFromFields);
+		BaPanelUi.addTextChangeListener(markerLabel, this::updateSelectedMarkerFromFields);
 		ChangeListener markerStyleListener = event -> updateSelectedMarkerStyleFromFields();
 		markerOpacity.addChangeListener(markerStyleListener);
 		markerBorderWidth.addChangeListener(markerStyleListener);
@@ -162,13 +154,63 @@ public class TileMarkerSetEditor extends JPanel
 
 	private JPanel createHeader()
 	{
-		JLabel label = label("Click any usable tile on the map to add a marker.", true);
+		JLabel label = label("Click any tile on the map to add a marker.");
 		label.setHorizontalAlignment(SwingConstants.LEFT);
 
-		JPanel row = new JPanel(new BorderLayout());
+		helpToggleButton.addActionListener(event -> toggleHelp());
+		BaPanelUi.fixedSize(helpToggleButton, HELP_BUTTON_WIDTH, CONTROL_HEIGHT);
+		updateHelpButtonText();
+
+		JPanel row = new JPanel(new BorderLayout(8, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		BaPanelUi.fixedSize(row, MAP_VIEWPORT_WIDTH, CONTROL_HEIGHT);
 		row.add(label, BorderLayout.CENTER);
-		return row;
+		row.add(helpToggleButton, BorderLayout.EAST);
+
+		JPanel header = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		header.add(row);
+		header.add(createHelpPanel());
+		return header;
+	}
+
+	private JPanel createHelpPanel()
+	{
+		helpPanel = BaPanelUi.verticalPanel(ColorScheme.DARK_GRAY_COLOR);
+		helpPanel.setBorder(new EmptyBorder(8, 10, 8, 10));
+		BaPanelUi.fixedSize(helpPanel, MAP_VIEWPORT_WIDTH, HELP_HEIGHT);
+		helpPanel.setVisible(helpVisible);
+		helpPanel.add(helpLine(
+				"Begin by editing the existing " + helpEmphasis("tile markers")
+						+ " to your liking, or creating your own.",
+				20
+		));
+		helpPanel.add(Box.createVerticalStrut(5));
+		helpPanel.add(helpLine(
+				helpEmphasis("Wave strategies")
+						+ " combine tile markers with notes that can be displayed on specific waves. "
+						+ "Click the " + helpEmphasis("pencil")
+						+ " next to a wave to configure them.",
+				34
+		));
+		helpPanel.add(Box.createVerticalStrut(5));
+		helpPanel.add(helpLine(
+				"Finally, select which strategies should appear on each " + helpEmphasis("wave")
+						+ ", and for each " + helpEmphasis("role") + ".",
+				20
+		));
+		return helpPanel;
+	}
+
+	private JLabel helpLine(String text, int height)
+	{
+		JLabel label = label("<html><div width='" + (MAP_VIEWPORT_WIDTH - 20) + "'>" + text + "</div></html>");
+		BaPanelUi.fixedSize(label, MAP_VIEWPORT_WIDTH - 20, height);
+		return label;
+	}
+
+	private String helpEmphasis(String text)
+	{
+		return "<b><font color='" + TileMarkerStyle.toHex(ColorScheme.BRAND_ORANGE) + "'>" + text + "</font></b>";
 	}
 
 	private JPanel createBody()
@@ -198,7 +240,6 @@ public class TileMarkerSetEditor extends JPanel
 	private JLayeredPane createLayeredMap()
 	{
 		JPanel mapModeControls = createMapModeControls();
-		JPanel selectionControls = createFloatingSelectionControls();
 		JLayeredPane layeredPane = new JLayeredPane()
 		{
 			@Override
@@ -208,20 +249,11 @@ public class TileMarkerSetEditor extends JPanel
 
 				Dimension modeSize = mapModeControls.getPreferredSize();
 				mapModeControls.setBounds(8, 8, modeSize.width, modeSize.height);
-
-				Dimension selectionSize = selectionControls.getPreferredSize();
-				selectionControls.setBounds(
-						Math.max(0, getWidth() - selectionSize.width - 18),
-						8,
-						selectionSize.width,
-						selectionSize.height
-				);
 			}
 		};
-		fixedSize(layeredPane, MAP_VIEWPORT_WIDTH, MAP_VIEWPORT_HEIGHT);
+		BaPanelUi.fixedSize(layeredPane, MAP_VIEWPORT_WIDTH, MAP_VIEWPORT_HEIGHT);
 		layeredPane.add(mapScrollPane, JLayeredPane.DEFAULT_LAYER);
 		layeredPane.add(mapModeControls, JLayeredPane.PALETTE_LAYER);
-		layeredPane.add(selectionControls, JLayeredPane.PALETTE_LAYER);
 		return layeredPane;
 	}
 
@@ -230,7 +262,7 @@ public class TileMarkerSetEditor extends JPanel
 		JPanel panel = new JPanel(new GridLayout(2, 2, 4, 4));
 		panel.setBorder(new EmptyBorder(4, 4, 4, 4));
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(panel, 312, 60);
+		BaPanelUi.fixedSize(panel, 312, 60);
 
 		for (TileMarkerWaveMap map : TileMarkerWaveMap.values())
 		{
@@ -263,34 +295,6 @@ public class TileMarkerSetEditor extends JPanel
 		return panel;
 	}
 
-	private JPanel createFloatingSelectionControls()
-	{
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-		panel.setBorder(new EmptyBorder(4, 6, 4, 6));
-		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-
-		selectedCountLabel.setForeground(ColorScheme.TEXT_COLOR);
-		panel.add(selectedCountLabel);
-		panel.add(Box.createHorizontalStrut(6));
-
-		copyMarkersButton.setToolTipText("Copy selected markers");
-		SwingUtil.removeButtonDecorations(copyMarkersButton);
-		fixedSize(copyMarkersButton, CONTROL_HEIGHT, CONTROL_HEIGHT);
-		copyMarkersButton.addActionListener(event -> copySelectedMarkersToClipboard());
-		panel.add(copyMarkersButton);
-		panel.add(Box.createHorizontalStrut(4));
-
-		pasteMarkersButton.setToolTipText("Paste copied markers");
-		SwingUtil.removeButtonDecorations(pasteMarkersButton);
-		fixedSize(pasteMarkersButton, CONTROL_HEIGHT, CONTROL_HEIGHT);
-		pasteMarkersButton.addActionListener(event -> pasteMarkersFromClipboard());
-		panel.add(pasteMarkersButton);
-
-		updateFloatingSelectionControls();
-		return panel;
-	}
-
 	private JPanel createZoomControls()
 	{
 		JPanel panel = new JPanel(new BorderLayout(8, 0));
@@ -308,23 +312,28 @@ public class TileMarkerSetEditor extends JPanel
 
 	private JPanel createSidePanel()
 	{
+		JPanel wrapper = new JPanel(new BorderLayout());
+		wrapper.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		wrapper.setPreferredSize(new Dimension(SIDE_WIDTH, MAP_VIEWPORT_HEIGHT));
+
 		JPanel panel = new JPanel(new BorderLayout());
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setPreferredSize(new Dimension(SIDE_WIDTH, MAP_VIEWPORT_HEIGHT));
+		BaPanelUi.fixedSize(panel, SIDE_WIDTH, MAP_VIEWPORT_HEIGHT);
 
-		JPanel top = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		JPanel top = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		top.add(createLegendPanel());
 		top.add(Box.createVerticalStrut(SECTION_GAP * 3));
 		top.add(createMarkerSelectorPanel());
-		top.add(Box.createVerticalStrut(SECTION_GAP + 6));
+		top.add(Box.createVerticalStrut(MARKER_TO_DETAIL_GAP));
 		top.add(createMarkerDetailPanel());
 		panel.add(top, BorderLayout.NORTH);
 
-		JPanel bottom = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		bottom.add(Box.createVerticalStrut(SECTION_GAP * 3));
+		JPanel bottom = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		bottom.add(createSetPanel());
 		panel.add(bottom, BorderLayout.SOUTH);
-		return panel;
+
+		wrapper.add(panel, BorderLayout.NORTH);
+		return wrapper;
 	}
 
 	private JPanel createLegendPanel()
@@ -334,11 +343,11 @@ public class TileMarkerSetEditor extends JPanel
 
 	private JPanel createSetPanel()
 	{
-		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		panel.add(label("Tile Marker Set", true));
 		panel.add(Box.createVerticalStrut(5));
 
-		styleCombo(setCombo, SIDE_WIDTH - TRASH_BUTTON_WIDTH - 6);
+		BaPanelUi.styleCombo(setCombo, SIDE_WIDTH - TRASH_BUTTON_WIDTH - 6, CONTROL_HEIGHT);
 		setCombo.addActionListener(event ->
 		{
 			if (refreshing)
@@ -364,34 +373,40 @@ public class TileMarkerSetEditor extends JPanel
 		});
 		deleteSetButton.setToolTipText("Delete selected marker set");
 		SwingUtil.removeButtonDecorations(deleteSetButton);
-		fixedSize(deleteSetButton, TRASH_BUTTON_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(deleteSetButton, TRASH_BUTTON_WIDTH, CONTROL_HEIGHT);
 		deleteSetButton.addActionListener(event -> deleteSet());
 
 		JPanel setRow = new JPanel(new BorderLayout(6, 0));
 		setRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(setRow, SIDE_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(setRow, SIDE_WIDTH, CONTROL_HEIGHT);
 		setRow.add(setCombo, BorderLayout.CENTER);
 		setRow.add(deleteSetButton, BorderLayout.EAST);
 		panel.add(setRow);
 		panel.add(Box.createVerticalStrut(5));
 
-		fixedSize(setName, SIDE_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(setName, SIDE_WIDTH, CONTROL_HEIGHT);
 		panel.add(setName);
 		panel.add(Box.createVerticalStrut(6));
 
 		JButton saveButton = new JButton("Save Marker Set");
 		saveButton.addActionListener(event -> saveSet());
-		fixedSize(saveButton, SIDE_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(saveButton, SIDE_WIDTH, CONTROL_HEIGHT);
 		panel.add(saveButton);
+		panel.add(Box.createVerticalStrut(5));
+
+		JPanel importExportRow = BaPanelUi.horizontalActionRow(SIDE_WIDTH, CONTROL_HEIGHT);
+		importExportRow.add(BaPanelUi.action("Import", this::importSetFromClipboard, SIDE_WIDTH, CONTROL_HEIGHT));
+		importExportRow.add(BaPanelUi.action("Export", this::exportSetToClipboard, SIDE_WIDTH, CONTROL_HEIGHT));
+		panel.add(importExportRow);
 		return panel;
 	}
 
 	private JPanel createMarkerSelectorPanel()
 	{
-		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		panel.add(label("Markers", true));
 		panel.add(Box.createVerticalStrut(3));
-		styleCombo(markerCombo, SIDE_WIDTH);
+		BaPanelUi.styleCombo(markerCombo, SIDE_WIDTH, CONTROL_HEIGHT);
 		markerCombo.addActionListener(event ->
 		{
 			if (refreshing)
@@ -415,11 +430,11 @@ public class TileMarkerSetEditor extends JPanel
 		deleteMarkerButton.setToolTipText("Delete selected marker");
 		SwingUtil.removeButtonDecorations(deleteMarkerButton);
 		deleteMarkerButton.addActionListener(event -> deleteSelectedMarker());
-		fixedSize(deleteMarkerButton, TRASH_BUTTON_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(deleteMarkerButton, TRASH_BUTTON_WIDTH, CONTROL_HEIGHT);
 
 		JPanel selectionRow = new JPanel(new BorderLayout(6, 0));
 		selectionRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(selectionRow, SIDE_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(selectionRow, SIDE_WIDTH, CONTROL_HEIGHT);
 		selectionRow.add(markerSelectionSummary, BorderLayout.CENTER);
 		selectionRow.add(deleteMarkerButton, BorderLayout.EAST);
 		panel.add(selectionRow);
@@ -428,7 +443,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	private JPanel createMarkerDetailPanel()
 	{
-		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		panel.add(label("Selected Marker", true));
 		panel.add(Box.createVerticalStrut(5));
 
@@ -448,12 +463,12 @@ public class TileMarkerSetEditor extends JPanel
 	private JPanel createTextFieldRow(String text, JTextField field)
 	{
 		JLabel rowLabel = label(text);
-		fixedSize(rowLabel, MARKER_LABEL_WIDTH, CONTROL_HEIGHT);
-		fixedSize(field, SIDE_WIDTH - MARKER_LABEL_WIDTH - 6, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(rowLabel, MARKER_LABEL_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(field, SIDE_WIDTH - MARKER_LABEL_WIDTH - 6, CONTROL_HEIGHT);
 
 		JPanel row = new JPanel(new BorderLayout(6, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(row, SIDE_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(row, SIDE_WIDTH, CONTROL_HEIGHT);
 		row.add(rowLabel, BorderLayout.WEST);
 		row.add(field, BorderLayout.CENTER);
 		return row;
@@ -463,12 +478,12 @@ public class TileMarkerSetEditor extends JPanel
 	{
 		JPanel row = new JPanel(new BorderLayout(6, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(row, SIDE_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(row, SIDE_WIDTH, CONTROL_HEIGHT);
 
 		JLabel rowLabel = label("Color");
-		fixedSize(rowLabel, MARKER_LABEL_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(rowLabel, MARKER_LABEL_WIDTH, CONTROL_HEIGHT);
 		markerColorButton.addActionListener(event -> chooseMarkerColor());
-		fixedSize(markerColorButton, SIDE_WIDTH - MARKER_LABEL_WIDTH - 6, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(markerColorButton, SIDE_WIDTH - MARKER_LABEL_WIDTH - 6, CONTROL_HEIGHT);
 		row.add(rowLabel, BorderLayout.WEST);
 		row.add(markerColorButton, BorderLayout.CENTER);
 		updateMarkerColorButton();
@@ -478,12 +493,12 @@ public class TileMarkerSetEditor extends JPanel
 	private JPanel createOpacityRow()
 	{
 		JLabel rowLabel = label("Opacity");
-		fixedSize(rowLabel, MARKER_LABEL_WIDTH, CONTROL_HEIGHT);
-		fixedSize(markerOpacity, SIDE_WIDTH - MARKER_LABEL_WIDTH - 44, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(rowLabel, MARKER_LABEL_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(markerOpacity, SIDE_WIDTH - MARKER_LABEL_WIDTH - 44, CONTROL_HEIGHT);
 
 		markerOpacityValue.setForeground(ColorScheme.TEXT_COLOR);
 		markerOpacityValue.setHorizontalAlignment(SwingConstants.RIGHT);
-		fixedSize(markerOpacityValue, 38, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(markerOpacityValue, 38, CONTROL_HEIGHT);
 
 		JPanel sliderRow = new JPanel(new BorderLayout(6, 0));
 		sliderRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -492,7 +507,7 @@ public class TileMarkerSetEditor extends JPanel
 
 		JPanel row = new JPanel(new BorderLayout(6, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(row, SIDE_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(row, SIDE_WIDTH, CONTROL_HEIGHT);
 		row.add(rowLabel, BorderLayout.WEST);
 		row.add(sliderRow, BorderLayout.CENTER);
 		return row;
@@ -501,12 +516,12 @@ public class TileMarkerSetEditor extends JPanel
 	private JPanel createSpinnerRow(String text, JSpinner spinner)
 	{
 		JLabel rowLabel = label(text);
-		fixedSize(rowLabel, MARKER_LABEL_WIDTH, CONTROL_HEIGHT);
-		fixedSize(spinner, SIDE_WIDTH - MARKER_LABEL_WIDTH - 6, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(rowLabel, MARKER_LABEL_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(spinner, SIDE_WIDTH - MARKER_LABEL_WIDTH - 6, CONTROL_HEIGHT);
 
 		JPanel row = new JPanel(new BorderLayout(6, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(row, SIDE_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(row, SIDE_WIDTH, CONTROL_HEIGHT);
 		row.add(rowLabel, BorderLayout.WEST);
 		row.add(spinner, BorderLayout.CENTER);
 		return row;
@@ -521,7 +536,7 @@ public class TileMarkerSetEditor extends JPanel
 			setCombo.addItem(new SetOption(null, "-- New --"));
 			for (TileMarkerSet set : strategyManager.getMarkerSets(waveMap))
 			{
-				setCombo.addItem(new SetOption(set.getId(), set.toString(), set.isBuiltIn()));
+				setCombo.addItem(new SetOption(set.getId(), set.toString()));
 			}
 			selectSetComboValue(selectedId);
 		}
@@ -653,6 +668,74 @@ public class TileMarkerSetEditor extends JPanel
 		}
 	}
 
+	private void exportSetToClipboard()
+	{
+		TileMarkerExportResult result = strategyManager.exportMarkerSetJson(currentDraftSet());
+		if (result == null)
+		{
+			JOptionPane.showMessageDialog(this, "Current tile marker set could not be exported.", "Export Marker Set", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		BaClipboard.copyText(result.getJson());
+		JOptionPane.showMessageDialog(
+				this,
+				"Exported " + result.getName() + " with " + result.getMarkerCount() + " marked tiles.",
+				"Export Marker Set",
+				JOptionPane.INFORMATION_MESSAGE
+		);
+	}
+
+	private void importSetFromClipboard()
+	{
+		String json = BaClipboard.readText(this, "Import Marker Set");
+		if (json == null)
+		{
+			return;
+		}
+
+		TileMarkerExportResult result;
+		try
+		{
+			result = strategyManager.importMarkerSetJson(json);
+		}
+		catch (RuntimeException ex)
+		{
+			result = null;
+		}
+
+		if (result == null)
+		{
+			JOptionPane.showMessageDialog(this, "Clipboard text could not be imported as a tile marker set.", "Import Marker Set", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		refreshSetCombo(null);
+		loadSet(result.getId());
+		if (setsChanged != null)
+		{
+			setsChanged.run();
+		}
+		JOptionPane.showMessageDialog(
+				this,
+				"Imported " + result.getName() + " with " + result.getMarkerCount() + " marked tiles.",
+				"Import Marker Set",
+				JOptionPane.INFORMATION_MESSAGE
+		);
+	}
+
+	private TileMarkerSet currentDraftSet()
+	{
+		return new TileMarkerSet(
+				selectedSetBuiltIn ? null : selectedSetId,
+				setName.getText().trim(),
+				mapMode,
+				waveMap,
+				copyMarkers(markers),
+				false
+		);
+	}
+
 	public boolean hasUnsavedChanges()
 	{
 		return dirty;
@@ -686,6 +769,35 @@ public class TileMarkerSetEditor extends JPanel
 	private void updateSetControls()
 	{
 		deleteSetButton.setEnabled(selectedSetId != null && !selectedSetBuiltIn);
+	}
+
+	private void toggleHelp()
+	{
+		helpVisible = !helpVisible;
+		strategyManager.setMarkerEditorHelpVisible(helpVisible);
+		if (helpPanel != null)
+		{
+			helpPanel.setVisible(helpVisible);
+		}
+		updateHelpButtonText();
+		updatePreferredSize();
+		revalidate();
+		repaint();
+		Window window = SwingUtilities.getWindowAncestor(this);
+		if (window != null)
+		{
+			window.pack();
+		}
+	}
+
+	private void updateHelpButtonText()
+	{
+		helpToggleButton.setText(helpVisible ? "Hide Help" : "Show Help");
+	}
+
+	private void updatePreferredSize()
+	{
+		setPreferredSize(new Dimension(EDITOR_WIDTH, EDITOR_BASE_HEIGHT + (helpVisible ? HELP_HEIGHT : 0)));
 	}
 
 	private void setMapMode(TileMarkerMapMode mode)
@@ -726,13 +838,13 @@ public class TileMarkerSetEditor extends JPanel
 
 	private void addOrSelectMarkerAt(int mapX, int mapY)
 	{
-		DefenderMapLayout layout = waveMap.getLayout();
+		TileMarkerMapLayout layout = waveMap.getLayout();
 		if (!mapPanel.isSelectableMapTile(layout, mapX, mapY))
 		{
 			return;
 		}
 
-		DefenderMarker existing = findMarkerAt(layout, mapX, mapY);
+		TileMarker existing = findMarkerAt(layout, mapX, mapY);
 		if (existing != null)
 		{
 			if (selectedMarkerIds.contains(existing.getId()) && isBlank(existing.getName()))
@@ -753,7 +865,7 @@ public class TileMarkerSetEditor extends JPanel
 			return;
 		}
 
-		DefenderMarker marker = new DefenderMarker(
+		TileMarker marker = new TileMarker(
 				userMarkerId(mapX, mapY),
 				layout.toTile(mapX, mapY),
 				"",
@@ -778,8 +890,8 @@ public class TileMarkerSetEditor extends JPanel
 		{
 			markerCombo.removeAllItems();
 			markerCombo.addItem(new MarkerOption(null, "Select a marker..."));
-			DefenderMapLayout layout = waveMap.getLayout();
-			for (DefenderMarker marker : markers)
+			TileMarkerMapLayout layout = waveMap.getLayout();
+			for (TileMarker marker : markers)
 			{
 				if (layout.contains(marker.getTile()))
 				{
@@ -800,7 +912,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	private void loadSelectedMarker()
 	{
-		DefenderMarker marker = getFirstSelectedMarker();
+		TileMarker marker = getFirstSelectedMarker();
 		boolean singleSelection = getSelectedMarker() != null;
 		boolean wasRefreshing = refreshing;
 		refreshing = true;
@@ -816,9 +928,9 @@ public class TileMarkerSetEditor extends JPanel
 			{
 				markerName.setText(singleSelection && marker.getName() != null ? marker.getName() : "");
 				markerLabel.setText(singleSelection && marker.getLabel() != null ? marker.getLabel() : "");
-				markerColor = parseColor(marker.getColor(), DefenderTileMarkerMapPanel.DEFAULT_MARKER_COLOR);
-				markerOpacity.setValue(clampOpacity(marker.getOpacityPercentOrDefault()));
-				markerBorderWidth.setValue((double) clampBorderWidth(marker.getBorderWidthOrDefault()));
+				markerColor = TileMarkerStyle.parseColor(marker.getColor(), TileMarkerStyle.DEFAULT_MARKER_COLOR);
+				markerOpacity.setValue(TileMarkerStyle.clampOpacityPercent(marker.getOpacityPercentOrDefault()));
+				markerBorderWidth.setValue((double) TileMarkerStyle.clampBorderWidth(marker.getBorderWidthOrDefault()));
 			}
 		}
 		finally
@@ -828,7 +940,6 @@ public class TileMarkerSetEditor extends JPanel
 
 		updateMarkerDetailEnabled();
 		updateMarkerColorButton();
-		updateFloatingSelectionControls();
 		mapPanel.repaint();
 	}
 
@@ -845,6 +956,7 @@ public class TileMarkerSetEditor extends JPanel
 		markerBorderWidth.setEnabled(hasSelection);
 		deleteMarkerButton.setEnabled(hasSelection);
 		markerSelectionSummary.setText(selectionSummaryText());
+		markerOpacityValue.setText(getMarkerOpacityPercent() + "%");
 	}
 
 	private void updateSelectedMarkerFromFields()
@@ -854,7 +966,7 @@ public class TileMarkerSetEditor extends JPanel
 			return;
 		}
 
-		DefenderMarker marker = getSelectedMarker();
+		TileMarker marker = getSelectedMarker();
 		if (marker == null)
 		{
 			return;
@@ -875,10 +987,10 @@ public class TileMarkerSetEditor extends JPanel
 			return;
 		}
 
-		List<DefenderMarker> selectedMarkers = getSelectedMarkers();
+		List<TileMarker> selectedMarkers = getSelectedMarkers();
 		if (!selectedMarkers.isEmpty())
 		{
-			for (DefenderMarker marker : selectedMarkers)
+			for (TileMarker marker : selectedMarkers)
 			{
 				marker.setColor(toHex(markerColor));
 				marker.setOpacityPercent(getMarkerOpacityPercent());
@@ -914,10 +1026,10 @@ public class TileMarkerSetEditor extends JPanel
 
 	private void deleteSelectedMarker()
 	{
-		List<DefenderMarker> selectedMarkers = getSelectedMarkers();
+		List<TileMarker> selectedMarkers = getSelectedMarkers();
 		if (!selectedMarkers.isEmpty())
 		{
-			for (DefenderMarker marker : selectedMarkers)
+			for (TileMarker marker : selectedMarkers)
 			{
 				markers.remove(marker);
 			}
@@ -928,7 +1040,7 @@ public class TileMarkerSetEditor extends JPanel
 		}
 	}
 
-	private void deleteMarker(DefenderMarker marker)
+	private void deleteMarker(TileMarker marker)
 	{
 		markers.remove(marker);
 		selectedMarkerIds.remove(marker.getId());
@@ -937,87 +1049,7 @@ public class TileMarkerSetEditor extends JPanel
 		markDirty();
 	}
 
-	private void copySelectedMarkersToClipboard()
-	{
-		String json = strategyManager.exportMarkers(waveMap, getSelectedMarkers());
-		if (json == null)
-		{
-			JOptionPane.showMessageDialog(this, "Select one or more markers to copy.", "Copy Markers", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-
-		Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(json), null);
-	}
-
-	private void pasteMarkersFromClipboard()
-	{
-		String json;
-		try
-		{
-			json = (String) Toolkit.getDefaultToolkit()
-					.getSystemClipboard()
-					.getData(DataFlavor.stringFlavor);
-		}
-		catch (UnsupportedFlavorException | IOException ex)
-		{
-			JOptionPane.showMessageDialog(this, "Clipboard does not contain copied markers.", "Paste Markers", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-
-		List<DefenderMarker> pastedMarkers = strategyManager.importMarkers(waveMap, json);
-		if (pastedMarkers.isEmpty())
-		{
-			JOptionPane.showMessageDialog(this, "Clipboard does not contain copied markers.", "Paste Markers", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-
-		DefenderMapLayout layout = waveMap.getLayout();
-		selectedMarkerIds.clear();
-		for (DefenderMarker marker : pastedMarkers)
-		{
-			if (marker == null || !layout.contains(marker.getTile()))
-			{
-				continue;
-			}
-
-			int mapX = layout.toMapX(marker.getTile());
-			int mapY = layout.toMapY(marker.getTile());
-			if (!mapPanel.isSelectableMapTile(layout, mapX, mapY))
-			{
-				continue;
-			}
-
-			DefenderMarker existing = findMarkerAt(layout, mapX, mapY);
-			if (existing != null)
-			{
-				markers.remove(existing);
-			}
-
-			DefenderMarker pasted = new DefenderMarker(
-					userMarkerId(mapX, mapY),
-					layout.toTile(mapX, mapY),
-					marker.getName(),
-					marker.getLabel(),
-					marker.getColor(),
-					marker.getOpacityPercent(),
-					marker.getBorderWidth()
-			);
-			markers.add(pasted);
-			selectedMarkerIds.add(pasted.getId());
-		}
-
-		if (selectedMarkerIds.isEmpty())
-		{
-			JOptionPane.showMessageDialog(this, "No copied markers fit on this map.", "Paste Markers", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
-
-		refreshMarkerControls();
-		mapPanel.repaint();
-		markDirty();
-	}
-
-	private DefenderMarker getSelectedMarker()
+	private TileMarker getSelectedMarker()
 	{
 		String selectedMarkerId = getSelectedMarkerId();
 		if (selectedMarkerId == null)
@@ -1025,7 +1057,7 @@ public class TileMarkerSetEditor extends JPanel
 			return null;
 		}
 
-		for (DefenderMarker marker : markers)
+		for (TileMarker marker : markers)
 		{
 			if (selectedMarkerId.equals(marker.getId()))
 			{
@@ -1036,9 +1068,9 @@ public class TileMarkerSetEditor extends JPanel
 		return null;
 	}
 
-	private DefenderMarker getFirstSelectedMarker()
+	private TileMarker getFirstSelectedMarker()
 	{
-		for (DefenderMarker marker : markers)
+		for (TileMarker marker : markers)
 		{
 			if (selectedMarkerIds.contains(marker.getId()))
 			{
@@ -1049,10 +1081,10 @@ public class TileMarkerSetEditor extends JPanel
 		return null;
 	}
 
-	private List<DefenderMarker> getSelectedMarkers()
+	private List<TileMarker> getSelectedMarkers()
 	{
-		List<DefenderMarker> selectedMarkers = new ArrayList<>();
-		for (DefenderMarker marker : markers)
+		List<TileMarker> selectedMarkers = new ArrayList<>();
+		for (TileMarker marker : markers)
 		{
 			if (selectedMarkerIds.contains(marker.getId()))
 			{
@@ -1062,9 +1094,9 @@ public class TileMarkerSetEditor extends JPanel
 		return selectedMarkers;
 	}
 
-	private DefenderMarker findMarkerAt(DefenderMapLayout layout, int mapX, int mapY)
+	private TileMarker findMarkerAt(TileMarkerMapLayout layout, int mapX, int mapY)
 	{
-		for (DefenderMarker marker : markers)
+		for (TileMarker marker : markers)
 		{
 			if (layout.contains(marker.getTile())
 					&& layout.toMapX(marker.getTile()) == mapX
@@ -1092,7 +1124,7 @@ public class TileMarkerSetEditor extends JPanel
 		return count == 1 ? "1 marker selected" : count + " markers selected";
 	}
 
-	private String getMarkerDisplayText(DefenderMarker marker)
+	private String getMarkerDisplayText(TileMarker marker)
 	{
 		String name = marker.getName() == null ? "" : marker.getName().trim();
 		if (!name.isEmpty())
@@ -1104,7 +1136,7 @@ public class TileMarkerSetEditor extends JPanel
 		return label.isEmpty() ? "Unnamed marker" : label;
 	}
 
-	private void updateMarkerComboLabel(DefenderMarker marker)
+	private void updateMarkerComboLabel(TileMarker marker)
 	{
 		for (int i = 0; i < markerCombo.getItemCount(); i++)
 		{
@@ -1122,17 +1154,7 @@ public class TileMarkerSetEditor extends JPanel
 	{
 		markerColorButton.setText(toHex(markerColor));
 		markerColorButton.setBackground(markerColor);
-		markerColorButton.setForeground(getReadableTextColor(markerColor));
-	}
-
-	private void updateFloatingSelectionControls()
-	{
-		int selectedCount = selectedMarkerIds.size();
-		selectedCountLabel.setText(selectedCount == 0 ? "" : selectedCount + " selected");
-		copyMarkersButton.setEnabled(selectedCount > 0);
-		pasteMarkersButton.setEnabled(true);
-		markerSelectionSummary.setText(selectionSummaryText());
-		markerOpacityValue.setText(getMarkerOpacityPercent() + "%");
+		markerColorButton.setForeground(TileMarkerStyle.readableTextColor(markerColor));
 	}
 
 	private void persistCurrentMarkerStyle()
@@ -1225,12 +1247,12 @@ public class TileMarkerSetEditor extends JPanel
 
 	private int getMarkerOpacityPercent()
 	{
-		return clampOpacity(markerOpacity.getValue());
+		return TileMarkerStyle.clampOpacityPercent(markerOpacity.getValue());
 	}
 
 	private float getMarkerBorderWidth()
 	{
-		return clampBorderWidth(((Number) markerBorderWidth.getValue()).floatValue());
+		return TileMarkerStyle.clampBorderWidth(((Number) markerBorderWidth.getValue()).floatValue());
 	}
 
 	private String userMarkerId(int mapX, int mapY)
@@ -1238,15 +1260,15 @@ public class TileMarkerSetEditor extends JPanel
 		return "marker:" + waveMap.name() + ":" + mapMode.name() + ":" + mapX + ":" + mapY + ":" + System.nanoTime();
 	}
 
-	private static List<DefenderMarker> copyMarkers(List<DefenderMarker> source)
+	private static List<TileMarker> copyMarkers(List<TileMarker> source)
 	{
-		List<DefenderMarker> copies = new ArrayList<>();
+		List<TileMarker> copies = new ArrayList<>();
 		if (source == null)
 		{
 			return copies;
 		}
 
-		for (DefenderMarker marker : source)
+		for (TileMarker marker : source)
 		{
 			if (marker != null)
 			{
@@ -1256,13 +1278,13 @@ public class TileMarkerSetEditor extends JPanel
 		return copies;
 	}
 
-	private static DefenderMarker copyMarker(DefenderMarker marker)
+	private static TileMarker copyMarker(TileMarker marker)
 	{
-		DefenderTile tile = marker.getTile();
-		DefenderTile tileCopy = tile == null
+		TileMarkerTile tile = marker.getTile();
+		TileMarkerTile tileCopy = tile == null
 				? null
-				: new DefenderTile(tile.getRegionId(), tile.getRegionX(), tile.getRegionY(), tile.getZ());
-		return new DefenderMarker(
+				: new TileMarkerTile(tile.getRegionId(), tile.getRegionX(), tile.getRegionY(), tile.getZ());
+		return new TileMarker(
 				marker.getId(),
 				tileCopy,
 				marker.getName(),
@@ -1285,37 +1307,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	private String toHex(Color color)
 	{
-		Color value = color == null ? DefenderTileMarkerMapPanel.DEFAULT_MARKER_COLOR : color;
-		return String.format("#%02x%02x%02x", value.getRed(), value.getGreen(), value.getBlue());
-	}
-
-	private int clampOpacity(int opacityPercent)
-	{
-		return Math.max(0, Math.min(MAX_OPACITY_PERCENT, opacityPercent));
-	}
-
-	private float clampBorderWidth(float borderWidth)
-	{
-		return Math.max((float) MIN_BORDER_WIDTH, Math.min((float) MAX_BORDER_WIDTH, borderWidth));
-	}
-
-	private Color parseColor(String color, Color fallback)
-	{
-		try
-		{
-			return color == null || color.trim().isEmpty() ? fallback : Color.decode(color);
-		}
-		catch (RuntimeException ex)
-		{
-			return fallback;
-		}
-	}
-
-	private Color getReadableTextColor(Color background)
-	{
-		return (background.getRed() * 299 + background.getGreen() * 587 + background.getBlue() * 114) / 1000 > 140
-				? Color.BLACK
-				: Color.WHITE;
+		return TileMarkerStyle.toHex(color);
 	}
 
 	private JLabel label(String text)
@@ -1333,53 +1325,6 @@ public class TileMarkerSetEditor extends JPanel
 		}
 		label.setAlignmentX(LEFT_ALIGNMENT);
 		return label;
-	}
-
-	private void addTextChangeListener(JTextComponent component, Runnable runnable)
-	{
-		component.getDocument().addDocumentListener(new DocumentListener()
-		{
-			@Override
-			public void insertUpdate(DocumentEvent event)
-			{
-				runnable.run();
-			}
-
-			@Override
-			public void removeUpdate(DocumentEvent event)
-			{
-				runnable.run();
-			}
-
-			@Override
-			public void changedUpdate(DocumentEvent event)
-			{
-				runnable.run();
-			}
-		});
-	}
-
-	private void styleCombo(JComboBox<?> comboBox, int width)
-	{
-		comboBox.setFocusable(false);
-		fixedSize(comboBox, width, CONTROL_HEIGHT);
-	}
-
-	private static JPanel verticalPanel(Color background)
-	{
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		panel.setBackground(background);
-		return panel;
-	}
-
-	private static void fixedSize(JComponent component, int width, int height)
-	{
-		Dimension size = new Dimension(width, height);
-		component.setPreferredSize(size);
-		component.setMinimumSize(size);
-		component.setMaximumSize(size);
-		component.setAlignmentX(Component.LEFT_ALIGNMENT);
 	}
 
 	private static boolean isBlank(String value)
@@ -1416,43 +1361,17 @@ public class TileMarkerSetEditor extends JPanel
 	{
 		private final String id;
 		private final String label;
-		private final boolean builtIn;
 
 		private SetOption(String id, String label)
 		{
-			this(id, label, false);
-		}
-
-		private SetOption(String id, String label, boolean builtIn)
-		{
 			this.id = id;
 			this.label = label;
-			this.builtIn = builtIn;
 		}
 
 		@Override
 		public String toString()
 		{
 			return label;
-		}
-	}
-
-	private static class BuiltInSetRenderer extends DefaultListCellRenderer
-	{
-		@Override
-		public Component getListCellRendererComponent(
-				JList<?> list,
-				Object value,
-				int index,
-				boolean isSelected,
-				boolean cellHasFocus)
-		{
-			Component component = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-			if (value instanceof SetOption && ((SetOption) value).builtIn)
-			{
-				component.setForeground(BUILT_IN_TEXT_COLOR);
-			}
-			return component;
 		}
 	}
 

@@ -8,7 +8,6 @@ import java.util.List;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
-import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -18,6 +17,9 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.text.JTextComponent;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
@@ -78,22 +80,6 @@ public final class BaPanelUi
 		return label;
 	}
 
-	public static JPanel labelWithInfo(String text, Icon icon, String tooltip, int width, int controlHeight)
-	{
-		JPanel row = new JPanel();
-		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(row, width, controlHeight);
-
-		JLabel info = new JLabel(icon);
-		info.setToolTipText(tooltip);
-		row.add(label(text));
-		row.add(Box.createHorizontalStrut(5));
-		row.add(info);
-		row.add(Box.createHorizontalGlue());
-		return row;
-	}
-
 	public static JButton action(String text, Runnable runnable, int width, int height)
 	{
 		JButton button = new JButton(text);
@@ -139,6 +125,30 @@ public final class BaPanelUi
 		area.setWrapStyleWord(true);
 	}
 
+	public static void addTextChangeListener(JTextComponent component, Runnable runnable)
+	{
+		component.getDocument().addDocumentListener(new DocumentListener()
+		{
+			@Override
+			public void insertUpdate(DocumentEvent event)
+			{
+				runnable.run();
+			}
+
+			@Override
+			public void removeUpdate(DocumentEvent event)
+			{
+				runnable.run();
+			}
+
+			@Override
+			public void changedUpdate(DocumentEvent event)
+			{
+				runnable.run();
+			}
+		});
+	}
+
 	public static void fixedSize(JComponent component, int width, int height)
 	{
 		Dimension size = new Dimension(width, height);
@@ -177,16 +187,6 @@ public final class BaPanelUi
 	{
 		ComboOption item = (ComboOption) comboBox.getSelectedItem();
 		return item == null ? null : item.getId();
-	}
-
-	public static String capitalize(String text)
-	{
-		if (text == null || text.isEmpty())
-		{
-			return "";
-		}
-
-		return Character.toUpperCase(text.charAt(0)) + text.substring(1);
 	}
 
 	public static class ComboOption

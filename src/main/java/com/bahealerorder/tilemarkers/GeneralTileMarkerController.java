@@ -2,7 +2,6 @@ package com.bahealerorder.tilemarkers;
 
 import com.bahealerorder.common.BaWaveLifecycleService;
 import com.bahealerorder.common.BaRoleDetector;
-import com.bahealerorder.defender.strategies.DefenderMarker;
 import java.util.Collections;
 import java.util.List;
 import javax.inject.Inject;
@@ -51,7 +50,7 @@ public class GeneralTileMarkerController
 		return waveLifecycleService.isWaveActive() && !getCurrentMarkers().isEmpty();
 	}
 
-	List<DefenderMarker> getCurrentMarkers()
+	List<TileMarker> getCurrentMarkers()
 	{
 		if (!waveLifecycleService.isWaveActive())
 		{

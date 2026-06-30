@@ -1,6 +1,5 @@
-package com.bahealerorder.defender;
+package com.bahealerorder.tilemarkers;
 
-import com.bahealerorder.defender.strategies.DefenderMapLayout;
 
 final class BaArenaMapTopology
 {
@@ -119,14 +118,14 @@ final class BaArenaMapTopology
 		return mapX >= 0 && mapX < WIDTH && mapY >= 0 && mapY < HEIGHT;
 	}
 
-	static boolean isUsableTile(DefenderMapLayout layout, int mapX, int mapY)
+	static boolean isUsableTile(TileMarkerMapLayout layout, int mapX, int mapY)
 	{
 		if (!contains(mapX, mapY))
 		{
 			return false;
 		}
 
-		String[] rows = layout == DefenderMapLayout.WAVE_10 ? USABLE_TILES_WAVE_10 : USABLE_TILES_WAVES_1_TO_9;
+		String[] rows = layout == TileMarkerMapLayout.WAVE_10 ? USABLE_TILES_WAVE_10 : USABLE_TILES_WAVES_1_TO_9;
 		return rows[mapY].charAt(mapX) == '.';
 	}
 }

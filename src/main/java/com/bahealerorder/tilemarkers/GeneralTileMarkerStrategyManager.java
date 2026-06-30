@@ -2,9 +2,7 @@ package com.bahealerorder.tilemarkers;
 
 import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.common.BaRole;
-import com.bahealerorder.defender.TileMarkerMapMode;
-import com.bahealerorder.defender.TileMarkerWaveMap;
-import com.bahealerorder.defender.strategies.DefenderMarker;
+import com.bahealerorder.common.TileMarkerStyle;
 import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,16 +18,13 @@ import net.runelite.client.config.ConfigManager;
 public class GeneralTileMarkerStrategyManager
 {
 	private static final String STRATEGY_STORE_KEY = "generalTileMarkerStore";
-	private static final int MIN_MARKER_OPACITY_PERCENT = 0;
-	private static final int MAX_MARKER_OPACITY_PERCENT = 100;
-	private static final float MIN_MARKER_BORDER_WIDTH = 0f;
-	private static final float MAX_MARKER_BORDER_WIDTH = 8f;
 
 	private final ConfigManager configManager;
 	private final Gson gson;
 	private final List<TileMarkerSet> builtInMarkerSets = TileMarkerBuiltInSets.create();
 	private final List<TileMarkerStrategyPreset> builtInStrategyPresets = TileMarkerBuiltInStrategies.createStrategyPresets();
 	private final List<TileMarkerAssignmentPreset> builtInAssignmentPresets = TileMarkerBuiltInStrategies.createAssignmentPresets();
+	private final TileMarkerStrategyResolver strategyResolver;
 	private TileMarkerStrategyStore store = new TileMarkerStrategyStore();
 
 	@Inject
@@ -37,6 +32,7 @@ public class GeneralTileMarkerStrategyManager
 	{
 		this.configManager = configManager;
 		this.gson = gson;
+		this.strategyResolver = new TileMarkerStrategyResolver(this::findStrategyPreset, this::findMarkerSet);
 	}
 
 	public void load()
@@ -88,6 +84,20 @@ public class GeneralTileMarkerStrategyManager
 		return sets;
 	}
 
+	public List<TileMarkerSet> getUserMarkerSets(TileMarkerWaveMap waveMap)
+	{
+		TileMarkerWaveMap resolvedWaveMap = resolveWaveMap(waveMap);
+		List<TileMarkerSet> sets = new ArrayList<>();
+		for (TileMarkerSet set : store.getMarkerSets())
+		{
+			if (set != null && set.getWaveMap() == resolvedWaveMap)
+			{
+				sets.add(set);
+			}
+		}
+		return sets;
+	}
+
 	public TileMarkerSet findMarkerSet(String id)
 	{
 		if (id == null)
@@ -118,7 +128,7 @@ public class GeneralTileMarkerStrategyManager
 			String name,
 			TileMarkerMapMode mapMode,
 			TileMarkerWaveMap waveMap,
-			List<DefenderMarker> markers)
+			List<TileMarker> markers)
 	{
 		TileMarkerSet set = new TileMarkerSet(userMarkerSetId(), name, mapMode, resolveWaveMap(waveMap), markers);
 		set.setBuiltIn(false);
@@ -134,7 +144,7 @@ public class GeneralTileMarkerStrategyManager
 			String name,
 			TileMarkerMapMode mapMode,
 			TileMarkerWaveMap waveMap,
-			List<DefenderMarker> markers)
+			List<TileMarker> markers)
 	{
 		TileMarkerSet set = findUserMarkerSet(id);
 		if (set == null)
@@ -173,64 +183,72 @@ public class GeneralTileMarkerStrategyManager
 				preset.setMarkerSetIds(without(preset.getMarkerSetIds(), id));
 			}
 		}
+		store.getWaveSelections().removeIf(selection -> selection != null && targetMatches(selection.getTarget(), TileMarkerWaveSelectionType.MARKER_SET, id));
+		for (TileMarkerAssignmentPreset preset : store.getAssignmentPresets())
+		{
+			if (preset != null)
+			{
+				preset.getWaveSelections().values().removeIf(target -> targetMatches(target, TileMarkerWaveSelectionType.MARKER_SET, id));
+			}
+		}
 		save();
 	}
 
-	public TileMarkerWaveStrategy getWaveStrategy(TileMarkerRoleContext context, int wave)
+	public TileMarkerWaveSelection getWaveSelection(TileMarkerRoleContext context, int wave)
 	{
-		TileMarkerWaveStrategy strategy = findWaveStrategy(context, wave);
-		if (strategy != null)
+		TileMarkerWaveSelection selection = findWaveSelection(context, wave);
+		if (selection != null)
 		{
-			return strategy;
+			return selection;
 		}
 
-		TileMarkerWaveStrategy created = new TileMarkerWaveStrategy(waveStrategyId(context, wave), context, wave);
-		store.getWaveStrategies().add(created);
+		TileMarkerWaveSelection created = new TileMarkerWaveSelection(waveSelectionId(context, wave), context, wave);
+		store.getWaveSelections().add(created);
 		save();
 		return created;
 	}
 
-	public TileMarkerWaveStrategy findWaveStrategy(TileMarkerRoleContext context, int wave)
+	public TileMarkerWaveSelection findWaveSelection(TileMarkerRoleContext context, int wave)
 	{
 		TileMarkerRoleContext resolvedContext = resolveContext(context);
-		for (TileMarkerWaveStrategy strategy : store.getWaveStrategies())
+		for (TileMarkerWaveSelection selection : store.getWaveSelections())
 		{
-			if (strategy.getRoleContext() == resolvedContext && strategy.getWave() == wave)
+			if (selection.getRoleContext() == resolvedContext && selection.getWave() == wave)
 			{
-				return strategy;
+				return selection;
 			}
 		}
 
 		return null;
 	}
 
-	public String getWaveStrategyPresetId(TileMarkerRoleContext context, int wave)
+	public TileMarkerWaveSelectionTarget getWaveSelectionTarget(TileMarkerRoleContext context, int wave)
 	{
-		TileMarkerWaveStrategy strategy = findWaveStrategy(context, wave);
-		return strategy == null ? null : strategy.getStrategyPresetId();
+		TileMarkerWaveSelection selection = findWaveSelection(context, wave);
+		return selection == null ? null : new TileMarkerWaveSelectionTarget(selection.getTarget());
 	}
 
-	public void setWaveStrategyPresetId(TileMarkerRoleContext context, int wave, String presetId)
+	public void setWaveSelectionTarget(TileMarkerRoleContext context, int wave, TileMarkerWaveSelectionTarget target)
 	{
 		TileMarkerRoleContext resolvedContext = resolveContext(context);
-		if (presetId == null || presetId.trim().isEmpty())
+		if (target == null || target.isEmpty())
 		{
-			store.getWaveStrategies().removeIf(strategy ->
-					strategy != null
-							&& strategy.getRoleContext() == resolvedContext
-							&& strategy.getWave() == wave);
+			store.getWaveSelections().removeIf(selection ->
+					selection != null
+							&& selection.getRoleContext() == resolvedContext
+							&& selection.getWave() == wave);
 			store.setActiveAssignmentPresetId(resolvedContext, null);
 			save();
 			return;
 		}
 
-		if (!strategyPresetMatchesWave(wave, presetId))
+		if (!selectionTargetMatchesWave(wave, target))
 		{
 			return;
 		}
 
-		TileMarkerWaveStrategy strategy = getWaveStrategy(resolvedContext, wave);
-		strategy.setStrategyPresetId(presetId);
+		TileMarkerWaveSelection selection = getWaveSelection(resolvedContext, wave);
+		selection.setTarget(target);
 		store.setActiveAssignmentPresetId(resolvedContext, null);
 		save();
 	}
@@ -254,6 +272,38 @@ public class GeneralTileMarkerStrategyManager
 					&& findBuiltInStrategyPreset(preset.getId()) == null)
 			{
 				presets.add(preset);
+			}
+		}
+		return presets;
+	}
+
+	public List<TileMarkerStrategyPreset> getUserStrategyPresets(TileMarkerWaveMap waveMap)
+	{
+		TileMarkerWaveMap resolvedWaveMap = resolveWaveMap(waveMap);
+		List<TileMarkerStrategyPreset> presets = new ArrayList<>();
+		for (TileMarkerStrategyPreset preset : store.getStrategyPresets())
+		{
+			if (preset != null
+					&& preset.getWaveMap() == resolvedWaveMap
+					&& !preset.isBuiltIn()
+					&& findBuiltInStrategyPreset(preset.getId()) == null)
+			{
+				presets.add(preset);
+			}
+		}
+		return presets;
+	}
+
+	public List<TileMarkerStrategyPreset> getBuiltInStrategyPresets(TileMarkerWaveMap waveMap)
+	{
+		TileMarkerWaveMap resolvedWaveMap = resolveWaveMap(waveMap);
+		List<TileMarkerStrategyPreset> presets = new ArrayList<>();
+		for (TileMarkerStrategyPreset preset : builtInStrategyPresets)
+		{
+			if (preset != null && preset.getWaveMap() == resolvedWaveMap)
+			{
+				TileMarkerStrategyPreset override = findUserStrategyPreset(preset.getId());
+				presets.add(override != null && override.isBuiltIn() ? override : preset);
 			}
 		}
 		return presets;
@@ -376,7 +426,7 @@ public class GeneralTileMarkerStrategyManager
 			TileMarkerRoleContext context,
 			String id,
 			String name,
-			Map<Integer, String> waveStrategyPresetIds)
+			Map<Integer, TileMarkerWaveSelectionTarget> waveSelections)
 	{
 		String normalizedName = name == null ? "" : name.trim();
 		if (normalizedName.isEmpty())
@@ -385,6 +435,8 @@ public class GeneralTileMarkerStrategyManager
 		}
 
 		TileMarkerRoleContext resolvedContext = resolveContext(context);
+		Map<Integer, TileMarkerWaveSelectionTarget> resolvedWaveSelections = existingWaveSelections(waveSelections);
+
 		TileMarkerAssignmentPreset preset = findUserAssignmentPreset(id);
 		if (preset == null)
 		{
@@ -396,7 +448,7 @@ public class GeneralTileMarkerStrategyManager
 					assignmentPresetId(),
 					normalizedName,
 					resolvedContext,
-					existingStrategyPresetIds(waveStrategyPresetIds)
+					resolvedWaveSelections
 			);
 			store.getAssignmentPresets().add(preset);
 		}
@@ -405,7 +457,7 @@ public class GeneralTileMarkerStrategyManager
 			preset.setName(normalizedName);
 			preset.setRoleContext(resolvedContext);
 			preset.setBuiltIn(false);
-			preset.setWaveStrategyPresetIds(existingStrategyPresetIds(waveStrategyPresetIds));
+			preset.setWaveSelections(resolvedWaveSelections);
 		}
 
 		store.setActiveAssignmentPresetId(resolvedContext, preset.getId());
@@ -441,7 +493,7 @@ public class GeneralTileMarkerStrategyManager
 		TileMarkerRoleContext resolvedContext = resolveContext(context);
 		if (id == null || id.trim().isEmpty())
 		{
-			clearWaveStrategyPresetIds(resolvedContext);
+			clearWaveSelections(resolvedContext);
 			return;
 		}
 
@@ -451,21 +503,15 @@ public class GeneralTileMarkerStrategyManager
 			return;
 		}
 
-		store.getWaveStrategies().removeIf(strategy -> strategy != null && strategy.getRoleContext() == resolvedContext);
-		for (Map.Entry<Integer, String> entry : existingStrategyPresetIds(preset.getWaveStrategyPresetIds()).entrySet())
-		{
-			TileMarkerWaveStrategy strategy = new TileMarkerWaveStrategy(waveStrategyId(resolvedContext, entry.getKey()), resolvedContext, entry.getKey());
-			strategy.setStrategyPresetId(entry.getValue());
-			store.getWaveStrategies().add(strategy);
-		}
+		applyWaveSelections(resolvedContext, preset.getWaveSelections());
 		store.setActiveAssignmentPresetId(resolvedContext, preset.getId());
 		save();
 	}
 
-	public void clearWaveStrategyPresetIds(TileMarkerRoleContext context)
+	public void clearWaveSelections(TileMarkerRoleContext context)
 	{
 		TileMarkerRoleContext resolvedContext = resolveContext(context);
-		store.getWaveStrategies().removeIf(strategy -> strategy != null && strategy.getRoleContext() == resolvedContext);
+		store.getWaveSelections().removeIf(selection -> selection != null && selection.getRoleContext() == resolvedContext);
 		store.setActiveAssignmentPresetId(resolvedContext, null);
 		save();
 	}
@@ -483,56 +529,43 @@ public class GeneralTileMarkerStrategyManager
 		}
 
 		store.getStrategyPresets().removeIf(preset -> id.equals(preset.getId()));
-		store.getWaveStrategies().removeIf(strategy -> strategy != null && id.equals(strategy.getStrategyPresetId()));
+		store.getWaveSelections().removeIf(selection -> selection != null && targetMatches(selection.getTarget(), TileMarkerWaveSelectionType.STRATEGY_PRESET, id));
 		for (TileMarkerAssignmentPreset preset : store.getAssignmentPresets())
 		{
 			if (preset != null)
 			{
-				preset.getWaveStrategyPresetIds().values().removeIf(id::equals);
+				preset.getWaveSelections().values().removeIf(target -> targetMatches(target, TileMarkerWaveSelectionType.STRATEGY_PRESET, id));
 			}
 		}
 		save();
 	}
 
-	public List<DefenderMarker> getActiveMarkers(int wave, BaRole role)
+	public List<TileMarker> getActiveMarkers(int wave, BaRole role)
 	{
 		return getActiveMarkers(wave, TileMarkerRoleContext.fromRole(role));
 	}
 
-	public List<DefenderMarker> getActiveMarkers(int wave, TileMarkerRoleContext context)
+	public List<TileMarker> getActiveMarkers(int wave, TileMarkerRoleContext context)
 	{
-		List<DefenderMarker> markers = new ArrayList<>();
-		Set<String> seenSetIds = new LinkedHashSet<>();
-		addStrategyMarkers(markers, seenSetIds, findWaveStrategy(TileMarkerRoleContext.GLOBAL, wave));
-
 		TileMarkerRoleContext resolvedContext = resolveContext(context);
-		if (resolvedContext != TileMarkerRoleContext.GLOBAL)
-		{
-			addStrategyMarkers(markers, seenSetIds, findWaveStrategy(resolvedContext, wave));
-		}
-
-		return markers;
+		return strategyResolver.activeMarkers(
+				findWaveSelection(TileMarkerRoleContext.GLOBAL, wave),
+				resolvedContext == TileMarkerRoleContext.GLOBAL ? null : findWaveSelection(resolvedContext, wave)
+		);
 	}
 
-	public List<DefenderMarker> getMarkersForStrategyPreset(TileMarkerStrategyPreset preset)
+	public List<TileMarker> getMarkersForStrategyPreset(TileMarkerStrategyPreset preset)
 	{
-		List<DefenderMarker> markers = new ArrayList<>();
-		addPresetMarkers(markers, new LinkedHashSet<>(), preset);
-		return markers;
+		return strategyResolver.markersForPreset(preset);
 	}
 
 	public String getActiveNotes(int wave, TileMarkerRoleContext context)
 	{
-		List<String> notes = new ArrayList<>();
-		addStrategyNotes(notes, findWaveStrategy(TileMarkerRoleContext.GLOBAL, wave));
-
 		TileMarkerRoleContext resolvedContext = resolveContext(context);
-		if (resolvedContext != TileMarkerRoleContext.GLOBAL)
-		{
-			addStrategyNotes(notes, findWaveStrategy(resolvedContext, wave));
-		}
-
-		return String.join("\n\n", notes);
+		return strategyResolver.activeNotes(
+				findWaveSelection(TileMarkerRoleContext.GLOBAL, wave),
+				resolvedContext == TileMarkerRoleContext.GLOBAL ? null : findWaveSelection(resolvedContext, wave)
+		);
 	}
 
 	public TileMarkerRoleContext getSelectedRoleContext()
@@ -552,20 +585,20 @@ public class GeneralTileMarkerStrategyManager
 		return findAssignmentPreset(id) == null ? null : id;
 	}
 
-	public Map<Integer, String> getWaveStrategyPresetIds(TileMarkerRoleContext context)
+	public Map<Integer, TileMarkerWaveSelectionTarget> getWaveSelections(TileMarkerRoleContext context)
 	{
-		Map<Integer, String> ids = new HashMap<>();
+		Map<Integer, TileMarkerWaveSelectionTarget> selections = new HashMap<>();
 		TileMarkerRoleContext resolvedContext = resolveContext(context);
-		for (TileMarkerWaveStrategy strategy : store.getWaveStrategies())
+		for (TileMarkerWaveSelection selection : store.getWaveSelections())
 		{
-			if (strategy != null
-					&& strategy.getRoleContext() == resolvedContext
-					&& strategyPresetMatchesWave(strategy.getWave(), strategy.getStrategyPresetId()))
+			if (selection != null
+					&& selection.getRoleContext() == resolvedContext
+					&& selectionTargetMatchesWave(selection.getWave(), selection.getTarget()))
 			{
-				ids.put(strategy.getWave(), strategy.getStrategyPresetId());
+				selections.put(selection.getWave(), new TileMarkerWaveSelectionTarget(selection.getTarget()));
 			}
 		}
-		return ids;
+		return selections;
 	}
 
 	public TileMarkerMapMode getLastMapMode()
@@ -597,112 +630,208 @@ public class GeneralTileMarkerStrategyManager
 
 	public int getLastMarkerOpacityPercent()
 	{
-		return clampOpacity(store.getLastMarkerOpacityPercent());
+		return TileMarkerStyle.clampOpacityPercent(store.getLastMarkerOpacityPercent());
 	}
 
 	public float getLastMarkerBorderWidth()
 	{
-		return clampBorderWidth(store.getLastMarkerBorderWidth());
+		return TileMarkerStyle.clampBorderWidth(store.getLastMarkerBorderWidth());
 	}
 
 	public void setLastMarkerStyle(String color, int opacityPercent, float borderWidth)
 	{
 		store.setLastMarkerColor(color);
-		store.setLastMarkerOpacityPercent(clampOpacity(opacityPercent));
-		store.setLastMarkerBorderWidth(clampBorderWidth(borderWidth));
+		store.setLastMarkerOpacityPercent(TileMarkerStyle.clampOpacityPercent(opacityPercent));
+		store.setLastMarkerBorderWidth(TileMarkerStyle.clampBorderWidth(borderWidth));
 		save();
 	}
 
-	public String exportMarkers(TileMarkerWaveMap waveMap, List<DefenderMarker> markers)
+	public boolean isMarkerEditorHelpVisible()
 	{
-		if (waveMap == null || markers == null || markers.isEmpty())
+		return store.isMarkerEditorHelpVisible();
+	}
+
+	public void setMarkerEditorHelpVisible(boolean visible)
+	{
+		store.setMarkerEditorHelpVisible(visible);
+		save();
+	}
+
+	public boolean isBeginnerPromptDismissed()
+	{
+		return store.isBeginnerPromptDismissed();
+	}
+
+	public void dismissBeginnerPrompt()
+	{
+		store.setBeginnerPromptDismissed(true);
+		save();
+	}
+
+	public TileMarkerExportResult exportAssignmentPresetJson(TileMarkerRoleContext context, String name)
+	{
+		Map<Integer, TileMarkerWaveSelectionTarget> waveSelections = getWaveSelections(context);
+		if (waveSelections.isEmpty())
 		{
 			return null;
 		}
 
-		return gson.toJson(TileMarkerClipboard.fromMarkers(waveMap, markers));
-	}
+		TileMarkerAssignmentExport export = new TileMarkerAssignmentExport();
+		export.setName(isBlank(name) ? null : name.trim());
+		export.setWaveSelections(waveSelections);
 
-	public List<DefenderMarker> importMarkers(TileMarkerWaveMap waveMap, String json)
-	{
-		if (waveMap == null || json == null || json.trim().isEmpty())
+		Set<String> strategyIds = new LinkedHashSet<>();
+		Set<String> markerSetIds = new LinkedHashSet<>();
+		for (TileMarkerWaveSelectionTarget target : waveSelections.values())
 		{
-			return java.util.Collections.emptyList();
+			collectExportTarget(target, strategyIds, markerSetIds);
 		}
 
-		try
+		List<TileMarkerStrategyPreset> strategyPresets = new ArrayList<>();
+		for (String strategyId : strategyIds)
 		{
-			TileMarkerClipboard clipboard = gson.fromJson(json, TileMarkerClipboard.class);
-			return clipboard == null ? java.util.Collections.emptyList() : clipboard.toMarkers(waveMap);
-		}
-		catch (RuntimeException ex)
-		{
-			return java.util.Collections.emptyList();
-		}
-	}
-
-	private void addStrategyMarkers(List<DefenderMarker> markers, Set<String> seenSetIds, TileMarkerWaveStrategy strategy)
-	{
-		if (strategy == null)
-		{
-			return;
-		}
-
-		TileMarkerStrategyPreset preset = findStrategyPreset(strategy.getStrategyPresetId());
-		if (preset == null || preset.getWaveMap() != TileMarkerWaveMap.fromWave(strategy.getWave()))
-		{
-			return;
-		}
-
-		addPresetMarkers(markers, seenSetIds, preset);
-	}
-
-	private void addPresetMarkers(List<DefenderMarker> markers, Set<String> seenSetIds, TileMarkerStrategyPreset preset)
-	{
-		if (preset == null)
-		{
-			return;
-		}
-
-		for (String setId : preset.getMarkerSetIds())
-		{
-			if (setId == null || !seenSetIds.add(setId))
+			TileMarkerStrategyPreset preset = findStrategyPreset(strategyId);
+			if (preset != null)
 			{
-				continue;
+				strategyPresets.add(copyStrategyPreset(preset));
+				markerSetIds.addAll(preset.getMarkerSetIds());
 			}
+		}
 
-			TileMarkerSet set = findMarkerSet(setId);
+		List<TileMarkerSet> markerSets = new ArrayList<>();
+		int markerCount = 0;
+		for (String markerSetId : markerSetIds)
+		{
+			TileMarkerSet set = findMarkerSet(markerSetId);
 			if (set != null)
 			{
-				markers.addAll(set.getMarkers());
+				TileMarkerSet copy = copyMarkerSet(set);
+				markerSets.add(copy);
+				markerCount += copy.getMarkers().size();
 			}
 		}
+
+		export.setStrategyPresets(strategyPresets);
+		export.setMarkerSets(markerSets);
+		return new TileMarkerExportResult(
+				gson.toJson(export),
+				assignmentDisplayName(export.getName()),
+				wavesText(waveSelections.keySet()),
+				strategyPresets.size(),
+				markerSets.size(),
+				markerCount
+		);
 	}
 
-	private void addStrategyNotes(List<String> notes, TileMarkerWaveStrategy strategy)
+	public TileMarkerExportResult importAssignmentPresetJson(TileMarkerRoleContext context, String json)
 	{
-		if (strategy == null)
+		TileMarkerAssignmentExport imported = gson.fromJson(json, TileMarkerAssignmentExport.class);
+		if (imported == null || imported.getWaveSelections().isEmpty())
 		{
-			return;
+			return null;
 		}
 
-		TileMarkerStrategyPreset preset = findStrategyPreset(strategy.getStrategyPresetId());
-		if (preset == null || preset.getWaveMap() != TileMarkerWaveMap.fromWave(strategy.getWave()))
+		for (TileMarkerSet set : imported.getMarkerSets())
 		{
-			return;
+			importOrReplaceMarkerSet(set);
+		}
+		for (TileMarkerStrategyPreset preset : imported.getStrategyPresets())
+		{
+			importOrReplaceStrategyPreset(preset);
 		}
 
-		String text = preset.getNotes();
-		if (text != null && !text.trim().isEmpty())
+		Map<Integer, TileMarkerWaveSelectionTarget> waveSelections = existingWaveSelections(imported.getWaveSelections());
+		if (waveSelections.isEmpty())
 		{
-			notes.add(text.trim());
+			return null;
 		}
+
+		int markerCount = markerCount(imported.getMarkerSets());
+		if (isBlank(imported.getName()))
+		{
+			applyWaveSelections(context, waveSelections);
+			store.setActiveAssignmentPresetId(resolveContext(context), null);
+			save();
+			return new TileMarkerExportResult(
+					json,
+					assignmentDisplayName(null),
+					wavesText(waveSelections.keySet()),
+					imported.getStrategyPresets().size(),
+					imported.getMarkerSets().size(),
+					markerCount
+			);
+		}
+
+		TileMarkerAssignmentPreset saved = saveAssignmentPreset(
+				context,
+				null,
+				imported.getName().trim(),
+				waveSelections
+		);
+		if (saved == null)
+		{
+			return null;
+		}
+
+		applyAssignmentPreset(context, saved.getId());
+		return new TileMarkerExportResult(
+				json,
+				saved.getName(),
+				wavesText(waveSelections.keySet()),
+				imported.getStrategyPresets().size(),
+				imported.getMarkerSets().size(),
+				markerCount
+		);
+	}
+
+	public TileMarkerExportResult exportMarkerSetJson(TileMarkerSet set)
+	{
+		if (set == null)
+		{
+			return null;
+		}
+
+		TileMarkerSetExport export = new TileMarkerSetExport();
+		TileMarkerSet copy = copyMarkerSet(set);
+		copy.setBuiltIn(false);
+		export.setMarkerSet(copy);
+		return new TileMarkerExportResult(
+				gson.toJson(export),
+				copy.getId(),
+				markerSetDisplayName(copy),
+				null,
+				0,
+				1,
+				copy.getMarkers().size()
+		);
+	}
+
+	public TileMarkerExportResult importMarkerSetJson(String json)
+	{
+		TileMarkerSetExport imported = gson.fromJson(json, TileMarkerSetExport.class);
+		TileMarkerSet importedSet = imported == null ? null : imported.getMarkerSet();
+		if (importedSet == null)
+		{
+			return null;
+		}
+
+		TileMarkerSet saved = importOrReplaceMarkerSet(importedSet);
+		save();
+		return new TileMarkerExportResult(
+				json,
+				saved.getId(),
+				markerSetDisplayName(saved),
+				null,
+				0,
+				1,
+				saved.getMarkers().size()
+		);
 	}
 
 	private void normalizeStore()
 	{
-		store.setLastMarkerOpacityPercent(clampOpacity(store.getLastMarkerOpacityPercent()));
-		store.setLastMarkerBorderWidth(clampBorderWidth(store.getLastMarkerBorderWidth()));
+		store.setLastMarkerOpacityPercent(TileMarkerStyle.clampOpacityPercent(store.getLastMarkerOpacityPercent()));
+		store.setLastMarkerBorderWidth(TileMarkerStyle.clampBorderWidth(store.getLastMarkerBorderWidth()));
 		store.setLastMapMode(store.getLastMapMode());
 		store.setLastWaveMap(store.getLastWaveMap());
 		List<TileMarkerSet> sets = new ArrayList<>();
@@ -740,11 +869,11 @@ public class GeneralTileMarkerStrategyManager
 			{
 				preset.setBuiltIn(false);
 				preset.setRoleContext(resolveContext(preset.getRoleContext()));
-				preset.setWaveStrategyPresetIds(existingStrategyPresetIds(preset.getWaveStrategyPresetIds()));
+				preset.setWaveSelections(existingWaveSelections(preset.getWaveSelections()));
 			}
 		}
-		store.getWaveStrategies().removeIf(strategy ->
-				strategy == null || !strategyPresetMatchesWave(strategy.getWave(), strategy.getStrategyPresetId()));
+		store.getWaveSelections().removeIf(selection ->
+				selection == null || !selectionTargetMatchesWave(selection.getWave(), selection.getTarget()));
 		store.getAssignmentPresets().removeIf(preset -> preset == null || isBlank(preset.getId()));
 		for (TileMarkerRoleContext context : TileMarkerRoleContext.values())
 		{
@@ -864,24 +993,253 @@ public class GeneralTileMarkerStrategyManager
 		return null;
 	}
 
-	private Map<Integer, String> existingStrategyPresetIds(Map<Integer, String> waveStrategyPresetIds)
+	private static String assignmentDisplayName(String name)
 	{
-		Map<Integer, String> ids = new HashMap<>();
-		if (waveStrategyPresetIds == null)
+		return isBlank(name) ? "current wave strategies" : name.trim();
+	}
+
+	private static int markerCount(List<TileMarkerSet> markerSets)
+	{
+		int markerCount = 0;
+		if (markerSets == null)
 		{
-			return ids;
+			return markerCount;
 		}
 
-		for (Map.Entry<Integer, String> entry : waveStrategyPresetIds.entrySet())
+		for (TileMarkerSet set : markerSets)
 		{
-			Integer wave = entry.getKey();
-			String strategyPresetId = entry.getValue();
-			if (wave != null && wave >= 1 && wave <= 10 && strategyPresetMatchesWave(wave, strategyPresetId))
+			if (set != null)
 			{
-				ids.put(wave, strategyPresetId);
+				markerCount += set.getMarkers().size();
 			}
 		}
-		return ids;
+		return markerCount;
+	}
+
+	private void applyWaveSelections(
+			TileMarkerRoleContext context,
+			Map<Integer, TileMarkerWaveSelectionTarget> waveSelections)
+	{
+		TileMarkerRoleContext resolvedContext = resolveContext(context);
+		store.getWaveSelections().removeIf(selection -> selection != null && selection.getRoleContext() == resolvedContext);
+		for (Map.Entry<Integer, TileMarkerWaveSelectionTarget> entry : existingWaveSelections(waveSelections).entrySet())
+		{
+			TileMarkerWaveSelection selection = new TileMarkerWaveSelection(waveSelectionId(resolvedContext, entry.getKey()), resolvedContext, entry.getKey());
+			selection.setTarget(entry.getValue());
+			store.getWaveSelections().add(selection);
+		}
+	}
+
+	private void collectExportTarget(
+			TileMarkerWaveSelectionTarget target,
+			Set<String> strategyIds,
+			Set<String> markerSetIds)
+	{
+		if (target == null || target.isEmpty())
+		{
+			return;
+		}
+
+		if (target.getType() == TileMarkerWaveSelectionType.STRATEGY_PRESET)
+		{
+			strategyIds.add(target.getId());
+		}
+		else if (target.getType() == TileMarkerWaveSelectionType.MARKER_SET)
+		{
+			markerSetIds.add(target.getId());
+		}
+	}
+
+	private TileMarkerSet importOrReplaceMarkerSet(TileMarkerSet imported)
+	{
+		if (imported == null)
+		{
+			return null;
+		}
+
+		TileMarkerSet builtIn = findBuiltInMarkerSet(imported.getId());
+		if (builtIn != null)
+		{
+			return builtIn;
+		}
+
+		TileMarkerSet existing = findUserMarkerSet(imported.getId());
+		if (existing == null)
+		{
+			TileMarkerSet added = copyMarkerSet(imported);
+			if (isBlank(added.getId()))
+			{
+				added.setId(userMarkerSetId());
+			}
+			added.setBuiltIn(false);
+			store.getMarkerSets().add(added);
+			return added;
+		}
+
+		existing.setName(imported.getName());
+		existing.setMapMode(imported.getMapMode());
+		existing.setWaveMap(imported.getWaveMap());
+		existing.setMarkers(copyMarkers(imported.getMarkers()));
+		existing.setBuiltIn(false);
+		return existing;
+	}
+
+	private TileMarkerStrategyPreset importOrReplaceStrategyPreset(TileMarkerStrategyPreset imported)
+	{
+		if (imported == null || isBlank(imported.getName()))
+		{
+			return null;
+		}
+
+		TileMarkerStrategyPreset existing = findUserStrategyPreset(imported.getId());
+
+		if (existing == null)
+		{
+			TileMarkerStrategyPreset added = copyStrategyPreset(imported);
+			if (isBlank(added.getId()))
+			{
+				added.setId(strategyPresetId());
+			}
+			added.setBuiltIn(findBuiltInStrategyPreset(added.getId()) != null);
+			added.setMarkerSetIds(existingMarkerSetIds(added.getWaveMap(), added.getMarkerSetIds()));
+			store.getStrategyPresets().add(added);
+			return added;
+		}
+
+		existing.setName(imported.getName());
+		existing.setNotes(imported.getNotes());
+		existing.setWaveMap(imported.getWaveMap());
+		existing.setBuiltIn(findBuiltInStrategyPreset(existing.getId()) != null);
+		existing.setMarkerSetIds(existingMarkerSetIds(existing.getWaveMap(), imported.getMarkerSetIds()));
+		return existing;
+	}
+
+	private TileMarkerSet findBuiltInMarkerSet(String id)
+	{
+		if (id == null)
+		{
+			return null;
+		}
+
+		for (TileMarkerSet set : builtInMarkerSets)
+		{
+			if (set != null && id.equals(set.getId()))
+			{
+				return set;
+			}
+		}
+		return null;
+	}
+
+	private static TileMarkerStrategyPreset copyStrategyPreset(TileMarkerStrategyPreset preset)
+	{
+		return new TileMarkerStrategyPreset(
+				preset.getId(),
+				preset.getName(),
+				preset.getNotes(),
+				preset.getWaveMap(),
+				preset.getMarkerSetIds(),
+				preset.isBuiltIn()
+		);
+	}
+
+	private static TileMarkerSet copyMarkerSet(TileMarkerSet set)
+	{
+		return new TileMarkerSet(
+				set.getId(),
+				set.getName(),
+				set.getMapMode(),
+				set.getWaveMap(),
+				copyMarkers(set.getMarkers()),
+				set.isBuiltIn()
+		);
+	}
+
+	private static List<TileMarker> copyMarkers(List<TileMarker> source)
+	{
+		List<TileMarker> copies = new ArrayList<>();
+		if (source == null)
+		{
+			return copies;
+		}
+
+		for (TileMarker marker : source)
+		{
+			if (marker != null)
+			{
+				copies.add(copyMarker(marker));
+			}
+		}
+		return copies;
+	}
+
+	private static TileMarker copyMarker(TileMarker marker)
+	{
+		TileMarkerTile tile = marker.getTile();
+		TileMarkerTile tileCopy = tile == null
+				? null
+				: new TileMarkerTile(tile.getRegionId(), tile.getRegionX(), tile.getRegionY(), tile.getZ());
+		return new TileMarker(
+				marker.getId(),
+				tileCopy,
+				marker.getName(),
+				marker.getLabel(),
+				marker.getColor(),
+				marker.getOpacityPercent(),
+				marker.getBorderWidth()
+		);
+	}
+
+	private static String markerSetDisplayName(TileMarkerSet set)
+	{
+		return set == null || isBlank(set.getName()) ? "unnamed tile marker set" : set.getName().trim();
+	}
+
+	private static String wavesText(Set<Integer> waves)
+	{
+		if (waves == null || waves.isEmpty())
+		{
+			return "no waves";
+		}
+
+		List<Integer> sorted = new ArrayList<>(waves);
+		java.util.Collections.sort(sorted);
+		if (sorted.size() == 10 && sorted.get(0) == 1 && sorted.get(9) == 10)
+		{
+			return "all waves";
+		}
+
+		StringBuilder builder = new StringBuilder();
+		for (Integer wave : sorted)
+		{
+			if (builder.length() > 0)
+			{
+				builder.append(", ");
+			}
+			builder.append(wave);
+		}
+		return builder.toString();
+	}
+
+	private Map<Integer, TileMarkerWaveSelectionTarget> existingWaveSelections(
+			Map<Integer, TileMarkerWaveSelectionTarget> waveSelections)
+	{
+		Map<Integer, TileMarkerWaveSelectionTarget> selections = new HashMap<>();
+		if (waveSelections == null)
+		{
+			return selections;
+		}
+
+		for (Map.Entry<Integer, TileMarkerWaveSelectionTarget> entry : waveSelections.entrySet())
+		{
+			Integer wave = entry.getKey();
+			TileMarkerWaveSelectionTarget target = entry.getValue();
+			if (wave != null && wave >= 1 && wave <= 10 && selectionTargetMatchesWave(wave, target))
+			{
+				selections.put(wave, new TileMarkerWaveSelectionTarget(target));
+			}
+		}
+		return selections;
 	}
 
 	private List<String> existingMarkerSetIds(TileMarkerWaveMap waveMap, List<String> markerSetIds)
@@ -918,9 +1276,9 @@ public class GeneralTileMarkerStrategyManager
 		return "tile-marker-set:" + System.nanoTime();
 	}
 
-	private String waveStrategyId(TileMarkerRoleContext context, int wave)
+	private String waveSelectionId(TileMarkerRoleContext context, int wave)
 	{
-		return "tile-marker-strategy:" + resolveContext(context).name().toLowerCase() + ":" + wave;
+		return "tile-marker-selection:" + resolveContext(context).name().toLowerCase() + ":" + wave;
 	}
 
 	private String strategyPresetId()
@@ -943,10 +1301,31 @@ public class GeneralTileMarkerStrategyManager
 		return waveMap == null ? TileMarkerWaveMap.WAVES_1_TO_9 : waveMap;
 	}
 
-	private boolean strategyPresetMatchesWave(int wave, String presetId)
+	private boolean selectionTargetMatchesWave(int wave, TileMarkerWaveSelectionTarget target)
 	{
-		TileMarkerStrategyPreset preset = findStrategyPreset(presetId);
-		return preset != null && preset.getWaveMap() == TileMarkerWaveMap.fromWave(wave);
+		if (target == null || target.isEmpty())
+		{
+			return false;
+		}
+
+		if (target.getType() == TileMarkerWaveSelectionType.STRATEGY_PRESET)
+		{
+			TileMarkerStrategyPreset preset = findStrategyPreset(target.getId());
+			return preset != null && preset.getWaveMap() == TileMarkerWaveMap.fromWave(wave);
+		}
+
+		if (target.getType() == TileMarkerWaveSelectionType.MARKER_SET)
+		{
+			TileMarkerSet set = findMarkerSet(target.getId());
+			return set != null && set.getWaveMap() == TileMarkerWaveMap.fromWave(wave);
+		}
+
+		return false;
+	}
+
+	private static boolean targetMatches(TileMarkerWaveSelectionTarget target, TileMarkerWaveSelectionType type, String id)
+	{
+		return target != null && target.getType() == type && id != null && id.equals(target.getId());
 	}
 
 	private static boolean isBlank(String value)
@@ -954,13 +1333,4 @@ public class GeneralTileMarkerStrategyManager
 		return value == null || value.trim().isEmpty();
 	}
 
-	private static int clampOpacity(int opacityPercent)
-	{
-		return Math.max(MIN_MARKER_OPACITY_PERCENT, Math.min(MAX_MARKER_OPACITY_PERCENT, opacityPercent));
-	}
-
-	private static float clampBorderWidth(float borderWidth)
-	{
-		return Math.max(MIN_MARKER_BORDER_WIDTH, Math.min(MAX_MARKER_BORDER_WIDTH, borderWidth));
-	}
 }
