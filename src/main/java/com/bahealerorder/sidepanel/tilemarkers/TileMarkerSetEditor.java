@@ -63,7 +63,7 @@ public class TileMarkerSetEditor extends JPanel
 	private static final int SIDE_WIDTH = 250;
 	private static final int APPLY_INSTRUCTION_HEIGHT = 40;
 	private static final int MAP_VIEWPORT_WIDTH = 800;
-	private static final int MAP_VIEWPORT_HEIGHT = 660;
+	private static final int MAP_VIEWPORT_HEIGHT = 672;
 	private static final int BODY_GAP = 10;
 	private static final int FLOATING_CONTROL_RIGHT_INSET = 18;
 	private static final int MAP_MIN_TILE_SIZE = 7;
@@ -167,7 +167,7 @@ public class TileMarkerSetEditor extends JPanel
 		markerBorderWidth.setValue((double) strategyManager.getLastMarkerBorderWidth());
 		setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		setBorder(new EmptyBorder(10, 10, 10, 10));
-		setLayout(new BorderLayout(0, 10));
+		setLayout(new BorderLayout(0, 4));
 		markerControlsPanel = createMarkerControlsPanel();
 		setPreferredSize(new Dimension(EDITOR_WIDTH, EDITOR_BASE_HEIGHT));
 
@@ -252,10 +252,20 @@ public class TileMarkerSetEditor extends JPanel
 		JPanel body = new JPanel();
 		body.setLayout(new BoxLayout(body, BoxLayout.X_AXIS));
 		body.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		body.add(createMapArea());
-		body.add(Box.createHorizontalStrut(BODY_GAP));
-		body.add(createSidePanel());
-		body.add(Box.createHorizontalGlue());
+		JPanel mapArea = createMapArea();
+		JPanel sidePanel = createSidePanel();
+		Component gap = Box.createHorizontalStrut(BODY_GAP);
+		Component glue = Box.createHorizontalGlue();
+
+		mapArea.setAlignmentY(Component.TOP_ALIGNMENT);
+		sidePanel.setAlignmentY(Component.TOP_ALIGNMENT);
+		((javax.swing.JComponent) gap).setAlignmentY(Component.TOP_ALIGNMENT);
+		((javax.swing.JComponent) glue).setAlignmentY(Component.TOP_ALIGNMENT);
+
+		body.add(mapArea);
+		body.add(gap);
+		body.add(sidePanel);
+		body.add(glue);
 		return body;
 	}
 
