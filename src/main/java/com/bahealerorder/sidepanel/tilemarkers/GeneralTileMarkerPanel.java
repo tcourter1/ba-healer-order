@@ -313,9 +313,10 @@ public class GeneralTileMarkerPanel extends JPanel
 
 	private JPanel createWaveActionRow(int wave, JComboBox<WaveSelectionOption> comboBox)
 	{
-		JPanel row = new JPanel(new DynamicGridLayout(1, 2, 4, 0));
+		JPanel row = new JPanel(new DynamicGridLayout(1, 3, 4, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		BaPanelUi.fixedSize(row, CONTROL_HEIGHT * 2 + 4, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(row, CONTROL_HEIGHT * 3 + 8, CONTROL_HEIGHT);
+		row.add(iconButton(BaIcons.plusIcon(), BaIcons.plusHoverIcon(), "New", () -> openStrategyEditorDialog(wave, null)));
 		row.add(iconButton(BaIcons.pencilIcon(), BaIcons.pencilHoverIcon(), "Edit", () ->
 		{
 			TileMarkerWaveSelectionTarget target = selectedWaveTarget(comboBox);

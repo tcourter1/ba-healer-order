@@ -19,6 +19,8 @@ public final class BaIcons
 	private static final ImageIcon INFO_ICON = loadIcon("info_icon.png");
 	private static final ImageIcon GLOBE_ICON = loadIcon("globe_icon.png");
 	private static final ImageIcon WAVE_OVERVIEW_ICON = loadIcon("wave_overview_icon.png");
+	private static final ImageIcon PLUS_ICON = createPlusIcon(ColorScheme.TEXT_COLOR);
+	private static final ImageIcon PLUS_HOVER_ICON = createPlusIcon(Color.WHITE);
 	private static final ImageIcon CHECKBOX_ICON = createCheckboxIcon(false);
 	private static final ImageIcon CHECKBOX_SELECTED_ICON = createCheckboxIcon(true);
 
@@ -79,6 +81,16 @@ public final class BaIcons
 		return VISIBLE_HOVER_ICON;
 	}
 
+	public static ImageIcon plusIcon()
+	{
+		return PLUS_ICON;
+	}
+
+	public static ImageIcon plusHoverIcon()
+	{
+		return PLUS_HOVER_ICON;
+	}
+
 	public static ImageIcon checkboxIcon()
 	{
 		return CHECKBOX_ICON;
@@ -87,6 +99,20 @@ public final class BaIcons
 	public static ImageIcon checkboxSelectedIcon()
 	{
 		return CHECKBOX_SELECTED_ICON;
+	}
+
+	private static ImageIcon createPlusIcon(Color color)
+	{
+		int size = 16;
+		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		graphics.setColor(color);
+		graphics.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		graphics.drawLine(8, 4, 8, 12);
+		graphics.drawLine(4, 8, 12, 8);
+		graphics.dispose();
+		return new ImageIcon(image);
 	}
 
 	private static ImageIcon createCheckboxIcon(boolean selected)

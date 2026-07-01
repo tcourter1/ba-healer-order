@@ -784,6 +784,82 @@ public class GeneralTileMarkerStrategyManager
 		);
 	}
 
+	public TileMarkerExportResult exportStrategyPresetJson(TileMarkerStrategyPreset preset)
+	{
+		if (preset == null || isBlank(preset.getName()))
+		{
+			return null;
+		}
+
+		TileMarkerStrategyPresetExport export = new TileMarkerStrategyPresetExport();
+		TileMarkerStrategyPreset copy = copyStrategyPreset(preset);
+		copy.setBuiltIn(false);
+
+		List<TileMarkerSet> markerSets = new ArrayList<>();
+		List<String> markerSetIds = new ArrayList<>();
+		int markerCount = 0;
+		for (String markerSetId : preset.getMarkerSetIds())
+		{
+			TileMarkerSet set = findMarkerSet(markerSetId);
+			if (set != null && set.getWaveMap() == preset.getWaveMap())
+			{
+				TileMarkerSet markerSetCopy = copyMarkerSet(set);
+				markerSetCopy.setBuiltIn(false);
+				markerSets.add(markerSetCopy);
+				markerSetIds.add(markerSetCopy.getId());
+				markerCount += markerSetCopy.getMarkers().size();
+			}
+		}
+
+		copy.setMarkerSetIds(markerSetIds);
+		export.setStrategyPreset(copy);
+		export.setMarkerSets(markerSets);
+		return new TileMarkerExportResult(
+				gson.toJson(export),
+				copy.getId(),
+				strategyPresetDisplayName(copy),
+				null,
+				1,
+				markerSets.size(),
+				markerCount
+		);
+	}
+
+	public TileMarkerExportResult importStrategyPresetJson(String json, TileMarkerWaveMap expectedWaveMap)
+	{
+		TileMarkerStrategyPresetExport imported = gson.fromJson(json, TileMarkerStrategyPresetExport.class);
+		TileMarkerStrategyPreset importedPreset = imported == null ? null : imported.getStrategyPreset();
+		TileMarkerWaveMap resolvedWaveMap = resolveWaveMap(expectedWaveMap);
+		if (importedPreset == null
+				|| isBlank(importedPreset.getName())
+				|| importedPreset.getWaveMap() != resolvedWaveMap)
+		{
+			return null;
+		}
+
+		for (TileMarkerSet set : imported.getMarkerSets())
+		{
+			importOrReplaceMarkerSet(set);
+		}
+
+		TileMarkerStrategyPreset saved = importOrReplaceStrategyPreset(importedPreset);
+		if (saved == null || saved.getWaveMap() != resolvedWaveMap)
+		{
+			return null;
+		}
+
+		save();
+		return new TileMarkerExportResult(
+				json,
+				saved.getId(),
+				strategyPresetDisplayName(saved),
+				null,
+				1,
+				imported.getMarkerSets().size(),
+				markerCount(imported.getMarkerSets())
+		);
+	}
+
 	public TileMarkerExportResult exportMarkerSetJson(TileMarkerSet set)
 	{
 		if (set == null)
@@ -1193,6 +1269,11 @@ public class GeneralTileMarkerStrategyManager
 	private static String markerSetDisplayName(TileMarkerSet set)
 	{
 		return set == null || isBlank(set.getName()) ? "unnamed tile marker set" : set.getName().trim();
+	}
+
+	private static String strategyPresetDisplayName(TileMarkerStrategyPreset preset)
+	{
+		return preset == null || isBlank(preset.getName()) ? "unnamed wave strategy" : preset.getName().trim();
 	}
 
 	private static String wavesText(Set<Integer> waves)

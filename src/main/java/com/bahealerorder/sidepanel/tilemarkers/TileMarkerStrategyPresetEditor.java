@@ -1,8 +1,10 @@
 package com.bahealerorder.sidepanel.tilemarkers;
 
+import com.bahealerorder.common.BaClipboard;
 import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.sidepanel.BaPanelUi;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
+import com.bahealerorder.tilemarkers.TileMarkerExportResult;
 import com.bahealerorder.tilemarkers.TileMarkerRoleContext;
 import com.bahealerorder.tilemarkers.TileMarkerSet;
 import com.bahealerorder.tilemarkers.TileMarkerStrategyPreset;
@@ -36,7 +38,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 {
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int EDITOR_WIDTH = 460;
-	private static final int EDITOR_HEIGHT = 740;
+	private static final int EDITOR_HEIGHT = 780;
 	private static final int MARKER_SET_LIST_HEIGHT = 260;
 	private static final int NOTES_HEIGHT = 150;
 	private static final int TRASH_BUTTON_WIDTH = 24;
@@ -201,26 +203,51 @@ class TileMarkerStrategyPresetEditor extends JPanel
 	{
 		JButton button = new JButton("Save Strategy");
 		button.addActionListener(event -> saveStrategy());
-		BaPanelUi.fixedSize(button, (EDITOR_WIDTH - 8) / 2, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(button, EDITOR_WIDTH, CONTROL_HEIGHT);
 		return button;
 	}
 
-	private JButton createPreviewButton()
+	private JButton createPreviewButton(int width)
 	{
-		JButton button = new JButton("Preview Strategy");
+		JButton button = new JButton("Preview");
 		button.addActionListener(event -> openStrategyPreview());
-		BaPanelUi.fixedSize(button, (EDITOR_WIDTH - 8) / 2, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(button, width, CONTROL_HEIGHT);
+		return button;
+	}
+
+	private JButton createExportButton(int width)
+	{
+		JButton button = new JButton("Export");
+		button.addActionListener(event -> exportStrategyToClipboard());
+		BaPanelUi.fixedSize(button, width, CONTROL_HEIGHT);
+		return button;
+	}
+
+	private JButton createImportButton(int width)
+	{
+		JButton button = new JButton("Import");
+		button.addActionListener(event -> importStrategyFromClipboard());
+		BaPanelUi.fixedSize(button, width, CONTROL_HEIGHT);
 		return button;
 	}
 
 	private JPanel createActionRow()
 	{
-		JPanel row = new JPanel(new GridLayout(1, 2, 8, 0));
+		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		BaPanelUi.fixedSize(panel, EDITOR_WIDTH, CONTROL_HEIGHT * 2 + 8);
+
+		int actionButtonWidth = (EDITOR_WIDTH - 16) / 3;
+		JPanel row = new JPanel(new GridLayout(1, 3, 8, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		BaPanelUi.fixedSize(row, EDITOR_WIDTH, CONTROL_HEIGHT);
-		row.add(createPreviewButton());
-		row.add(createSaveButton());
-		return row;
+		row.add(createImportButton(actionButtonWidth));
+		row.add(createExportButton(actionButtonWidth));
+		row.add(createPreviewButton(actionButtonWidth));
+
+		panel.add(row);
+		panel.add(Box.createVerticalStrut(8));
+		panel.add(createSaveButton());
+		return panel;
 	}
 
 	private void refreshStrategyCombo(String selectedId)
@@ -385,6 +412,81 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		{
 			strategiesChanged.run();
 		}
+	}
+
+	private void exportStrategyToClipboard()
+	{
+		TileMarkerExportResult result = strategyManager.exportStrategyPresetJson(draftStrategy());
+		if (result == null)
+		{
+			JOptionPane.showMessageDialog(
+					this,
+					"Current wave strategy needs a name before it can be exported.",
+					"Export Strategy",
+					JOptionPane.ERROR_MESSAGE
+			);
+			return;
+		}
+
+		BaClipboard.copyText(result.getJson());
+		JOptionPane.showMessageDialog(
+				this,
+				"Exported " + result.getName() + ".\n"
+						+ "Included " + result.getMarkerSetCount() + " tile marker sets, "
+						+ result.getMarkerCount() + " marked tiles, and notes.",
+				"Export Strategy",
+				JOptionPane.INFORMATION_MESSAGE
+		);
+	}
+
+	private void importStrategyFromClipboard()
+	{
+		if (!confirmDiscard(this))
+		{
+			return;
+		}
+
+		String json = BaClipboard.readText(this, "Import Strategy");
+		if (json == null)
+		{
+			return;
+		}
+
+		TileMarkerExportResult result;
+		try
+		{
+			result = strategyManager.importStrategyPresetJson(json, waveMap);
+		}
+		catch (RuntimeException ex)
+		{
+			result = null;
+		}
+
+		if (result == null)
+		{
+			JOptionPane.showMessageDialog(
+					this,
+					"Clipboard text could not be imported as a " + waveMap.getDisplayName() + " wave strategy.",
+					"Import Strategy",
+					JOptionPane.ERROR_MESSAGE
+			);
+			return;
+		}
+
+		refreshStrategyCombo(result.getId());
+		loadStrategy(result.getId());
+		if (strategiesChanged != null)
+		{
+			strategiesChanged.run();
+		}
+		JOptionPane.showMessageDialog(
+				this,
+				"Imported " + result.getName() + ".\n"
+						+ "Included " + result.getMarkerSetCount() + " tile marker sets, "
+						+ result.getMarkerCount() + " marked tiles, and notes.",
+				"Import Strategy",
+				JOptionPane.INFORMATION_MESSAGE
+		);
 	}
 
 	boolean confirmDiscard(Component parent)
