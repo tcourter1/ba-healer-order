@@ -4,6 +4,8 @@ import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.TileMarkerStyle;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -717,9 +719,83 @@ public class GeneralTileMarkerStrategyManager
 				gson.toJson(export),
 				assignmentDisplayName(export.getName()),
 				wavesText(waveSelections.keySet()),
+				TileMarkerExportType.ASSIGNMENT_PRESET,
+				TileMarkerExportSummary.assignment(waveSelections, this::targetDisplayName),
 				strategyPresets.size(),
 				markerSets.size(),
 				markerCount
+		);
+	}
+
+	public TileMarkerExportResult exportAllMarkerSetsJson()
+	{
+		List<TileMarkerSet> markerSets = new ArrayList<>();
+		Set<String> seenIds = new LinkedHashSet<>();
+		int markerCount = 0;
+		for (TileMarkerSet set : store.getMarkerSets())
+		{
+			if (set != null && seenIds.add(set.getId()))
+			{
+				TileMarkerSet copy = copyMarkerSet(set);
+				copy.setBuiltIn(false);
+				markerSets.add(copy);
+				markerCount += copy.getMarkers().size();
+			}
+		}
+
+		if (markerSets.isEmpty())
+		{
+			return null;
+		}
+
+		TileMarkerSetCollectionExport export = new TileMarkerSetCollectionExport();
+		export.setMarkerSets(markerSets);
+		return new TileMarkerExportResult(
+				gson.toJson(export),
+				"all tile markers",
+				null,
+				TileMarkerExportType.MARKER_SET_COLLECTION,
+				TileMarkerExportSummary.markerSets(markerSets),
+				0,
+				markerSets.size(),
+				markerCount
+		);
+	}
+
+	public TileMarkerExportResult exportAllStrategyPresetsJson()
+	{
+		List<TileMarkerStrategyPreset> strategyPresets = new ArrayList<>();
+		Set<String> strategyIds = new LinkedHashSet<>();
+		Set<String> markerSetIds = new LinkedHashSet<>();
+		for (TileMarkerStrategyPreset preset : store.getStrategyPresets())
+		{
+			if (preset != null && strategyIds.add(preset.getId()))
+			{
+				TileMarkerStrategyPreset copy = copyStrategyPreset(preset);
+				copy.setBuiltIn(false);
+				strategyPresets.add(copy);
+				markerSetIds.addAll(copy.getMarkerSetIds());
+			}
+		}
+
+		List<TileMarkerSet> markerSets = exportMarkerSets(markerSetIds);
+		if (strategyPresets.isEmpty())
+		{
+			return null;
+		}
+
+		TileMarkerStrategyCollectionExport export = new TileMarkerStrategyCollectionExport();
+		export.setStrategyPresets(strategyPresets);
+		export.setMarkerSets(markerSets);
+		return new TileMarkerExportResult(
+				gson.toJson(export),
+				"all wave strategies",
+				null,
+				TileMarkerExportType.STRATEGY_COLLECTION,
+				TileMarkerExportSummary.strategies(strategyPresets),
+				strategyPresets.size(),
+				markerSets.size(),
+				markerCount(markerSets)
 		);
 	}
 
@@ -756,6 +832,8 @@ public class GeneralTileMarkerStrategyManager
 					json,
 					assignmentDisplayName(null),
 					wavesText(waveSelections.keySet()),
+					TileMarkerExportType.ASSIGNMENT_PRESET,
+					TileMarkerExportSummary.assignment(waveSelections, this::targetDisplayName),
 					imported.getStrategyPresets().size(),
 					imported.getMarkerSets().size(),
 					markerCount
@@ -778,10 +856,99 @@ public class GeneralTileMarkerStrategyManager
 				json,
 				saved.getName(),
 				wavesText(waveSelections.keySet()),
+				TileMarkerExportType.ASSIGNMENT_PRESET,
+				TileMarkerExportSummary.assignment(waveSelections, this::targetDisplayName),
 				imported.getStrategyPresets().size(),
 				imported.getMarkerSets().size(),
 				markerCount
 		);
+	}
+
+	public TileMarkerExportResult importMarkerExportJson(TileMarkerRoleContext context, String json)
+	{
+		TileMarkerExportType type = detectExportType(json);
+		if (type == null)
+		{
+			return null;
+		}
+
+		switch (type)
+		{
+			case ASSIGNMENT_PRESET:
+				return importAssignmentPresetJson(context, json);
+			case STRATEGY_PRESET:
+				return importStrategyPresetJson(json, null);
+			case MARKER_SET:
+				return importMarkerSetJson(json);
+			case STRATEGY_COLLECTION:
+				return importStrategyCollectionJson(json);
+			case MARKER_SET_COLLECTION:
+				return importMarkerSetCollectionJson(json);
+			default:
+				return null;
+		}
+	}
+
+	public TileMarkerExportResult importMarkerExportJson(String json, TileMarkerWaveMap expectedWaveMap)
+	{
+		TileMarkerExportType type = detectExportType(json);
+		if (type == null)
+		{
+			return null;
+		}
+
+		switch (type)
+		{
+			case ASSIGNMENT_PRESET:
+				return importAssignmentPresetContentsJson(json);
+			case STRATEGY_PRESET:
+				return importStrategyPresetJson(json, expectedWaveMap);
+			case MARKER_SET:
+				return importMarkerSetJson(json, expectedWaveMap);
+			case STRATEGY_COLLECTION:
+				return importStrategyCollectionJson(json);
+			case MARKER_SET_COLLECTION:
+				return importMarkerSetCollectionJson(json);
+			default:
+				return null;
+		}
+	}
+
+	public TileMarkerExportResult importMarkerExportForWave(TileMarkerRoleContext context, int wave, String json)
+	{
+		TileMarkerExportType type = detectExportType(json);
+		if (type == null)
+		{
+			return null;
+		}
+
+		TileMarkerWaveMap waveMap = TileMarkerWaveMap.fromWave(wave);
+		TileMarkerExportResult result;
+		switch (type)
+		{
+			case ASSIGNMENT_PRESET:
+				return importAssignmentPresetJson(context, json);
+			case STRATEGY_PRESET:
+				result = importStrategyPresetJson(json, waveMap);
+				if (result != null)
+				{
+					setWaveSelectionTarget(context, wave, TileMarkerWaveSelectionTarget.strategyPreset(result.getId()));
+				}
+				return result;
+			case MARKER_SET:
+				result = importMarkerSetJson(json, waveMap);
+				if (result != null)
+				{
+					setWaveSelectionTarget(context, wave, TileMarkerWaveSelectionTarget.markerSet(result.getId()));
+				}
+				return result;
+			case STRATEGY_COLLECTION:
+				return importStrategyCollectionJson(json);
+			case MARKER_SET_COLLECTION:
+				return importMarkerSetCollectionJson(json);
+			default:
+				return null;
+		}
 	}
 
 	public TileMarkerExportResult exportStrategyPresetJson(TileMarkerStrategyPreset preset)
@@ -819,6 +986,8 @@ public class GeneralTileMarkerStrategyManager
 				copy.getId(),
 				strategyPresetDisplayName(copy),
 				null,
+				TileMarkerExportType.STRATEGY_PRESET,
+				TileMarkerExportSummary.strategyPreset(copy, markerSets),
 				1,
 				markerSets.size(),
 				markerCount
@@ -829,10 +998,9 @@ public class GeneralTileMarkerStrategyManager
 	{
 		TileMarkerStrategyPresetExport imported = gson.fromJson(json, TileMarkerStrategyPresetExport.class);
 		TileMarkerStrategyPreset importedPreset = imported == null ? null : imported.getStrategyPreset();
-		TileMarkerWaveMap resolvedWaveMap = resolveWaveMap(expectedWaveMap);
 		if (importedPreset == null
 				|| isBlank(importedPreset.getName())
-				|| importedPreset.getWaveMap() != resolvedWaveMap)
+				|| (expectedWaveMap != null && importedPreset.getWaveMap() != expectedWaveMap))
 		{
 			return null;
 		}
@@ -843,7 +1011,7 @@ public class GeneralTileMarkerStrategyManager
 		}
 
 		TileMarkerStrategyPreset saved = importOrReplaceStrategyPreset(importedPreset);
-		if (saved == null || saved.getWaveMap() != resolvedWaveMap)
+		if (saved == null || (expectedWaveMap != null && saved.getWaveMap() != expectedWaveMap))
 		{
 			return null;
 		}
@@ -854,6 +1022,8 @@ public class GeneralTileMarkerStrategyManager
 				saved.getId(),
 				strategyPresetDisplayName(saved),
 				null,
+				TileMarkerExportType.STRATEGY_PRESET,
+				TileMarkerExportSummary.strategyPreset(saved, imported.getMarkerSets()),
 				1,
 				imported.getMarkerSets().size(),
 				markerCount(imported.getMarkerSets())
@@ -876,6 +1046,7 @@ public class GeneralTileMarkerStrategyManager
 				copy.getId(),
 				markerSetDisplayName(copy),
 				null,
+				TileMarkerExportType.MARKER_SET,
 				0,
 				1,
 				copy.getMarkers().size()
@@ -884,9 +1055,14 @@ public class GeneralTileMarkerStrategyManager
 
 	public TileMarkerExportResult importMarkerSetJson(String json)
 	{
+		return importMarkerSetJson(json, null);
+	}
+
+	public TileMarkerExportResult importMarkerSetJson(String json, TileMarkerWaveMap expectedWaveMap)
+	{
 		TileMarkerSetExport imported = gson.fromJson(json, TileMarkerSetExport.class);
 		TileMarkerSet importedSet = imported == null ? null : imported.getMarkerSet();
-		if (importedSet == null)
+		if (importedSet == null || (expectedWaveMap != null && importedSet.getWaveMap() != expectedWaveMap))
 		{
 			return null;
 		}
@@ -898,9 +1074,119 @@ public class GeneralTileMarkerStrategyManager
 				saved.getId(),
 				markerSetDisplayName(saved),
 				null,
+				TileMarkerExportType.MARKER_SET,
 				0,
 				1,
 				saved.getMarkers().size()
+		);
+	}
+
+	private TileMarkerExportResult importAssignmentPresetContentsJson(String json)
+	{
+		TileMarkerAssignmentExport imported = gson.fromJson(json, TileMarkerAssignmentExport.class);
+		if (imported == null)
+		{
+			return null;
+		}
+
+		for (TileMarkerSet set : imported.getMarkerSets())
+		{
+			importOrReplaceMarkerSet(set);
+		}
+		for (TileMarkerStrategyPreset preset : imported.getStrategyPresets())
+		{
+			importOrReplaceStrategyPreset(preset);
+		}
+
+		save();
+		return new TileMarkerExportResult(
+				json,
+				assignmentDisplayName(imported.getName()),
+				wavesText(imported.getWaveSelections().keySet()),
+				TileMarkerExportType.ASSIGNMENT_PRESET,
+				TileMarkerExportSummary.assignment(existingWaveSelections(imported.getWaveSelections()), this::targetDisplayName),
+				imported.getStrategyPresets().size(),
+				imported.getMarkerSets().size(),
+				markerCount(imported.getMarkerSets())
+		);
+	}
+
+	private TileMarkerExportResult importMarkerSetCollectionJson(String json)
+	{
+		TileMarkerSetCollectionExport imported = gson.fromJson(json, TileMarkerSetCollectionExport.class);
+		if (imported == null || imported.getMarkerSets().isEmpty())
+		{
+			return null;
+		}
+
+		String firstId = null;
+		for (TileMarkerSet set : imported.getMarkerSets())
+		{
+			TileMarkerSet saved = importOrReplaceMarkerSet(set);
+			if (firstId == null && saved != null)
+			{
+				firstId = saved.getId();
+			}
+		}
+
+		save();
+		return new TileMarkerExportResult(
+				json,
+				firstId,
+				"tile marker collection",
+				null,
+				TileMarkerExportType.MARKER_SET_COLLECTION,
+				TileMarkerExportSummary.markerSets(imported.getMarkerSets()),
+				0,
+				imported.getMarkerSets().size(),
+				markerCount(imported.getMarkerSets())
+		);
+	}
+
+	private TileMarkerExportResult importStrategyCollectionJson(String json)
+	{
+		TileMarkerStrategyCollectionExport imported = gson.fromJson(json, TileMarkerStrategyCollectionExport.class);
+		if (imported == null || imported.getStrategyPresets().isEmpty())
+		{
+			return null;
+		}
+
+		for (TileMarkerSet set : imported.getMarkerSets())
+		{
+			importOrReplaceMarkerSet(set);
+		}
+
+		String firstId = null;
+		int strategyCount = 0;
+		for (TileMarkerStrategyPreset preset : imported.getStrategyPresets())
+		{
+			TileMarkerStrategyPreset saved = importOrReplaceStrategyPreset(preset);
+			if (saved != null)
+			{
+				strategyCount++;
+				if (firstId == null)
+				{
+					firstId = saved.getId();
+				}
+			}
+		}
+
+		if (strategyCount == 0)
+		{
+			return null;
+		}
+
+		save();
+		return new TileMarkerExportResult(
+				json,
+				firstId,
+				"wave strategy collection",
+				null,
+				TileMarkerExportType.STRATEGY_COLLECTION,
+				TileMarkerExportSummary.strategies(imported.getStrategyPresets()),
+				strategyCount,
+				imported.getMarkerSets().size(),
+				markerCount(imported.getMarkerSets())
 		);
 	}
 
@@ -1123,6 +1409,98 @@ public class GeneralTileMarkerStrategyManager
 		else if (target.getType() == TileMarkerWaveSelectionType.MARKER_SET)
 		{
 			markerSetIds.add(target.getId());
+		}
+	}
+
+	private String targetDisplayName(TileMarkerWaveSelectionTarget target)
+	{
+		if (target == null || target.isEmpty())
+		{
+			return "None";
+		}
+
+		if (target.getType() == TileMarkerWaveSelectionType.STRATEGY_PRESET)
+		{
+			TileMarkerStrategyPreset preset = findStrategyPreset(target.getId());
+			return strategyPresetDisplayName(preset);
+		}
+
+		if (target.getType() == TileMarkerWaveSelectionType.MARKER_SET)
+		{
+			TileMarkerSet set = findMarkerSet(target.getId());
+			return markerSetDisplayName(set);
+		}
+
+		return "Unknown";
+	}
+
+	private List<TileMarkerSet> exportMarkerSets(Set<String> markerSetIds)
+	{
+		List<TileMarkerSet> markerSets = new ArrayList<>();
+		if (markerSetIds == null)
+		{
+			return markerSets;
+		}
+
+		for (String markerSetId : markerSetIds)
+		{
+			TileMarkerSet set = findMarkerSet(markerSetId);
+			if (set != null)
+			{
+				TileMarkerSet copy = copyMarkerSet(set);
+				copy.setBuiltIn(false);
+				markerSets.add(copy);
+			}
+		}
+		return markerSets;
+	}
+
+	private TileMarkerExportType detectExportType(String json)
+	{
+		JsonObject object = parseExportObject(json);
+		if (object == null)
+		{
+			return null;
+		}
+
+		if (object.has("waveSelections"))
+		{
+			return TileMarkerExportType.ASSIGNMENT_PRESET;
+		}
+		if (object.has("strategyPreset"))
+		{
+			return TileMarkerExportType.STRATEGY_PRESET;
+		}
+		if (object.has("markerSet"))
+		{
+			return TileMarkerExportType.MARKER_SET;
+		}
+		if (object.has("strategyPresets"))
+		{
+			return TileMarkerExportType.STRATEGY_COLLECTION;
+		}
+		if (object.has("markerSets"))
+		{
+			return TileMarkerExportType.MARKER_SET_COLLECTION;
+		}
+		return null;
+	}
+
+	private JsonObject parseExportObject(String json)
+	{
+		if (json == null || json.trim().isEmpty())
+		{
+			return null;
+		}
+
+		try
+		{
+			JsonElement element = gson.fromJson(json, JsonElement.class);
+			return element != null && element.isJsonObject() ? element.getAsJsonObject() : null;
+		}
+		catch (RuntimeException ex)
+		{
+			return null;
 		}
 	}
 

@@ -19,8 +19,11 @@ public final class BaIcons
 	private static final ImageIcon INFO_ICON = loadIcon("info_icon.png");
 	private static final ImageIcon GLOBE_ICON = loadIcon("globe_icon.png");
 	private static final ImageIcon WAVE_OVERVIEW_ICON = loadIcon("wave_overview_icon.png");
-	private static final ImageIcon PLUS_ICON = createPlusIcon(ColorScheme.TEXT_COLOR);
+	private static final ImageIcon PLUS_ICON = createPlusIcon(Color.WHITE);
 	private static final ImageIcon PLUS_HOVER_ICON = createPlusIcon(Color.WHITE);
+	private static final ImageIcon VERTICAL_ELLIPSIS_ICON = createVerticalEllipsisIcon();
+	private static final ImageIcon IMPORT_ICON = loadIcon("import_icon.png");
+	private static final ImageIcon EXPORT_ICON = loadIcon("export_icon.png");
 	private static final ImageIcon CHECKBOX_ICON = createCheckboxIcon(false);
 	private static final ImageIcon CHECKBOX_SELECTED_ICON = createCheckboxIcon(true);
 
@@ -91,6 +94,21 @@ public final class BaIcons
 		return PLUS_HOVER_ICON;
 	}
 
+	public static ImageIcon verticalEllipsisIcon()
+	{
+		return VERTICAL_ELLIPSIS_ICON;
+	}
+
+	public static ImageIcon importIcon()
+	{
+		return IMPORT_ICON;
+	}
+
+	public static ImageIcon exportIcon()
+	{
+		return EXPORT_ICON;
+	}
+
 	public static ImageIcon checkboxIcon()
 	{
 		return CHECKBOX_ICON;
@@ -131,6 +149,20 @@ public final class BaIcons
 			graphics.drawLine(5, 9, 8, 12);
 			graphics.drawLine(8, 12, 14, 5);
 		}
+		graphics.dispose();
+		return new ImageIcon(image);
+	}
+
+	private static ImageIcon createVerticalEllipsisIcon()
+	{
+		int size = 16;
+		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		graphics.setColor(ColorScheme.TEXT_COLOR);
+		graphics.fillOval(7, 3, 2, 2);
+		graphics.fillOval(7, 7, 2, 2);
+		graphics.fillOval(7, 11, 2, 2);
 		graphics.dispose();
 		return new ImageIcon(image);
 	}

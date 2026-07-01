@@ -5,6 +5,7 @@ import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.sidepanel.BaPanelUi;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import com.bahealerorder.tilemarkers.TileMarkerExportResult;
+import com.bahealerorder.tilemarkers.TileMarkerExportType;
 import com.bahealerorder.tilemarkers.TileMarkerRoleContext;
 import com.bahealerorder.tilemarkers.TileMarkerSet;
 import com.bahealerorder.tilemarkers.TileMarkerStrategyPreset;
@@ -429,14 +430,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		}
 
 		BaClipboard.copyText(result.getJson());
-		JOptionPane.showMessageDialog(
-				this,
-				"Exported " + result.getName() + ".\n"
-						+ "Included " + result.getMarkerSetCount() + " tile marker sets, "
-						+ result.getMarkerCount() + " marked tiles, and notes.",
-				"Export Strategy",
-				JOptionPane.INFORMATION_MESSAGE
-		);
+		TileMarkerTransferDialog.show(this, "Export Strategy", "Exported " + result.getTypedName() + ".", "Export", result.getSummaryLines());
 	}
 
 	private void importStrategyFromClipboard()
@@ -455,7 +449,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		TileMarkerExportResult result;
 		try
 		{
-			result = strategyManager.importStrategyPresetJson(json, waveMap);
+			result = strategyManager.importMarkerExportJson(json, waveMap);
 		}
 		catch (RuntimeException ex)
 		{
@@ -466,7 +460,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		{
 			JOptionPane.showMessageDialog(
 					this,
-					"Clipboard text could not be imported as a " + waveMap.getDisplayName() + " wave strategy.",
+					"Clipboard text could not be imported as a " + waveMap.getDisplayName() + " tile marker export.",
 					"Import Strategy",
 					JOptionPane.ERROR_MESSAGE
 			);
@@ -474,19 +468,18 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		}
 
 		refreshStrategyCombo(result.getId());
-		loadStrategy(result.getId());
+		markerSetChecklist.refresh();
+		if ((result.getType() == TileMarkerExportType.STRATEGY_PRESET
+				|| result.getType() == TileMarkerExportType.STRATEGY_COLLECTION)
+				&& result.getId() != null)
+		{
+			loadStrategy(result.getId());
+		}
 		if (strategiesChanged != null)
 		{
 			strategiesChanged.run();
 		}
-		JOptionPane.showMessageDialog(
-				this,
-				"Imported " + result.getName() + ".\n"
-						+ "Included " + result.getMarkerSetCount() + " tile marker sets, "
-						+ result.getMarkerCount() + " marked tiles, and notes.",
-				"Import Strategy",
-				JOptionPane.INFORMATION_MESSAGE
-		);
+		TileMarkerTransferDialog.show(this, "Import Strategy", "Imported " + result.getTypedName() + ".", "Import", result.getSummaryLines());
 	}
 
 	boolean confirmDiscard(Component parent)

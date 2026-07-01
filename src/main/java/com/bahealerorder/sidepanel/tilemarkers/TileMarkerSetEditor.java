@@ -7,6 +7,7 @@ import com.bahealerorder.common.TileMarkerStyle;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import com.bahealerorder.tilemarkers.TileMarker;
 import com.bahealerorder.tilemarkers.TileMarkerExportResult;
+import com.bahealerorder.tilemarkers.TileMarkerExportType;
 import com.bahealerorder.tilemarkers.TileMarkerMapLayout;
 import com.bahealerorder.tilemarkers.TileMarkerMapMode;
 import com.bahealerorder.tilemarkers.TileMarkerSet;
@@ -686,11 +687,12 @@ public class TileMarkerSetEditor extends JPanel
 		}
 
 		BaClipboard.copyText(result.getJson());
-		JOptionPane.showMessageDialog(
+		TileMarkerTransferDialog.show(
 				this,
-				"Exported " + result.getName() + " with " + result.getMarkerCount() + " marked tiles.",
 				"Export Marker Set",
-				JOptionPane.INFORMATION_MESSAGE
+				"Exported tile set " + result.getName() + " with " + result.getMarkerCount() + " tile markers.",
+				"Export",
+				result.getSummaryLines()
 		);
 	}
 
@@ -705,7 +707,7 @@ public class TileMarkerSetEditor extends JPanel
 		TileMarkerExportResult result;
 		try
 		{
-			result = strategyManager.importMarkerSetJson(json);
+			result = strategyManager.importMarkerExportJson(json, null);
 		}
 		catch (RuntimeException ex)
 		{
@@ -714,22 +716,31 @@ public class TileMarkerSetEditor extends JPanel
 
 		if (result == null)
 		{
-			JOptionPane.showMessageDialog(this, "Clipboard text could not be imported as a tile marker set.", "Import Marker Set", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Clipboard text could not be imported as a tile marker export.", "Import Marker Set", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 
 		refreshSetCombo(null);
-		loadSet(result.getId());
+		if ((result.getType() == TileMarkerExportType.MARKER_SET
+				|| result.getType() == TileMarkerExportType.MARKER_SET_COLLECTION)
+				&& result.getId() != null)
+		{
+			loadSet(result.getId());
+		}
 		if (setsChanged != null)
 		{
 			setsChanged.run();
 		}
-		JOptionPane.showMessageDialog(
-				this,
-				"Imported " + result.getName() + " with " + result.getMarkerCount() + " marked tiles.",
-				"Import Marker Set",
-				JOptionPane.INFORMATION_MESSAGE
-		);
+		TileMarkerTransferDialog.show(this, "Import Marker Set", markerSetImportMessage(result), "Import", result.getSummaryLines());
+	}
+
+	private String markerSetImportMessage(TileMarkerExportResult result)
+	{
+		if (result.getType() == TileMarkerExportType.MARKER_SET)
+		{
+			return "Imported tile set " + result.getName() + " with " + result.getMarkerCount() + " tile markers.";
+		}
+		return "Imported " + result.getTypedName() + ".";
 	}
 
 	private TileMarkerSet currentDraftSet()

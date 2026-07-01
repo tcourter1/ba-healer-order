@@ -7,6 +7,7 @@ import com.bahealerorder.common.BaRole;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import com.bahealerorder.tilemarkers.TileMarkerAssignmentPreset;
 import com.bahealerorder.tilemarkers.TileMarkerExportResult;
+import com.bahealerorder.tilemarkers.TileMarkerExportType;
 import com.bahealerorder.tilemarkers.TileMarkerRoleContext;
 import com.bahealerorder.tilemarkers.TileMarkerSet;
 import com.bahealerorder.tilemarkers.TileMarkerStrategyPreset;
@@ -38,8 +39,10 @@ import javax.swing.JDialog;
 import javax.swing.JLayeredPane;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
@@ -67,7 +70,10 @@ public class GeneralTileMarkerPanel extends JPanel
 	private static final int WAVE_ROW_GAP = 8;
 	private static final int WAVE_ROW_HORIZONTAL_PADDING = 8;
 	private static final int WAVE_ROW_CONTROL_WIDTH = CONTENT_WIDTH - WAVE_ROW_HORIZONTAL_PADDING * 2;
+	private static final int WAVE_LABEL_WIDTH = 54;
 	private static final int WAVE_LABEL_LEFT_PADDING = 2;
+	private static final int WAVE_MENU_BUTTON_WIDTH = 24;
+	private static final int WAVE_COMBO_WIDTH = WAVE_ROW_CONTROL_WIDTH - WAVE_LABEL_WIDTH - WAVE_MENU_BUTTON_WIDTH - 12;
 	private static final int ASSIGNMENT_CONTROL_WIDTH = CONTENT_WIDTH - 16;
 	private static final int ACTION_ROW_GAP = 6;
 	private static final int ACTION_BUTTON_WIDTH = (ASSIGNMENT_CONTROL_WIDTH - ACTION_ROW_GAP) / 2;
@@ -264,13 +270,9 @@ public class GeneralTileMarkerPanel extends JPanel
 		waveLabel.setForeground(ColorScheme.TEXT_COLOR);
 		waveLabel.setBorder(new EmptyBorder(0, WAVE_LABEL_LEFT_PADDING, 0, 0));
 
-		JPanel headerRow = new JPanel(new BorderLayout(6, 0));
-		headerRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		BaPanelUi.fixedSize(headerRow, WAVE_ROW_CONTROL_WIDTH, CONTROL_HEIGHT);
-
 		JComboBox<WaveSelectionOption> comboBox = new JComboBox<>();
 		comboBox.setRenderer(new WaveSelectionRenderer());
-		BaPanelUi.fixedSize(comboBox, WAVE_ROW_CONTROL_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(comboBox, WAVE_COMBO_WIDTH, CONTROL_HEIGHT);
 		populateWaveSelectionCombo(comboBox, wave, strategyManager.getWaveSelectionTarget(selectedContext, wave));
 		comboBox.addActionListener(event ->
 		{
@@ -298,26 +300,33 @@ public class GeneralTileMarkerPanel extends JPanel
 			refreshAssignmentPresetCombo();
 		});
 
-		headerRow.add(waveLabel, BorderLayout.CENTER);
-		headerRow.add(createWaveActionRow(wave, comboBox), BorderLayout.EAST);
+		BaPanelUi.fixedSize(waveLabel, WAVE_LABEL_WIDTH, CONTROL_HEIGHT);
 
-		JPanel row = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		JPanel row = new JPanel(new BorderLayout(6, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		row.setBorder(new EmptyBorder(0, WAVE_ROW_HORIZONTAL_PADDING, 0, WAVE_ROW_HORIZONTAL_PADDING));
-		BaPanelUi.fixedSize(row, CONTENT_WIDTH, CONTROL_HEIGHT * 2 + 3);
-		row.add(headerRow);
-		row.add(Box.createVerticalStrut(3));
-		row.add(comboBox);
+		BaPanelUi.fixedSize(row, CONTENT_WIDTH, CONTROL_HEIGHT);
+		row.add(waveLabel, BorderLayout.WEST);
+		row.add(comboBox, BorderLayout.CENTER);
+		row.add(createWaveMenuButton(wave, comboBox), BorderLayout.EAST);
 		return row;
 	}
 
-	private JPanel createWaveActionRow(int wave, JComboBox<WaveSelectionOption> comboBox)
+	private JButton createWaveMenuButton(int wave, JComboBox<WaveSelectionOption> comboBox)
 	{
-		JPanel row = new JPanel(new DynamicGridLayout(1, 3, 4, 0));
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		BaPanelUi.fixedSize(row, CONTROL_HEIGHT * 3 + 8, CONTROL_HEIGHT);
-		row.add(iconButton(BaIcons.plusIcon(), BaIcons.plusHoverIcon(), "New", () -> openStrategyEditorDialog(wave, null)));
-		row.add(iconButton(BaIcons.pencilIcon(), BaIcons.pencilHoverIcon(), "Edit", () ->
+		JButton button = new JButton(BaIcons.verticalEllipsisIcon());
+		button.setToolTipText("Wave actions");
+		button.addActionListener(event -> createWaveActionMenu(wave, comboBox).show(button, 0, button.getHeight()));
+		SwingUtil.removeButtonDecorations(button);
+		BaPanelUi.fixedSize(button, WAVE_MENU_BUTTON_WIDTH, CONTROL_HEIGHT);
+		return button;
+	}
+
+	private JPopupMenu createWaveActionMenu(int wave, JComboBox<WaveSelectionOption> comboBox)
+	{
+		JPopupMenu menu = new JPopupMenu();
+		menu.add(menuItem("Add", BaIcons.plusIcon(), () -> openStrategyEditorDialog(wave, null)));
+		menu.add(menuItem("Edit", BaIcons.pencilIcon(), () ->
 		{
 			TileMarkerWaveSelectionTarget target = selectedWaveTarget(comboBox);
 			String strategyId = target != null && target.getType() == TileMarkerWaveSelectionType.STRATEGY_PRESET
@@ -325,19 +334,26 @@ public class GeneralTileMarkerPanel extends JPanel
 					: null;
 			openStrategyEditorDialog(wave, strategyId);
 		}));
-		row.add(iconButton(BaIcons.eyeIcon(), BaIcons.eyeHoverIcon(), "Preview", () -> openPreviewDialog(wave)));
-		return row;
+		menu.add(menuItem("Import", BaIcons.importIcon(), () -> importWaveSelectionFromClipboard(wave)));
+		menu.add(menuItem("Export", BaIcons.exportIcon(), () -> exportWaveSelectionToClipboard(wave)));
+		menu.add(menuItem("Preview", BaIcons.eyeIcon(), () -> openPreviewDialog(wave)));
+		return menu;
 	}
 
-	private JButton iconButton(ImageIcon icon, ImageIcon hoverIcon, String tooltip, Runnable action)
+	private JMenuItem menuItem(String text, ImageIcon icon, Runnable action)
 	{
-		JButton button = new JButton(icon);
-		button.setRolloverIcon(hoverIcon);
-		button.setToolTipText(tooltip);
-		button.addActionListener(event -> action.run());
-		SwingUtil.removeButtonDecorations(button);
-		BaPanelUi.fixedSize(button, CONTROL_HEIGHT, CONTROL_HEIGHT);
-		return button;
+		JMenuItem item = new JMenuItem(text);
+		item.setIcon(icon);
+		item.setIconTextGap(8);
+		item.addActionListener(event -> action.run());
+		return item;
+	}
+
+	private JMenuItem menuItem(String text, Runnable action)
+	{
+		JMenuItem item = new JMenuItem(text);
+		item.addActionListener(event -> action.run());
+		return item;
 	}
 
 	private JPanel createAssignmentPresetControls()
@@ -368,9 +384,26 @@ public class GeneralTileMarkerPanel extends JPanel
 
 		JPanel importExportRow = BaPanelUi.horizontalActionRow(ASSIGNMENT_CONTROL_WIDTH, CONTROL_HEIGHT);
 		importExportRow.add(BaPanelUi.action("Import", this::importAssignmentPresetFromClipboard, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT));
-		importExportRow.add(BaPanelUi.action("Export", this::exportAssignmentPresetToClipboard, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT));
+		importExportRow.add(createAssignmentExportButton());
 		panel.add(importExportRow);
 		return panel;
+	}
+
+	private JButton createAssignmentExportButton()
+	{
+		JButton button = new JButton("Export");
+		button.addActionListener(event -> createAssignmentExportMenu().show(button, 0, button.getHeight()));
+		BaPanelUi.fixedSize(button, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT);
+		return button;
+	}
+
+	private JPopupMenu createAssignmentExportMenu()
+	{
+		JPopupMenu menu = new JPopupMenu();
+		menu.add(menuItem("Current Preset", this::exportAssignmentPresetToClipboard));
+		menu.add(menuItem("All Tile Markers", this::exportAllMarkerSetsToClipboard));
+		menu.add(menuItem("All Strategies", this::exportAllStrategiesToClipboard));
+		return menu;
 	}
 
 	private JPanel createBeginnerPromptPanel()
@@ -518,6 +551,63 @@ public class GeneralTileMarkerPanel extends JPanel
 		refreshAll();
 	}
 
+	private void exportWaveSelectionToClipboard(int wave)
+	{
+		TileMarkerWaveSelectionTarget target = strategyManager.getWaveSelectionTarget(selectedContext, wave);
+		if (target == null || target.isEmpty())
+		{
+			JOptionPane.showMessageDialog(this, "No tile markers or strategy are selected for Wave " + wave + ".", "Export Wave", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		TileMarkerExportResult result = null;
+		if (target.getType() == TileMarkerWaveSelectionType.STRATEGY_PRESET)
+		{
+			result = strategyManager.exportStrategyPresetJson(strategyManager.findStrategyPreset(target.getId()));
+		}
+		else if (target.getType() == TileMarkerWaveSelectionType.MARKER_SET)
+		{
+			result = strategyManager.exportMarkerSetJson(strategyManager.findMarkerSet(target.getId()));
+		}
+
+		if (result == null)
+		{
+			JOptionPane.showMessageDialog(this, "Wave " + wave + " could not be exported.", "Export Wave", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		BaClipboard.copyText(result.getJson());
+		showTransferDialog("Export Wave", exportMessage(result), "Export", result);
+	}
+
+	private void importWaveSelectionFromClipboard(int wave)
+	{
+		String json = BaClipboard.readText(this, "Import Wave");
+		if (json == null)
+		{
+			return;
+		}
+
+		TileMarkerExportResult result;
+		try
+		{
+			result = strategyManager.importMarkerExportForWave(selectedContext, wave, json);
+		}
+		catch (RuntimeException ex)
+		{
+			result = null;
+		}
+
+		if (result == null)
+		{
+			JOptionPane.showMessageDialog(this, "Clipboard text could not be imported for Wave " + wave + ".", "Import Wave", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		refreshAll();
+		showTransferDialog("Import Wave", importWaveMessage(result, wave), "Import", result);
+	}
+
 	private void exportAssignmentPresetToClipboard()
 	{
 		TileMarkerAssignmentPreset activePreset = strategyManager.findAssignmentPreset(
@@ -534,15 +624,33 @@ public class GeneralTileMarkerPanel extends JPanel
 		}
 
 		BaClipboard.copyText(result.getJson());
-		JOptionPane.showMessageDialog(
-				this,
-				"Exported " + result.getName() + " " + wavesMessageSuffix(result.getWavesText()) + ".\n"
-						+ "Included " + result.getStrategyCount() + " strategies, "
-						+ result.getMarkerSetCount() + " tile marker sets, and "
-						+ result.getMarkerCount() + " marked tiles.",
-				"Export Preset",
-				JOptionPane.INFORMATION_MESSAGE
-		);
+		showTransferDialog("Export Preset", "Exported preset " + result.getName() + ".", "Export", result);
+	}
+
+	private void exportAllMarkerSetsToClipboard()
+	{
+		TileMarkerExportResult result = strategyManager.exportAllMarkerSetsJson();
+		if (result == null)
+		{
+			JOptionPane.showMessageDialog(this, "There are no custom tile marker sets to export.", "Export Tile Markers", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		BaClipboard.copyText(result.getJson());
+		showTransferDialog("Export Tile Markers", "Exported all custom tile marker sets.", "Export", result);
+	}
+
+	private void exportAllStrategiesToClipboard()
+	{
+		TileMarkerExportResult result = strategyManager.exportAllStrategyPresetsJson();
+		if (result == null)
+		{
+			JOptionPane.showMessageDialog(this, "There are no saved wave strategies to export.", "Export Strategies", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		BaClipboard.copyText(result.getJson());
+		showTransferDialog("Export Strategies", "Exported all saved wave strategies.", "Export", result);
 	}
 
 	private void importAssignmentPresetFromClipboard()
@@ -556,7 +664,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		TileMarkerExportResult result;
 		try
 		{
-			result = strategyManager.importAssignmentPresetJson(selectedContext, json);
+			result = strategyManager.importMarkerExportJson(selectedContext, json);
 		}
 		catch (RuntimeException ex)
 		{
@@ -565,21 +673,12 @@ public class GeneralTileMarkerPanel extends JPanel
 
 		if (result == null)
 		{
-			JOptionPane.showMessageDialog(this, "Clipboard text could not be imported as a tile marker preset.", "Import Preset", JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(this, "Clipboard text could not be imported as a tile marker export.", "Import Preset", JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 
 		refreshAll();
-		JOptionPane.showMessageDialog(
-				this,
-				"Imported " + result.getName() + " " + wavesMessageSuffix(result.getWavesText()) + ".\n"
-						+ "Applied it to the " + selectedContext.getDisplayName() + " role.\n"
-						+ "Included " + result.getStrategyCount() + " strategies, "
-						+ result.getMarkerSetCount() + " tile marker sets, and "
-						+ result.getMarkerCount() + " marked tiles.",
-				"Import Preset",
-				JOptionPane.INFORMATION_MESSAGE
-		);
+		showTransferDialog("Import Preset", "Imported " + result.getTypedName() + ".", "Import", result);
 	}
 
 	private void populateWaveSelectionCombo(
@@ -633,9 +732,32 @@ public class GeneralTileMarkerPanel extends JPanel
 		return field.getText().trim();
 	}
 
-	private String wavesMessageSuffix(String wavesText)
+	private void showTransferDialog(String title, String message, String action, TileMarkerExportResult result)
 	{
-		return "all waves".equals(wavesText) ? "for all waves" : "for waves " + wavesText;
+		TileMarkerTransferDialog.show(this, title, message, action, result.getSummaryLines());
+	}
+
+	private String exportMessage(TileMarkerExportResult result)
+	{
+		if (result.getType() == TileMarkerExportType.MARKER_SET)
+		{
+			return "Exported tile set " + result.getName() + " with " + result.getMarkerCount() + " tile markers.";
+		}
+		return "Exported " + result.getTypedName() + ".";
+	}
+
+	private String importWaveMessage(TileMarkerExportResult result, int wave)
+	{
+		if (result.getType() == TileMarkerExportType.MARKER_SET)
+		{
+			return "Imported and selected tile set " + result.getName() + " for Wave " + wave
+					+ " with " + result.getMarkerCount() + " tile markers.";
+		}
+		if (result.getType() == TileMarkerExportType.STRATEGY_PRESET)
+		{
+			return "Imported and selected wave strategy " + result.getName() + " for Wave " + wave + ".";
+		}
+		return "Imported " + result.getTypedName() + ".";
 	}
 
 	private void openMarkerEditorDialog()
