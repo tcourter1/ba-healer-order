@@ -2,6 +2,10 @@ package com.bahealerorder.common;
 
 import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.healer.HealerController;
+import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
+import com.bahealerorder.tilemarkers.TimedStrategyNote;
+import com.bahealerorder.tilemarkers.TimedStrategyNotes;
+import com.bahealerorder.tilemarkers.TileMarkerRoleContext;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -26,10 +30,10 @@ import net.runelite.client.util.ColorUtil;
 public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 {
     private static final Color DEFAULT_PANEL_BACKGROUND = ComponentConstants.STANDARD_BACKGROUND_COLOR;
-    private static final Color TITLE_COLOR = new Color(0, 255, 0);
-    private static final Color TEXT_COLOR = Color.WHITE;
-    private static final Color TTK_COLOR = Color.ORANGE;
-    private static final Color DEAD_COLOR = Color.GRAY;
+	private static final Color TITLE_COLOR = new Color(0, 255, 0);
+	private static final Color TEXT_COLOR = Color.WHITE;
+	private static final Color TTK_COLOR = Color.ORANGE;
+	private static final Color DEAD_COLOR = Color.GRAY;
 
     private static final int BASE_OVERLAY_TEXT_SIZE = 16;
     private static final int BASE_PANEL_WIDTH = 240;
@@ -46,6 +50,12 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
     @Inject
     private ConfigManager configManager;
+
+    @Inject
+    private BaRoleDetector roleDetector;
+
+    @Inject
+    private GeneralTileMarkerStrategyManager strategyManager;
 
     private HealerController healerController;
     private boolean codeTogglePressed;
@@ -73,7 +83,18 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
             return hidePanel();
         }
 
-        if (!shouldRenderHealerPanel())
+        if (!healerController.isWaveActive())
+        {
+            return hidePanel();
+        }
+
+        BaUtilitiesConfig.FoodPanelStyle panelStyle = getEffectivePanelStyle();
+        String sourceText = healerController.getCurrentWaveCodeSource();
+        String notes = getCurrentWaveNotes();
+        boolean healerContent = shouldRenderHealerContent(panelStyle, sourceText);
+        boolean notesContent = !isBlank(notes);
+
+        if (!healerContent && !notesContent)
         {
             return hidePanel();
         }
@@ -82,43 +103,38 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
         try
         {
-            List<Integer> healerOrders = healerController.getHealerOrdersForCurrentWave();
-            BaUtilitiesConfig.FoodPanelStyle panelStyle = getEffectivePanelStyle();
-
-            if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.CODE_ONLY)
-            {
-                String sourceText = healerController.getCurrentWaveCodeSource();
-
-                if (sourceText == null || sourceText.isEmpty())
-                {
-                    return hidePanel();
-                }
-            }
-
             panelComponent.getChildren().add(
                     TitleComponent.builder()
                             .text(getPanelTitle())
-                            .color(TITLE_COLOR)
+                            .color(getPanelTitleColor())
                             .build()
             );
 
+            if (!healerContent)
+            {
+                addCurrentWaveNotes(false);
+                return renderPanel(graphics);
+            }
+
+            List<Integer> healerOrders = healerController.getHealerOrdersForCurrentWave();
+
             if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.CODE_ONLY)
             {
-                addCurrentWaveCode(false);
+                addCurrentWaveCodeAndNotes(false);
                 return renderPanel(graphics);
             }
 
             if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.SIMPLIFIED)
             {
                 addSimplifiedRows(healerOrders);
-                addCurrentWaveCodeIfHealer(true);
+                addCurrentWaveCodeAndNotesIfHealer(true);
                 return renderPanel(graphics);
             }
 
             if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.COLUMNS)
             {
                 addColumnTables(graphics, healerOrders);
-                addCurrentWaveCodeIfHealer(true);
+                addCurrentWaveCodeAndNotesIfHealer(true);
                 return renderPanel(graphics);
             }
 
@@ -131,7 +147,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
                 addHealerRows(healerOrders);
             }
 
-            addCurrentWaveCodeIfHealer(true);
+            addCurrentWaveCodeAndNotesIfHealer(true);
 
             return renderPanel(graphics);
         }
@@ -146,12 +162,12 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         return healerController.getFoodPanelStyle();
     }
 
-    private boolean shouldRenderHealerPanel()
+    private boolean shouldRenderHealerContent(BaUtilitiesConfig.FoodPanelStyle panelStyle, String sourceText)
     {
         return healerController != null
                 && healerController.isHealerRole()
-                && healerController.getFoodPanelStyle() != BaUtilitiesConfig.FoodPanelStyle.NONE
-                && healerController.isWaveActive();
+                && panelStyle != BaUtilitiesConfig.FoodPanelStyle.NONE
+                && (panelStyle != BaUtilitiesConfig.FoodPanelStyle.CODE_ONLY || !isBlank(sourceText));
     }
 
     private Font preparePanel(Graphics2D graphics)
@@ -241,9 +257,9 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         return color == null ? DEFAULT_PANEL_BACKGROUND : color;
     }
 
-    private String getPanelTitle()
-    {
-        String title = "Healers";
+	private String getPanelTitle()
+	{
+        String title = "Wave";
         int wave = healerController.getCurrentWave();
 
         if (wave > 0)
@@ -251,15 +267,43 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
             title = "Wave " + wave;
         }
 
-        String codeName = healerController.isHealerRole() ? healerController.getCurrentWaveCodeName() : null;
+        String codeName = healerController.isHealerRole() && healerController.hasActiveWaveCode()
+				? healerController.getCurrentWaveCodeName()
+				: null;
+        String detail = !isBlank(codeName) ? codeName : getCurrentStrategyName();
 
-        if (codeName != null && !codeName.trim().isEmpty())
+        if (!isBlank(detail))
         {
-            title += " (" + codeName + ")";
+            title += " (" + detail + ")";
         }
 
         return title;
-    }
+	}
+
+	private Color getPanelTitleColor()
+	{
+		Color color = BaRoleColors.color(getDisplayRole());
+		return color == null ? TITLE_COLOR : color;
+	}
+
+	private BaRole getDisplayRole()
+	{
+		BaRole role = roleDetector.getCurrentRole();
+		return role == null ? BaRole.HEALER : role;
+	}
+
+	private String getCurrentStrategyName()
+	{
+		if (healerController == null || !healerController.isWaveActive())
+		{
+			return "";
+		}
+
+		return strategyManager.getActiveStrategyName(
+				healerController.getCurrentWave(),
+				getCurrentRoleContext()
+		);
+	}
 
     private void addSimplifiedRows(List<Integer> healerOrders)
     {
@@ -581,13 +625,18 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         return builder.toString();
     }
 
-    private void addCurrentWaveCode(boolean collapsible)
+    private void addCurrentWaveCodeAndNotes(boolean collapsible)
+    {
+        addCurrentWaveNotes(addCurrentWaveCode(collapsible));
+    }
+
+    private boolean addCurrentWaveCode(boolean collapsible)
     {
         String sourceText = healerController.getCurrentWaveCodeSource();
 
-        if (sourceText == null || sourceText.isEmpty())
+        if (isBlank(sourceText))
         {
-            return;
+            return false;
         }
 
         if (collapsible)
@@ -601,7 +650,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
             if (isCodeCollapsed())
             {
-                return;
+                return true;
             }
         }
 
@@ -614,14 +663,71 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
                             .build()
             );
         }
+
+        return true;
     }
 
-    private void addCurrentWaveCodeIfHealer(boolean collapsible)
+    private void addCurrentWaveCodeAndNotesIfHealer(boolean collapsible)
     {
         if (healerController.isHealerRole())
         {
-            addCurrentWaveCode(collapsible);
+            addCurrentWaveCodeAndNotes(collapsible);
         }
+    }
+
+    private void addCurrentWaveNotes(boolean separateFromCode)
+    {
+        String notes = getCurrentWaveNotes();
+
+        if (isBlank(notes))
+        {
+            return;
+        }
+
+        if (separateFromCode)
+        {
+            panelComponent.getChildren().add(LineComponent.builder().left("").build());
+        }
+
+        List<TimedStrategyNote> timedNotes = TimedStrategyNotes.parse(notes);
+        int currentWaveTick = getCurrentWaveTick();
+        int activeIndex = TimedStrategyNotes.getActiveTimedIndex(timedNotes, currentWaveTick);
+
+        for (int i = 0; i < timedNotes.size(); i++)
+        {
+            TimedStrategyNote note = timedNotes.get(i);
+            String line = note.getText();
+            panelComponent.getChildren().add(
+                    LineComponent.builder()
+                            .left(line.isEmpty() ? " " : line)
+                            .leftColor(TimedStrategyNotes.colorFor(note, i, activeIndex, currentWaveTick, TEXT_COLOR, DEAD_COLOR))
+                            .build()
+            );
+        }
+    }
+
+    private String getCurrentWaveNotes()
+    {
+        if (healerController == null || !healerController.isWaveActive())
+        {
+            return "";
+        }
+
+		String notes = strategyManager.getActiveNotes(
+				healerController.getCurrentWave(),
+                getCurrentRoleContext()
+        );
+		return notes == null ? "" : notes.trim();
+	}
+
+	private TileMarkerRoleContext getCurrentRoleContext()
+	{
+		return TileMarkerRoleContext.fromRole(getDisplayRole());
+	}
+
+    private int getCurrentWaveTick()
+    {
+        return Math.max(0, Math.round(healerController.getCurrentWaveElapsedSeconds() / 0.6f));
     }
 
     @Override
@@ -676,6 +782,11 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     private boolean isCodeCollapsed()
     {
         return config.foodPanelCodeCollapsed();
+    }
+
+    private static boolean isBlank(String value)
+    {
+        return value == null || value.trim().isEmpty();
     }
 
     @Override

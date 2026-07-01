@@ -353,6 +353,14 @@ public class BaHealerOrderPlugin extends Plugin
 				return;
 			}
 		}
+		else
+		{
+			role = roleDetector.getCurrentRole();
+			if (role == null)
+			{
+				role = BaRole.HEALER;
+			}
+		}
 
 		WaveStart waveStart = waveLifecycleService.startDevWave(wave);
 		if (waveStart == null)
@@ -364,9 +372,7 @@ public class BaHealerOrderPlugin extends Plugin
 		roleDetector.setDevRoleOverride(role);
 		startWave(waveStart);
 
-		addChatMessage(role == null
-				? "BA Utilities dev wave " + wave + " started."
-				: "BA Utilities dev wave " + wave + " started as " + role.getDisplayName() + ".");
+		addChatMessage("BA Utilities dev wave " + wave + " started as " + role.getDisplayName() + ".");
 	}
 
 	private BaRole parseBaWaveRole(String rawRole)

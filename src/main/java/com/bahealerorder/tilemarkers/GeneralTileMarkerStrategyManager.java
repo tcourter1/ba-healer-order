@@ -562,6 +562,31 @@ public class GeneralTileMarkerStrategyManager
 		);
 	}
 
+	public String getActiveStrategyName(int wave, TileMarkerRoleContext context)
+	{
+		TileMarkerRoleContext resolvedContext = resolveContext(context);
+		List<String> names = new ArrayList<>();
+		addActiveStrategyName(names, findWaveSelection(TileMarkerRoleContext.GLOBAL, wave));
+
+		if (resolvedContext != TileMarkerRoleContext.GLOBAL)
+		{
+			addActiveStrategyName(names, findWaveSelection(resolvedContext, wave));
+		}
+
+		return String.join(" + ", names);
+	}
+
+	private void addActiveStrategyName(List<String> names, TileMarkerWaveSelection selection)
+	{
+		TileMarkerStrategyPreset preset = selection == null ? null : findStrategyPreset(selection.getStrategyId());
+		if (preset == null || preset.getWaveMap() != TileMarkerWaveMap.fromWave(selection.getWave()) || isBlank(preset.getNotes()))
+		{
+			return;
+		}
+
+		names.add(strategyPresetDisplayName(preset));
+	}
+
 	public TileMarkerRoleContext getSelectedRoleContext()
 	{
 		return store.getSelectedRoleContext();

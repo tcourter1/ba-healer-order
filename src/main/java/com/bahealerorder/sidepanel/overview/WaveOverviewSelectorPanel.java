@@ -1,6 +1,7 @@
 package com.bahealerorder.sidepanel.overview;
 
 import com.bahealerorder.common.BaRole;
+import com.bahealerorder.common.BaRoleColors;
 import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.common.BaWaveInfo;
 import com.bahealerorder.common.BaWaveOverviewRun;
@@ -363,21 +364,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private String getRoleHtmlColor(BaRole role)
 	{
-		if (role == null) return null;
-
-		switch (role)
-		{
-			case ATTACKER:
-				return "#ff5a5a";
-			case HEALER:
-				return "#55d96a";
-			case DEFENDER:
-				return "#65a7ff";
-			case COLLECTOR:
-				return "#ffd84d";
-			default:
-				return null;
-		}
+		return BaRoleColors.htmlColor(role);
 	}
 
 	private String formatRunAge(String runName)

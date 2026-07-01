@@ -29,7 +29,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
@@ -43,7 +42,8 @@ class TileMarkerStrategyPresetEditor extends JPanel
 	private static final int MARKER_SET_LIST_HEIGHT = 260;
 	private static final int NOTES_HEIGHT = 150;
 	private static final int TRASH_BUTTON_WIDTH = 24;
-	private static final int NO_TARGET_WAVE = 0;
+	private static final int HEADER_ROLE_WIDTH = 126;
+	private static final int HEADER_WAVE_WIDTH = 76;
 	private static final String NOTES_TOOLTIP = "<html>Notes appear in the overlay panel, if enabled.<br>"
 			+ "To use dynamic note highlighting, start a line with a wave time.<br>"
 			+ "Example: 12.0 - Delay healer</html>";
@@ -55,11 +55,12 @@ class TileMarkerStrategyPresetEditor extends JPanel
 	private final JTextField strategyName = new JTextField();
 	private final JTextArea notes = new JTextArea();
 	private final JButton deleteButton = new JButton(BaIcons.trashIcon());
-	private final JLabel strategyHeaderLabel = new JLabel();
+	private final JComboBox<TileMarkerRoleContext> targetRoleCombo = new JComboBox<>();
+	private final JComboBox<Integer> targetWaveCombo = new JComboBox<>();
 
 	private TileMarkerWaveMap waveMap = TileMarkerWaveMap.WAVES_1_TO_9;
 	private TileMarkerRoleContext targetRoleContext;
-	private int targetWave = NO_TARGET_WAVE;
+	private int targetWave;
 	private String selectedStrategyId;
 	private JDialog previewDialog;
 	private boolean refreshing;
@@ -76,17 +77,10 @@ class TileMarkerStrategyPresetEditor extends JPanel
 	{
 		this.strategyManager = strategyManager;
 		this.strategiesChanged = strategiesChanged;
-		this.targetRoleContext = targetRoleContext;
-		this.targetWave = validWave(targetWave) ? targetWave : NO_TARGET_WAVE;
+		this.targetRoleContext = targetRoleContext == null ? TileMarkerRoleContext.DEFENDER : targetRoleContext;
+		this.targetWave = requireWave(targetWave);
+		waveMap = TileMarkerWaveMap.fromWave(this.targetWave);
 		TileMarkerStrategyPreset initialPreset = strategyManager.findStrategyPreset(initialStrategyId);
-		if (this.targetWave != NO_TARGET_WAVE)
-		{
-			waveMap = TileMarkerWaveMap.fromWave(this.targetWave);
-		}
-		else if (initialPreset != null)
-		{
-			waveMap = initialPreset.getWaveMap();
-		}
 
 		setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -120,15 +114,89 @@ class TileMarkerStrategyPresetEditor extends JPanel
 
 	private JPanel createHeader()
 	{
-		strategyHeaderLabel.setText(headerText());
-		strategyHeaderLabel.setForeground(ColorScheme.TEXT_COLOR);
-		strategyHeaderLabel.setFont(strategyHeaderLabel.getFont().deriveFont(java.awt.Font.BOLD));
-		strategyHeaderLabel.setHorizontalAlignment(SwingConstants.LEFT);
+		for (TileMarkerRoleContext context : TileMarkerRoleContext.values())
+		{
+			targetRoleCombo.addItem(context);
+		}
+		for (int wave = 1; wave <= 10; wave++)
+		{
+			targetWaveCombo.addItem(wave);
+		}
+		BaPanelUi.styleCombo(targetRoleCombo, HEADER_ROLE_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.styleCombo(targetWaveCombo, HEADER_WAVE_WIDTH, CONTROL_HEIGHT);
+		selectTargetComboValues();
 
-		JPanel row = new JPanel(new BorderLayout());
+		targetRoleCombo.addActionListener(event ->
+		{
+			if (refreshing)
+			{
+				return;
+			}
+
+			TileMarkerRoleContext selectedContext = (TileMarkerRoleContext) targetRoleCombo.getSelectedItem();
+			if (selectedContext != null)
+			{
+				targetRoleContext = selectedContext;
+			}
+		});
+		targetWaveCombo.addActionListener(event -> changeTargetWave());
+
+		JPanel row = new JPanel();
+		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		row.add(strategyHeaderLabel, BorderLayout.CENTER);
+		BaPanelUi.fixedSize(row, EDITOR_WIDTH, CONTROL_HEIGHT);
+		row.add(label("Configuring", true));
+		row.add(Box.createHorizontalStrut(6));
+		row.add(targetRoleCombo);
+		row.add(Box.createHorizontalStrut(6));
+		row.add(label("strategy for wave", true));
+		row.add(Box.createHorizontalStrut(6));
+		row.add(targetWaveCombo);
+		row.add(Box.createHorizontalGlue());
 		return row;
+	}
+
+	private void selectTargetComboValues()
+	{
+		refreshing = true;
+		try
+		{
+			targetRoleCombo.setSelectedItem(targetRoleContext);
+			targetWaveCombo.setSelectedItem(targetWave);
+		}
+		finally
+		{
+			refreshing = false;
+		}
+	}
+
+	private void changeTargetWave()
+	{
+		if (refreshing)
+		{
+			return;
+		}
+
+		Integer selectedWave = (Integer) targetWaveCombo.getSelectedItem();
+		if (selectedWave == null || selectedWave == targetWave)
+		{
+			return;
+		}
+
+		TileMarkerWaveMap nextWaveMap = TileMarkerWaveMap.fromWave(selectedWave);
+		if (nextWaveMap != waveMap && !confirmDiscard(this))
+		{
+			selectTargetComboValues();
+			return;
+		}
+
+		targetWave = selectedWave;
+		if (nextWaveMap != waveMap)
+		{
+			waveMap = nextWaveMap;
+			refreshStrategyCombo(null);
+			clearDraft();
+		}
 	}
 
 	private JPanel createBody()
@@ -275,7 +343,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		try
 		{
 			selectedStrategyId = preset.getId();
-			waveMap = targetWave == NO_TARGET_WAVE ? preset.getWaveMap() : TileMarkerWaveMap.fromWave(targetWave);
+			waveMap = TileMarkerWaveMap.fromWave(targetWave);
 			strategyName.setText(preset.getName() == null ? "" : preset.getName());
 			notes.setText(preset.getNotes() == null ? "" : preset.getNotes());
 			markerSetChecklist.setWaveMap(waveMap);
@@ -301,18 +369,18 @@ class TileMarkerStrategyPresetEditor extends JPanel
 			return false;
 		}
 
-		targetRoleContext = roleContext;
-		targetWave = validWave(wave) ? wave : NO_TARGET_WAVE;
-		strategyHeaderLabel.setText(headerText());
+		targetRoleContext = roleContext == null ? TileMarkerRoleContext.DEFENDER : roleContext;
+		targetWave = requireWave(wave);
+		waveMap = TileMarkerWaveMap.fromWave(targetWave);
+		selectTargetComboValues();
 		TileMarkerStrategyPreset preset = strategyManager.findStrategyPreset(id);
 		if (preset == null)
 		{
-			waveMap = targetWave == NO_TARGET_WAVE ? waveMap : TileMarkerWaveMap.fromWave(targetWave);
+			refreshStrategyCombo(null);
 			clearDraft(initialMarkerSetId);
 			return true;
 		}
 
-		waveMap = targetWave == NO_TARGET_WAVE ? preset.getWaveMap() : TileMarkerWaveMap.fromWave(targetWave);
 		refreshStrategyCombo(id);
 		loadStrategy(id);
 		return true;
@@ -368,10 +436,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		}
 
 		selectedStrategyId = saved.getId();
-		if (targetWave != NO_TARGET_WAVE)
-		{
-			strategyManager.setWaveSelectionStrategyId(targetRoleContext, targetWave, selectedStrategyId);
-		}
+		strategyManager.setWaveSelectionStrategyId(targetRoleContext, targetWave, selectedStrategyId);
 		refreshStrategyCombo(selectedStrategyId);
 		updateControls();
 		dirty = false;
@@ -592,20 +657,13 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		return label;
 	}
 
-	private String headerText()
+	private static int requireWave(int wave)
 	{
-		if (targetWave == NO_TARGET_WAVE)
+		if (wave < 1 || wave > 10)
 		{
-			return "Configure saved wave strategies.";
+			throw new IllegalArgumentException("Wave strategy editor requires wave 1-10.");
 		}
-
-		TileMarkerRoleContext context = targetRoleContext == null ? TileMarkerRoleContext.DEFENDER : targetRoleContext;
-		return "Configuring " + context.getDisplayName() + " strategy for wave " + targetWave;
-	}
-
-	private static boolean validWave(int wave)
-	{
-		return wave >= 1 && wave <= 10;
+		return wave;
 	}
 
 	private static boolean isBlank(String value)

@@ -4,11 +4,11 @@ import com.bahealerorder.common.BaRole;
 
 public enum TileMarkerRoleContext
 {
-	GLOBAL("Global", null),
-	ATTACKER("Attacker", BaRole.ATTACKER),
-	HEALER("Healer", BaRole.HEALER),
+	DEFENDER("Defender", BaRole.DEFENDER),
 	COLLECTOR("Collector", BaRole.COLLECTOR),
-	DEFENDER("Defender", BaRole.DEFENDER);
+	HEALER("Healer", BaRole.HEALER),
+	ATTACKER("Attacker", BaRole.ATTACKER),
+	GLOBAL("Global", null);
 
 	private final String displayName;
 	private final BaRole role;
@@ -20,6 +20,12 @@ public enum TileMarkerRoleContext
 	}
 
 	public String getDisplayName()
+	{
+		return displayName;
+	}
+
+	@Override
+	public String toString()
 	{
 		return displayName;
 	}

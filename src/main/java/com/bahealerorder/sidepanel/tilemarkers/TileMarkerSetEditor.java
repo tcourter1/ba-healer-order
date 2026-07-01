@@ -77,13 +77,6 @@ public class TileMarkerSetEditor extends JPanel
 	private static final int TRASH_BUTTON_WIDTH = 24;
 	private static final int IMPORT_EXPORT_BUTTON_WIDTH = 140;
 	private static final Color BUILT_IN_SET_COLOR = new Color(120, 120, 120);
-	private static final TileMarkerRoleContext[] APPLY_ROLE_ORDER = {
-			TileMarkerRoleContext.DEFENDER,
-			TileMarkerRoleContext.COLLECTOR,
-			TileMarkerRoleContext.HEALER,
-			TileMarkerRoleContext.ATTACKER,
-			TileMarkerRoleContext.GLOBAL
-	};
 
 	private final GeneralTileMarkerStrategyManager strategyManager;
 	private final ColorPickerManager colorPickerManager;
@@ -92,7 +85,7 @@ public class TileMarkerSetEditor extends JPanel
 	private final JComboBox<SetOption> setCombo = new JComboBox<>();
 	private final JComboBox<MarkerOption> markerCombo = new JComboBox<>();
 	private final JComboBox<WaveOption> applyWaveCombo = new JComboBox<>();
-	private final JComboBox<RoleOption> applyRoleCombo = new JComboBox<>();
+	private final JComboBox<TileMarkerRoleContext> applyRoleCombo = new JComboBox<>();
 	private final JTextField markerName = new JTextField();
 	private final JTextField markerLabel = new JTextField();
 	private final JButton markerColorButton = new JButton();
@@ -520,9 +513,9 @@ public class TileMarkerSetEditor extends JPanel
 			applyWaveCombo.addItem(new WaveOption(wave));
 		}
 
-		for (TileMarkerRoleContext context : APPLY_ROLE_ORDER)
+		for (TileMarkerRoleContext context : TileMarkerRoleContext.values())
 		{
-			applyRoleCombo.addItem(new RoleOption(context));
+			applyRoleCombo.addItem(context);
 		}
 		int comboWidth = (SIDE_WIDTH - 6) / 2;
 		BaPanelUi.styleCombo(applyWaveCombo, comboWidth, CONTROL_HEIGHT);
@@ -950,7 +943,7 @@ public class TileMarkerSetEditor extends JPanel
 		}
 
 		WaveOption wave = (WaveOption) applyWaveCombo.getSelectedItem();
-		RoleOption role = (RoleOption) applyRoleCombo.getSelectedItem();
+		TileMarkerRoleContext role = (TileMarkerRoleContext) applyRoleCombo.getSelectedItem();
 		if (wave == null || role == null)
 		{
 			Toolkit.getDefaultToolkit().beep();
@@ -971,7 +964,7 @@ public class TileMarkerSetEditor extends JPanel
 
 		if (strategyEditorOpener != null)
 		{
-			strategyEditorOpener.open(wave.wave, role.context, selectedSetId);
+			strategyEditorOpener.open(wave.wave, role, selectedSetId);
 		}
 	}
 
@@ -1559,22 +1552,6 @@ public class TileMarkerSetEditor extends JPanel
 		public String toString()
 		{
 			return "Wave " + wave;
-		}
-	}
-
-	private static class RoleOption
-	{
-		private final TileMarkerRoleContext context;
-
-		private RoleOption(TileMarkerRoleContext context)
-		{
-			this.context = context == null ? TileMarkerRoleContext.DEFENDER : context;
-		}
-
-		@Override
-		public String toString()
-		{
-			return context.getDisplayName();
 		}
 	}
 

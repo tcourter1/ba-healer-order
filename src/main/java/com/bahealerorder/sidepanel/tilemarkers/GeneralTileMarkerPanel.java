@@ -74,13 +74,6 @@ public class GeneralTileMarkerPanel extends JPanel
 	private static final int ASSIGNMENT_CONTROL_WIDTH = CONTENT_WIDTH - 16;
 	private static final int ACTION_ROW_GAP = 6;
 	private static final int ACTION_BUTTON_WIDTH = (ASSIGNMENT_CONTROL_WIDTH - ACTION_ROW_GAP) / 2;
-	private static final TileMarkerRoleContext[] ROLE_CONTEXT_ORDER = {
-			TileMarkerRoleContext.DEFENDER,
-			TileMarkerRoleContext.COLLECTOR,
-			TileMarkerRoleContext.HEALER,
-			TileMarkerRoleContext.ATTACKER,
-			TileMarkerRoleContext.GLOBAL
-	};
 
 	private final GeneralTileMarkerStrategyManager strategyManager;
 	private final ColorPickerManager colorPickerManager;
@@ -186,17 +179,18 @@ public class GeneralTileMarkerPanel extends JPanel
 
 	private JPanel createRoleContextRow()
 	{
-		roleTabGroup.setLayout(new DynamicGridLayout(1, ROLE_CONTEXT_ORDER.length, ROLE_TAB_GAP, 0));
+		int roleCount = TileMarkerRoleContext.values().length;
+		roleTabGroup.setLayout(new DynamicGridLayout(1, roleCount, ROLE_TAB_GAP, 0));
 		roleTabGroup.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		BaPanelUi.fixedSize(roleTabGroup, CONTENT_WIDTH - 16, CONTROL_HEIGHT + 8);
 
-		for (TileMarkerRoleContext context : ROLE_CONTEXT_ORDER)
+		for (TileMarkerRoleContext context : TileMarkerRoleContext.values())
 		{
 			MaterialTab tab = new MaterialTab(new ImageIcon(), roleTabGroup, new JPanel());
 			tab.setToolTipText(context.getDisplayName());
 			BaPanelUi.fixedSize(
 					tab,
-					(CONTENT_WIDTH - 16 - ROLE_TAB_GAP * (ROLE_CONTEXT_ORDER.length - 1)) / ROLE_CONTEXT_ORDER.length,
+					(CONTENT_WIDTH - 16 - ROLE_TAB_GAP * (roleCount - 1)) / roleCount,
 					CONTROL_HEIGHT + 8
 			);
 			setRoleTabIcon(tab, context);
