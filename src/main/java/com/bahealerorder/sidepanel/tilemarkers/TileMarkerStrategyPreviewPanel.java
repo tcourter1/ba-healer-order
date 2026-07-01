@@ -104,10 +104,14 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 
 	private static String strategyHeader(TileMarkerStrategyPreset strategy)
 	{
-		String name = strategy == null || strategy.getName() == null || strategy.getName().trim().isEmpty()
-				? "current strategy"
-				: escapeHtml(strategy.getName().trim());
-		return "This is a preview of the tile markers and notes that will be visible when using the " + name + " strategy.";
+		if (strategy == null || strategy.getName() == null || strategy.getName().trim().isEmpty())
+		{
+			return "This is a preview of the tile markers and notes that will be visible when using the current strategy.";
+		}
+
+		return "This is a preview of the tile markers and notes that will be visible when using the "
+				+ escapeHtml(strategy.getName().trim())
+				+ " strategy.";
 	}
 
 	private static String escapeHtml(String text)

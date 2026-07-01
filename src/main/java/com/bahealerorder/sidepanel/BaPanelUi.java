@@ -5,6 +5,8 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.util.List;
+import javax.swing.AbstractButton;
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
@@ -14,6 +16,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
@@ -26,6 +29,9 @@ import net.runelite.client.ui.FontManager;
 
 public final class BaPanelUi
 {
+	public static final Color ACTION_CONTROL_BORDER_COLOR = new Color(48, 48, 48);
+	public static final Color ACTION_CONTROL_TEXT_COLOR = new Color(210, 210, 210);
+
 	private BaPanelUi()
 	{
 	}
@@ -84,8 +90,21 @@ public final class BaPanelUi
 	{
 		JButton button = new JButton(text);
 		button.addActionListener(event -> runnable.run());
-		fixedSize(button, width, height);
+		styleActionButton(button, width, height);
 		return button;
+	}
+
+	public static void styleActionButton(AbstractButton button)
+	{
+		button.setForeground(ACTION_CONTROL_TEXT_COLOR);
+		button.setBorder(BorderFactory.createLineBorder(ACTION_CONTROL_BORDER_COLOR));
+		button.setFocusable(false);
+	}
+
+	public static void styleActionButton(AbstractButton button, int width, int height)
+	{
+		styleActionButton(button);
+		fixedSize(button, width, height);
 	}
 
 	public static JPanel horizontalActionRow(int width, int height)
@@ -114,8 +133,32 @@ public final class BaPanelUi
 
 	public static void styleCombo(JComboBox<?> comboBox, int width, int height)
 	{
+		comboBox.setForeground(ACTION_CONTROL_TEXT_COLOR);
+		comboBox.setBorder(BorderFactory.createLineBorder(ACTION_CONTROL_BORDER_COLOR));
 		comboBox.setFocusable(false);
 		fixedSize(comboBox, width, height);
+	}
+
+	public static void styleTextInput(JTextComponent component, int width, int height)
+	{
+		component.setForeground(ACTION_CONTROL_TEXT_COLOR);
+		component.setDisabledTextColor(ColorScheme.MEDIUM_GRAY_COLOR);
+		component.setBorder(BorderFactory.createLineBorder(ACTION_CONTROL_BORDER_COLOR));
+		fixedSize(component, width, height);
+	}
+
+	public static void styleSpinner(JSpinner spinner, int width, int height)
+	{
+		spinner.setForeground(ACTION_CONTROL_TEXT_COLOR);
+		spinner.setBorder(BorderFactory.createLineBorder(ACTION_CONTROL_BORDER_COLOR));
+		if (spinner.getEditor() instanceof JSpinner.DefaultEditor)
+		{
+			JTextComponent textField = ((JSpinner.DefaultEditor) spinner.getEditor()).getTextField();
+			textField.setForeground(ACTION_CONTROL_TEXT_COLOR);
+			textField.setDisabledTextColor(ColorScheme.MEDIUM_GRAY_COLOR);
+			textField.setBorder(BorderFactory.createEmptyBorder());
+		}
+		fixedSize(spinner, width, height);
 	}
 
 	public static void styleTextArea(JTextArea area, int rows)

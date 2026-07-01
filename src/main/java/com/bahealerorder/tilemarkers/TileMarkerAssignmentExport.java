@@ -8,7 +8,7 @@ import java.util.Map;
 public class TileMarkerAssignmentExport
 {
 	private String name;
-	private Map<Integer, TileMarkerWaveSelectionTarget> waveSelections = new HashMap<>();
+	private Map<Integer, String> waveSelections = new HashMap<>();
 	private List<TileMarkerStrategyPreset> strategyPresets = new ArrayList<>();
 	private List<TileMarkerSet> markerSets = new ArrayList<>();
 
@@ -22,7 +22,7 @@ public class TileMarkerAssignmentExport
 		this.name = name;
 	}
 
-	public Map<Integer, TileMarkerWaveSelectionTarget> getWaveSelections()
+	public Map<Integer, String> getWaveSelections()
 	{
 		if (waveSelections == null)
 		{
@@ -31,7 +31,7 @@ public class TileMarkerAssignmentExport
 		return waveSelections;
 	}
 
-	public void setWaveSelections(Map<Integer, TileMarkerWaveSelectionTarget> waveSelections)
+	public void setWaveSelections(Map<Integer, String> waveSelections)
 	{
 		this.waveSelections = waveSelections == null ? new HashMap<>() : new HashMap<>(waveSelections);
 	}

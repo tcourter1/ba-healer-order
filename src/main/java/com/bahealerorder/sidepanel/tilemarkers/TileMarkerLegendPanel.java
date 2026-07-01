@@ -34,7 +34,7 @@ final class TileMarkerLegendPanel
 		grid.add(row(width, TileMarkerMapPanel.LOGS_COLOR, "Logs"));
 		grid.add(row(width, TileMarkerMapPanel.RUNNER_CAVE_COLOR, "Runner cave"));
 		grid.add(row(width, TileMarkerMapPanel.START_TILE_COLOR, "Start"));
-		grid.add(row(width, TileMarkerMapPanel.HEALER_CAVE_COLOR, "Healer Cave"));
+		grid.add(row(width, TileMarkerMapPanel.HEALER_CAVE_COLOR, "Healer cave"));
 		grid.add(row(width, TileMarkerMapPanel.DISABLED_TILE_COLOR, "Unavailable"));
 		grid.add(row(width, TileMarkerMapPanel.DISPENSER_COLOR, "Dispensers"));
 		panel.add(grid);

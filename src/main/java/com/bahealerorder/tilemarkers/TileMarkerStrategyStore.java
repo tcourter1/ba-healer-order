@@ -13,7 +13,7 @@ public class TileMarkerStrategyStore
 	private String lastMapMode = TileMarkerMapMode.FULL_MAP.name();
 	private String lastWaveMap = TileMarkerWaveMap.WAVES_1_TO_9.name();
 	private String selectedRoleContext = TileMarkerRoleContext.DEFENDER.name();
-	private boolean markerEditorHelpVisible = true;
+	private boolean markerEditorLegendVisible = true;
 	private boolean beginnerPromptDismissed;
 	private List<TileMarkerSet> markerSets = new ArrayList<>();
 	private List<TileMarkerWaveSelection> waveSelections = new ArrayList<>();
@@ -81,14 +81,14 @@ public class TileMarkerStrategyStore
 		this.selectedRoleContext = (selectedRoleContext == null ? TileMarkerRoleContext.DEFENDER : selectedRoleContext).name();
 	}
 
-	public boolean isMarkerEditorHelpVisible()
+	public boolean isMarkerEditorLegendVisible()
 	{
-		return markerEditorHelpVisible;
+		return markerEditorLegendVisible;
 	}
 
-	public void setMarkerEditorHelpVisible(boolean markerEditorHelpVisible)
+	public void setMarkerEditorLegendVisible(boolean markerEditorLegendVisible)
 	{
-		this.markerEditorHelpVisible = markerEditorHelpVisible;
+		this.markerEditorLegendVisible = markerEditorLegendVisible;
 	}
 
 	public boolean isBeginnerPromptDismissed()

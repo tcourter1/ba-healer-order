@@ -1,5 +1,6 @@
 package com.bahealerorder.sidepanel.tilemarkers;
 
+import com.bahealerorder.sidepanel.BaPanelUi;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Cursor;
@@ -80,6 +81,7 @@ final class TileMarkerTransferDialog
 		top.add(messagePane, BorderLayout.CENTER);
 
 		JButton ok = new JButton("OK");
+		BaPanelUi.styleActionButton(ok);
 		ok.addActionListener(event -> dialog.dispose());
 		JPanel bottom = new JPanel(new BorderLayout());
 		bottom.setBackground(ColorScheme.DARKER_GRAY_COLOR);

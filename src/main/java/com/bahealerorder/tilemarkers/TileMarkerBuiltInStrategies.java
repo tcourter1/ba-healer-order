@@ -109,30 +109,30 @@ final class TileMarkerBuiltInStrategies
 		return new TileMarkerStrategyPreset(id, name, notes, waveMap, Arrays.asList(markerSetIds), true);
 	}
 
-	private static Map<Integer, TileMarkerWaveSelectionTarget> beginnerWaves()
+	private static Map<Integer, String> beginnerWaves()
 	{
-		Map<Integer, TileMarkerWaveSelectionTarget> waves = new HashMap<>();
+		Map<Integer, String> waves = new HashMap<>();
 		for (int wave = 1; wave <= 9; wave++)
 		{
-			waves.put(wave, TileMarkerWaveSelectionTarget.strategyPreset(BEGINNER_TILES_STRATEGY_ID));
+			waves.put(wave, BEGINNER_TILES_STRATEGY_ID);
 		}
-		waves.put(10, TileMarkerWaveSelectionTarget.strategyPreset(W10_BEGINNER_STRATEGY_ID));
+		waves.put(10, W10_BEGINNER_STRATEGY_ID);
 		return waves;
 	}
 
-	private static Map<Integer, TileMarkerWaveSelectionTarget> intermediateWaves()
+	private static Map<Integer, String> intermediateWaves()
 	{
-		Map<Integer, TileMarkerWaveSelectionTarget> waves = new HashMap<>();
-		waves.put(1, TileMarkerWaveSelectionTarget.strategyPreset(CENTER_FOOD_STRATEGY_ID));
-		waves.put(2, TileMarkerWaveSelectionTarget.strategyPreset(NW_FOOD_STRATEGY_ID));
-		waves.put(3, TileMarkerWaveSelectionTarget.strategyPreset(NW_FOOD_STRATEGY_ID));
-		waves.put(4, TileMarkerWaveSelectionTarget.strategyPreset(NO_LOG_STRATEGY_ID));
-		waves.put(5, TileMarkerWaveSelectionTarget.strategyPreset(NO_LOG_STRATEGY_ID));
-		waves.put(6, TileMarkerWaveSelectionTarget.strategyPreset(WALL_SPLIT_STRATEGY_ID));
-		waves.put(7, TileMarkerWaveSelectionTarget.strategyPreset(HENDI_TRIANGLE_STRATEGY_ID));
-		waves.put(8, TileMarkerWaveSelectionTarget.strategyPreset(HENDI_TRIANGLE_STRATEGY_ID));
-		waves.put(9, TileMarkerWaveSelectionTarget.strategyPreset(TWO_ONE_FIVE_STAR_TWO_STRATEGY_ID));
-		waves.put(10, TileMarkerWaveSelectionTarget.strategyPreset(AUK_W10_STRATEGY_ID));
+		Map<Integer, String> waves = new HashMap<>();
+		waves.put(1, CENTER_FOOD_STRATEGY_ID);
+		waves.put(2, NW_FOOD_STRATEGY_ID);
+		waves.put(3, NW_FOOD_STRATEGY_ID);
+		waves.put(4, NO_LOG_STRATEGY_ID);
+		waves.put(5, NO_LOG_STRATEGY_ID);
+		waves.put(6, WALL_SPLIT_STRATEGY_ID);
+		waves.put(7, HENDI_TRIANGLE_STRATEGY_ID);
+		waves.put(8, HENDI_TRIANGLE_STRATEGY_ID);
+		waves.put(9, TWO_ONE_FIVE_STAR_TWO_STRATEGY_ID);
+		waves.put(10, AUK_W10_STRATEGY_ID);
 		return waves;
 	}
 }

@@ -45,22 +45,13 @@ class TileMarkerStrategyResolver
 
 	private void addSelectionMarkers(List<TileMarker> markers, Set<String> seenSetIds, TileMarkerWaveSelection selection)
 	{
-		TileMarkerWaveSelectionTarget target = selection == null ? null : selection.getTarget();
-		if (target == null)
+		String strategyId = selection == null ? null : selection.getStrategyId();
+		if (isBlank(strategyId))
 		{
 			return;
 		}
 
-		if (target.getType() == TileMarkerWaveSelectionType.STRATEGY_PRESET)
-		{
-			addPresetMarkers(markers, seenSetIds, presetForSelection(selection));
-			return;
-		}
-
-		if (target.getType() == TileMarkerWaveSelectionType.MARKER_SET)
-		{
-			addMarkerSetMarkers(markers, seenSetIds, target.getId());
-		}
+		addPresetMarkers(markers, seenSetIds, presetForSelection(selection));
 	}
 
 	private void addPresetMarkers(List<TileMarker> markers, Set<String> seenSetIds, TileMarkerStrategyPreset preset)
@@ -107,13 +98,18 @@ class TileMarkerStrategyResolver
 
 	private TileMarkerStrategyPreset presetForSelection(TileMarkerWaveSelection selection)
 	{
-		TileMarkerWaveSelectionTarget target = selection == null ? null : selection.getTarget();
-		if (target == null || target.getType() != TileMarkerWaveSelectionType.STRATEGY_PRESET)
+		String strategyId = selection == null ? null : selection.getStrategyId();
+		if (isBlank(strategyId))
 		{
 			return null;
 		}
 
-		TileMarkerStrategyPreset preset = presetFinder.apply(target.getId());
+		TileMarkerStrategyPreset preset = presetFinder.apply(strategyId);
 		return preset != null && preset.getWaveMap() == TileMarkerWaveMap.fromWave(selection.getWave()) ? preset : null;
+	}
+
+	private static boolean isBlank(String value)
+	{
+		return value == null || value.trim().isEmpty();
 	}
 }

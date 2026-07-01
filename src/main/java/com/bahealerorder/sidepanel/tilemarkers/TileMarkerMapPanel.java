@@ -37,8 +37,8 @@ class TileMarkerMapPanel extends JPanel
 	static final Color START_TILE_COLOR = new Color(115, 190, 205);
 	private static final Color SELECTED_MARKER_BORDER_COLOR = new Color(0, 175, 255);
 
-	private static final MapBounds EAST_SIDE_MAP_BOUNDS = new MapBounds(24, 50, 15, 42);
-	private static final MapBounds FULL_ARENA_MAP_BOUNDS = new MapBounds(8, 56, 5, 42);
+	private static final MapBounds EAST_SIDE_MAP_BOUNDS = new MapBounds(24, 50, 15, 43);
+	private static final MapBounds FULL_ARENA_MAP_BOUNDS = new MapBounds(8, 56, 5, 43);
 	private static final int WEST_CANNON_X = 21;
 	private static final int WEST_CANNON_Y = 26;
 	private static final int EAST_CANNON_X = 40;

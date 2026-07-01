@@ -5,7 +5,7 @@ public class TileMarkerWaveSelection
 	private String id;
 	private String roleContext;
 	private int wave;
-	private TileMarkerWaveSelectionTarget target;
+	private String strategyId;
 
 	public TileMarkerWaveSelection()
 	{
@@ -48,13 +48,13 @@ public class TileMarkerWaveSelection
 		this.wave = wave;
 	}
 
-	public TileMarkerWaveSelectionTarget getTarget()
+	public String getStrategyId()
 	{
-		return target;
+		return strategyId;
 	}
 
-	public void setTarget(TileMarkerWaveSelectionTarget target)
+	public void setStrategyId(String strategyId)
 	{
-		this.target = target == null ? null : new TileMarkerWaveSelectionTarget(target);
+		this.strategyId = strategyId;
 	}
 }

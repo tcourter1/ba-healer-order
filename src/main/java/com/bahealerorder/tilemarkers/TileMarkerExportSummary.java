@@ -13,8 +13,8 @@ final class TileMarkerExportSummary
 	}
 
 	static List<String> assignment(
-			Map<Integer, TileMarkerWaveSelectionTarget> waveSelections,
-			Function<TileMarkerWaveSelectionTarget, String> targetName)
+			Map<Integer, String> waveSelections,
+			Function<String, String> strategyName)
 	{
 		List<String> lines = new ArrayList<>();
 		if (waveSelections == null || waveSelections.isEmpty())
@@ -28,7 +28,7 @@ final class TileMarkerExportSummary
 		{
 			if (wave != null)
 			{
-				lines.add("Wave " + wave + ": " + targetName.apply(waveSelections.get(wave)));
+				lines.add("Wave " + wave + ": " + strategyName.apply(waveSelections.get(wave)));
 			}
 		}
 		return lines;

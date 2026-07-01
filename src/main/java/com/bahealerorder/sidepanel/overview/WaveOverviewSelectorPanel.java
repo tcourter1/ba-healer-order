@@ -6,6 +6,7 @@ import com.bahealerorder.common.BaWaveInfo;
 import com.bahealerorder.common.BaWaveOverviewRun;
 import com.bahealerorder.common.BaWaveOverviewSnapshot;
 import com.bahealerorder.common.BaWaveOverviewStore;
+import com.bahealerorder.sidepanel.BaPanelUi;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -424,8 +425,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private static void styleCombo(JComboBox<?> comboBox, int width)
 	{
-		comboBox.setFocusable(false);
-		fixedSize(comboBox, width, CONTROL_HEIGHT);
+		BaPanelUi.styleCombo(comboBox, width, CONTROL_HEIGHT);
 	}
 
 	private static void fixedSize(JComponent component, int width, int height)

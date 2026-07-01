@@ -9,7 +9,7 @@ public class TileMarkerAssignmentPreset
 	private String name;
 	private String roleContext;
 	private boolean builtIn;
-	private Map<Integer, TileMarkerWaveSelectionTarget> waveSelections = new HashMap<>();
+	private Map<Integer, String> waveSelections = new HashMap<>();
 
 	public TileMarkerAssignmentPreset()
 	{
@@ -19,7 +19,7 @@ public class TileMarkerAssignmentPreset
 			String id,
 			String name,
 			TileMarkerRoleContext roleContext,
-			Map<Integer, TileMarkerWaveSelectionTarget> waveSelections)
+			Map<Integer, String> waveSelections)
 	{
 		this(id, name, roleContext, waveSelections, false);
 	}
@@ -28,7 +28,7 @@ public class TileMarkerAssignmentPreset
 			String id,
 			String name,
 			TileMarkerRoleContext roleContext,
-			Map<Integer, TileMarkerWaveSelectionTarget> waveSelections,
+			Map<Integer, String> waveSelections,
 			boolean builtIn)
 	{
 		this.id = id;
@@ -78,7 +78,7 @@ public class TileMarkerAssignmentPreset
 		this.roleContext = (roleContext == null ? TileMarkerRoleContext.DEFENDER : roleContext).name();
 	}
 
-	public Map<Integer, TileMarkerWaveSelectionTarget> getWaveSelections()
+	public Map<Integer, String> getWaveSelections()
 	{
 		if (waveSelections == null)
 		{
@@ -87,26 +87,26 @@ public class TileMarkerAssignmentPreset
 		return waveSelections;
 	}
 
-	public void setWaveSelections(Map<Integer, TileMarkerWaveSelectionTarget> waveSelections)
+	public void setWaveSelections(Map<Integer, String> waveSelections)
 	{
 		this.waveSelections = copySelections(waveSelections);
 	}
 
-	private static Map<Integer, TileMarkerWaveSelectionTarget> copySelections(
-			Map<Integer, TileMarkerWaveSelectionTarget> source)
+	private static Map<Integer, String> copySelections(
+			Map<Integer, String> source)
 	{
-		Map<Integer, TileMarkerWaveSelectionTarget> copy = new HashMap<>();
+		Map<Integer, String> copy = new HashMap<>();
 		if (source == null)
 		{
 			return copy;
 		}
 
-		for (Map.Entry<Integer, TileMarkerWaveSelectionTarget> entry : source.entrySet())
+		for (Map.Entry<Integer, String> entry : source.entrySet())
 		{
-			TileMarkerWaveSelectionTarget target = entry.getValue();
-			if (target != null)
+			String strategyId = entry.getValue();
+			if (strategyId != null && !strategyId.trim().isEmpty())
 			{
-				copy.put(entry.getKey(), new TileMarkerWaveSelectionTarget(target));
+				copy.put(entry.getKey(), strategyId);
 			}
 		}
 		return copy;
