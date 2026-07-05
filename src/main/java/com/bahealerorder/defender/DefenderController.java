@@ -1,6 +1,7 @@
 package com.bahealerorder.defender;
 
 import com.bahealerorder.BaUtilitiesConfig;
+import com.bahealerorder.common.BaNpcIds;
 import com.bahealerorder.common.BaOverviewNpcType;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.BaRoleDetector;
@@ -10,7 +11,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -41,8 +41,6 @@ import net.runelite.client.util.Text;
 @Singleton
 public class DefenderController
 {
-	private static final String PENANCE_RUNNER_NAME = "penance runner";
-
 	private final Client client;
 	private final BaUtilitiesConfig config;
 	private final ItemManager itemManager;
@@ -93,10 +91,7 @@ public class DefenderController
 		if (!waveLifecycleService.isWaveActive()) return;
 
 		NPC npc = event.getNpc();
-		if (npc == null || npc.getName() == null) return;
-
-		String npcName = Text.removeTags(npc.getName()).toLowerCase(Locale.ROOT);
-		if (!PENANCE_RUNNER_NAME.equals(npcName)) return;
+		if (BaNpcIds.getOverviewType(npc) != BaOverviewNpcType.RUNNER) return;
 
 		visibleRunnerNpcs.put(npc, BaOverviewNpcType.RUNNER);
 		waveOverviewService.recordSpawn(BaOverviewNpcType.RUNNER, npc.getIndex());

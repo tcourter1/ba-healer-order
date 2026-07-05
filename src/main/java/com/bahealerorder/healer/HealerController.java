@@ -4,6 +4,7 @@ import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import com.bahealerorder.common.BaHealerFoodCounts;
 import com.bahealerorder.common.BaHealerSyncMessage;
+import com.bahealerorder.common.BaNpcIds;
 import com.bahealerorder.common.BaOverviewNpcType;
 import com.bahealerorder.common.BaPartySyncService;
 import com.bahealerorder.common.BaRole;
@@ -79,8 +80,6 @@ import net.runelite.client.party.events.UserJoin;
 @Slf4j
 public class HealerController
 {
-	private static final String PENANCE_HEALER_NAME = "Penance Healer";
-	private static final String PENANCE_NPC_PREFIX = "Penance ";
 	private static final String HEALER_ITEM_MACHINE_NAME = "Healer item machine";
 	private static final String TAKE_TOFU_OPTION = "take-tofu";
 	private static final String TAKE_WORMS_OPTION = "take-worms";
@@ -314,7 +313,7 @@ public class HealerController
 		String target = Text.removeTags(event.getMenuTarget()).toLowerCase(Locale.ROOT);
 
 		handlePoisonedFoodSelection(event, option, target);
-		handlePoisonedFoodUseOnHealer(event, option, target);
+		handlePoisonedFoodUseOnHealer(event, option);
 	}
 	public void onMenuEntryAdded(MenuEntryAdded event)
 	{
@@ -1414,13 +1413,7 @@ public class HealerController
 
 	private boolean isBaNpc(NPC npc)
 	{
-		if (npc == null || npc.getName() == null)
-		{
-			return false;
-		}
-
-		String name = Text.removeTags(npc.getName());
-		return name.startsWith(PENANCE_NPC_PREFIX);
+		return BaNpcIds.isPenanceNpc(npc);
 	}
 
 	private void rebuildHealerOrderByNpcIndex()
@@ -1907,7 +1900,7 @@ public class HealerController
 		client.getMenu().setMenuEntries(filteredEntries.toArray(new MenuEntry[0]));
 	}
 
-	private void handlePoisonedFoodUseOnHealer(MenuOptionClicked event, String option, String target)
+	private void handlePoisonedFoodUseOnHealer(MenuOptionClicked event, String option)
 	{
 		if (!isHealerRole()) return;
 
@@ -1915,9 +1908,8 @@ public class HealerController
 
 		if (!"use".equals(option)) return;
 
-		if (!target.contains("poisoned") || !target.contains("penance healer")) return;
-
 		if (selectedPoisonedFoodItemId == null || selectedPoisonedFoodItemId <= 0) return;
+		if (!isPoisonedFoodItem(selectedPoisonedFoodItemId)) return;
 
 		int npcIndex = event.getId();
 		Integer healerOrder = getKnownHealerOrder(npcIndex);
@@ -2015,7 +2007,7 @@ public class HealerController
 			return true;
 		}
 
-		return normalizeMenuText(entry.getTarget()).contains("penance healer");
+		return getKnownHealerOrder(entry.getIdentifier()) != null;
 	}
 
 	private boolean isPoisonedFoodUseMenuAction(MenuAction action)
@@ -2294,13 +2286,7 @@ public class HealerController
 
 	private boolean isPenanceHealer(NPC npc)
 	{
-		if (npc == null || npc.getName() == null)
-		{
-			return false;
-		}
-
-		String name = Text.removeTags(npc.getName());
-		return PENANCE_HEALER_NAME.equals(name);
+		return BaNpcIds.isPenanceHealer(npc);
 	}
 
 	private Integer getHealerOrderForMenuEntry(MenuEntry entry)
