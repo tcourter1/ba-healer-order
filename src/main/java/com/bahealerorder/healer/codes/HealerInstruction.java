@@ -7,6 +7,7 @@ public class HealerInstruction
 	private int targetFoodCount;
 	private Integer afterSeconds;
 	private Integer beforeSeconds;
+	private Integer exactSeconds;
 	private String raw;
 
 	public HealerInstruction()
@@ -15,9 +16,15 @@ public class HealerInstruction
 
 	public HealerInstruction(int targetFoodCount, Integer afterSeconds, Integer beforeSeconds, String raw)
 	{
+		this(targetFoodCount, afterSeconds, beforeSeconds, null, raw);
+	}
+
+	public HealerInstruction(int targetFoodCount, Integer afterSeconds, Integer beforeSeconds, Integer exactSeconds, String raw)
+	{
 		this.targetFoodCount = Math.max(0, targetFoodCount);
 		this.afterSeconds = afterSeconds;
 		this.beforeSeconds = beforeSeconds;
+		this.exactSeconds = exactSeconds;
 		this.raw = raw;
 	}
 
@@ -51,6 +58,16 @@ public class HealerInstruction
 		this.beforeSeconds = beforeSeconds;
 	}
 
+	public Integer getExactSeconds()
+	{
+		return exactSeconds;
+	}
+
+	public void setExactSeconds(Integer exactSeconds)
+	{
+		this.exactSeconds = exactSeconds;
+	}
+
 	public String getRaw()
 	{
 		return raw;
@@ -68,7 +85,42 @@ public class HealerInstruction
 
 	public boolean hasTiming()
 	{
-		return afterSeconds != null || beforeSeconds != null;
+		return afterSeconds != null || beforeSeconds != null || exactSeconds != null;
+	}
+
+	public HealerTimingMode getTimingMode()
+	{
+		if (exactSeconds != null)
+		{
+			return HealerTimingMode.EXACT;
+		}
+
+		if (afterSeconds != null)
+		{
+			return HealerTimingMode.AT_OR_AFTER;
+		}
+
+		if (beforeSeconds != null)
+		{
+			return HealerTimingMode.BEFORE;
+		}
+
+		return HealerTimingMode.NONE;
+	}
+
+	public Integer getTimingSeconds()
+	{
+		if (exactSeconds != null)
+		{
+			return exactSeconds;
+		}
+
+		if (afterSeconds != null)
+		{
+			return afterSeconds;
+		}
+
+		return beforeSeconds;
 	}
 
 	public String formatTarget()
@@ -91,12 +143,17 @@ public class HealerInstruction
 			builder.append('[').append(beforeSeconds).append(']');
 		}
 
+		if (exactSeconds != null)
+		{
+			builder.append('{').append(exactSeconds).append('}');
+		}
+
 		return builder.toString();
 	}
 
 	public HealerInstruction copy()
 	{
-		return new HealerInstruction(targetFoodCount, afterSeconds, beforeSeconds, raw);
+		return new HealerInstruction(targetFoodCount, afterSeconds, beforeSeconds, exactSeconds, raw);
 	}
 
 	@Override
@@ -114,12 +171,13 @@ public class HealerInstruction
 		return targetFoodCount == that.targetFoodCount
 				&& Objects.equals(afterSeconds, that.afterSeconds)
 				&& Objects.equals(beforeSeconds, that.beforeSeconds)
+				&& Objects.equals(exactSeconds, that.exactSeconds)
 				&& Objects.equals(raw, that.raw);
 	}
 
 	@Override
 	public int hashCode()
 	{
-		return Objects.hash(targetFoodCount, afterSeconds, beforeSeconds, raw);
+		return Objects.hash(targetFoodCount, afterSeconds, beforeSeconds, exactSeconds, raw);
 	}
 }

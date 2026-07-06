@@ -2,13 +2,17 @@ package com.bahealerorder.healer;
 
 import com.bahealerorder.healer.codes.BuiltInStrategyLibrary;
 import com.bahealerorder.healer.codes.CallCode;
-import com.bahealerorder.healer.codes.CodeDisplayState;
 import com.bahealerorder.healer.codes.FeedEvent;
+import com.bahealerorder.healer.codes.HealerCodeExport;
+import com.bahealerorder.healer.codes.HealerCodeExportResult;
+import com.bahealerorder.healer.codes.HealerCodeExportType;
+import com.bahealerorder.healer.codes.HealerCodeFormatter;
 import com.bahealerorder.healer.codes.HealerCodeParser;
+import com.bahealerorder.healer.codes.HealerCodeProgress;
 import com.bahealerorder.healer.codes.HealerCodeStatus;
+import com.bahealerorder.healer.codes.HealerCodeStoreNormalizer;
 import com.bahealerorder.healer.codes.HealerInstruction;
 import com.bahealerorder.healer.codes.RunPreset;
-import com.bahealerorder.healer.codes.RunPresetExport;
 import com.bahealerorder.healer.codes.StrategyStore;
 import com.bahealerorder.healer.codes.WaveCode;
 import com.google.gson.Gson;
@@ -26,6 +30,8 @@ public class HealerCodeManager
 {
 	private static final String CONFIG_GROUP = "bahealerorder";
 	private static final String STRATEGY_STORE_KEY = "strategyStore";
+	private static final String STRATEGY_STORE_UPGRADE_BACKUP_KEY = "strategyStoreBeforeV2Upgrade";
+	private static final int CURRENT_STORE_VERSION = 2;
 
 	private final ConfigManager configManager;
 	private final Gson gson;
@@ -53,7 +59,7 @@ public class HealerCodeManager
 
 		if (json == null || json.trim().isEmpty())
 		{
-			userStore = new StrategyStore();
+			userStore = createEmptyUserStore();
 			save();
 			return;
 		}
@@ -64,14 +70,28 @@ public class HealerCodeManager
 		}
 		catch (RuntimeException ex)
 		{
-			userStore = new StrategyStore();
+			backupRawStrategyStore(json);
+			userStore = createEmptyUserStore();
+			return;
 		}
 
 		if (userStore == null)
 		{
-			userStore = new StrategyStore();
+			backupRawStrategyStore(json);
+			userStore = createEmptyUserStore();
+			return;
 		}
 
+		int loadedVersion = userStore.getVersion();
+		if (loadedVersion != CURRENT_STORE_VERSION)
+		{
+			backupRawStrategyStore(json);
+		}
+
+		if (HealerCodeStoreNormalizer.normalize(userStore, CURRENT_STORE_VERSION))
+		{
+			save();
+		}
 	}
 
 	public void save()
@@ -81,10 +101,43 @@ public class HealerCodeManager
 			return;
 		}
 
+		userStore.setVersion(CURRENT_STORE_VERSION);
 		configManager.setConfiguration(CONFIG_GROUP, STRATEGY_STORE_KEY, gson.toJson(userStore));
 	}
 
+	private void backupRawStrategyStore(String json)
+	{
+		if (configManager == null || isBlank(json))
+		{
+			return;
+		}
+
+		String existingBackup = configManager.getConfiguration(CONFIG_GROUP, STRATEGY_STORE_UPGRADE_BACKUP_KEY);
+		if (isBlank(existingBackup))
+		{
+			configManager.setConfiguration(CONFIG_GROUP, STRATEGY_STORE_UPGRADE_BACKUP_KEY, json);
+		}
+	}
+
+	private StrategyStore createEmptyUserStore()
+	{
+		StrategyStore store = new StrategyStore();
+		store.setVersion(CURRENT_STORE_VERSION);
+		return store;
+	}
+
 	public String exportRunPresetJson(String presetId)
+	{
+		HealerCodeExportResult result = exportRunPreset(presetId);
+		return result == null ? null : result.getJson();
+	}
+
+	public HealerCodeExportResult exportCurrentRunPreset(String name)
+	{
+		return exportRunPreset(name, userStore.getActiveWaveCodeIds(), null);
+	}
+
+	public HealerCodeExportResult exportRunPreset(String presetId)
 	{
 		RunPreset preset = findRunPreset(presetId);
 
@@ -93,54 +146,121 @@ public class HealerCodeManager
 			return null;
 		}
 
+		return exportRunPreset(preset.getName(), preset.getWaveCodeIds(), preset.getId());
+	}
+
+	private HealerCodeExportResult exportRunPreset(String name, Map<Integer, String> waveCodeIds, String id)
+	{
+		if (waveCodeIds == null || waveCodeIds.isEmpty())
+		{
+			return null;
+		}
+
 		List<WaveCode> waveCodes = new ArrayList<>();
 		Map<Integer, String> exportedWaveCodeNames = new HashMap<>();
 
-		// Preset clipboard exports are intentionally scoped to one run preset and only the
-		// wave codes it references.
-		for (String waveCodeId : preset.getWaveCodeIds().values())
+		for (String waveCodeId : waveCodeIds.values())
 		{
 			WaveCode waveCode = findWaveCode(waveCodeId);
 
 			if (waveCode != null)
 			{
 				exportedWaveCodeNames.put(waveCode.getWave(), waveCode.getName());
-				waveCodes.add(exportWaveCode(waveCode));
+				waveCodes.add(exportableWaveCode(waveCode));
 			}
 		}
 
-		RunPreset exportedPreset = new RunPreset(null, preset.getName(), false, exportedWaveCodeNames);
-		return gson.toJson(new RunPresetExport(exportedPreset, waveCodes));
+		if (exportedWaveCodeNames.isEmpty())
+		{
+			return null;
+		}
+
+		RunPreset exportedPreset = new RunPreset(null, normalizedExportName(name), false, exportedWaveCodeNames);
+		String json = gson.toJson(new HealerCodeExport(
+				CURRENT_STORE_VERSION,
+				HealerCodeExportType.RUN_PRESET,
+				exportedPreset,
+				null,
+				waveCodes
+		));
+		return new HealerCodeExportResult(
+				json,
+				id,
+				runPresetDisplayName(exportedPreset),
+				0,
+				HealerCodeExportType.RUN_PRESET,
+				presetSummary("Export", exportedPreset, waveCodes)
+		);
+	}
+
+	public HealerCodeExportResult exportWaveCode(String waveCodeId)
+	{
+		WaveCode waveCode = findWaveCode(waveCodeId);
+
+		if (waveCode == null)
+		{
+			return null;
+		}
+
+		WaveCode exported = exportableWaveCode(waveCode);
+		String json = gson.toJson(new HealerCodeExport(
+				CURRENT_STORE_VERSION,
+				HealerCodeExportType.WAVE_CODE,
+				null,
+				exported,
+				null
+		));
+		return new HealerCodeExportResult(
+				json,
+				waveCode.getId(),
+				waveCodeDisplayName(waveCode),
+				waveCode.getWave(),
+				HealerCodeExportType.WAVE_CODE,
+				waveSummary("Export", exported)
+		);
 	}
 
 	public boolean importRunPresetJson(String json)
 	{
+		return importHealerCodeJson(json) != null;
+	}
+
+	public HealerCodeExportResult importHealerCodeJson(String json)
+	{
+		return importHealerCodeJson(json, null);
+	}
+
+	public HealerCodeExportResult importHealerCodeJson(String json, Integer expectedWave)
+	{
 		if (json == null || json.trim().isEmpty())
 		{
-			return false;
+			return null;
 		}
 
 		try
 		{
-			RunPresetExport imported = gson.fromJson(json, RunPresetExport.class);
+			HealerCodeExport imported = gson.fromJson(json, HealerCodeExport.class);
 
-			if (imported == null || imported.getPreset() == null || isBlank(imported.getPreset().getName()))
+			if (imported == null || imported.getVersion() != CURRENT_STORE_VERSION || imported.getType() == null)
 			{
-				return false;
+				return null;
 			}
 
-			importOrReplaceWaveCodes(imported.getWaveCodes());
-			RunPreset importedPreset = importRunPreset(imported.getPreset());
+			if (imported.getType() == HealerCodeExportType.WAVE_CODE)
+			{
+				return importWaveCodeExport(imported.getWaveCode(), expectedWave);
+			}
 
-			upsertRunPreset(importedPreset);
-			userStore.setActiveRunPresetId(importedPreset.getId());
-			userStore.setActiveWaveCodeIds(importedPreset.getWaveCodeIds());
-			save();
-			return true;
+			if (expectedWave != null)
+			{
+				return null;
+			}
+
+			return importRunPresetExport(imported);
 		}
 		catch (RuntimeException ex)
 		{
-			return false;
+			return null;
 		}
 	}
 
@@ -148,7 +268,7 @@ public class HealerCodeManager
 	{
 		List<RunPreset> presets = new ArrayList<>();
 		presets.addAll(userStore.getRunPresets());
-		presets.sort(Comparator.comparing(RunPreset::getName, String.CASE_INSENSITIVE_ORDER));
+		presets.sort(Comparator.comparing(HealerCodeManager::runPresetDisplayName, String.CASE_INSENSITIVE_ORDER));
 		return presets;
 	}
 
@@ -164,7 +284,7 @@ public class HealerCodeManager
 			}
 		}
 
-		waveCodes.sort(Comparator.comparing(WaveCode::isBuiltIn).reversed().thenComparing(WaveCode::getName, String.CASE_INSENSITIVE_ORDER));
+		waveCodes.sort(Comparator.comparing(WaveCode::isBuiltIn).reversed().thenComparing(HealerCodeManager::waveCodeDisplayName, String.CASE_INSENSITIVE_ORDER));
 		return waveCodes;
 	}
 
@@ -172,20 +292,20 @@ public class HealerCodeManager
 	{
 		List<WaveCode> waveCodes = new ArrayList<>();
 
-		// Built-in edits are stored as same-id user wave codes. They shadow the shipped
-		// definition without losing the original, which makes "Reset" a simple delete.
 		for (WaveCode builtIn : builtIns.getWaveCodes())
 		{
 			WaveCode override = findStoredUserWaveCode(builtIn.getId());
-			waveCodes.add(override == null ? builtIn : override);
+			waveCodes.add(override == null || sameWaveCodeContent(builtIn, override) ? builtIn : override);
 		}
 
 		for (WaveCode userCode : userStore.getWaveCodes())
 		{
-			if (findBuiltInWaveCode(userCode.getId()) == null)
+			if (userCode == null || userCode.isBuiltIn() || isBuiltInWaveCodeId(userCode.getId()))
 			{
-				waveCodes.add(userCode);
+				continue;
 			}
+
+			waveCodes.add(userCode);
 		}
 
 		return waveCodes;
@@ -324,6 +444,12 @@ public class HealerCodeManager
 		return new HashMap<>(userStore.getActiveWaveCodeIds());
 	}
 
+	public Integer getExpectedTimeSeconds(int wave, int healerOrder)
+	{
+		WaveCode waveCode = getActiveWaveCode(wave);
+		return waveCode == null ? null : waveCode.getExpectedTimeSeconds(healerOrder);
+	}
+
 	public void setActiveWaveCodeId(int wave, String waveCodeId)
 	{
 		userStore.setActiveRunPresetId(null);
@@ -362,230 +488,32 @@ public class HealerCodeManager
 
 	public int getExpectedFoodForOrder(int wave, int healerOrder, int currentCallIndex)
 	{
-		WaveCode waveCode = getActiveWaveCode(wave);
-
-		if (waveCode == null)
-		{
-			return 0;
-		}
-
-		int expected = 0;
-
-		for (CallCode call : waveCode.getCalls())
-		{
-			if (call.getCallIndex() > currentCallIndex)
-			{
-				continue;
-			}
-
-			HealerInstruction instruction = call.getInstruction(healerOrder);
-
-			if (instruction != null && instruction.hasTarget())
-			{
-				expected += instruction.getTargetFoodCount();
-			}
-		}
-
-		return expected;
+		return HealerCodeProgress.getExpectedFoodForOrder(getActiveWaveCode(wave), healerOrder, currentCallIndex);
 	}
 
 	public HealerCodeStatus getCurrentStatus(int wave, int healerOrder, int currentCallIndex, List<FeedEvent> feedEvents)
 	{
-		WaveCode waveCode = getActiveWaveCode(wave);
-
-		if (waveCode == null)
-		{
-			return null;
-		}
-
-		CallCode call = waveCode.getCall(currentCallIndex);
-
-		if (call == null)
-		{
-			return null;
-		}
-
-		HealerInstruction instruction = call.getInstruction(healerOrder);
-
-		if (instruction == null || !instruction.hasTarget())
-		{
-			return null;
-		}
-
-		int foodThisCall = countFoodForCall(healerOrder, currentCallIndex, feedEvents);
-		int lastFoodElapsed = lastFoodElapsed(healerOrder, currentCallIndex, feedEvents);
-		return new HealerCodeStatus(instruction, getState(instruction, foodThisCall, lastFoodElapsed), foodThisCall, lastFoodElapsed);
+		return HealerCodeProgress.getCurrentStatus(getActiveWaveCode(wave), healerOrder, currentCallIndex, feedEvents);
 	}
 
 	public HealerCodeStatus getPreviousStatus(int wave, int healerOrder, int currentCallIndex, List<FeedEvent> feedEvents)
 	{
-		WaveCode waveCode = getActiveWaveCode(wave);
-
-		if (waveCode == null)
-		{
-			return null;
-		}
-
-		int previousCallIndex = currentCallIndex - 1;
-
-		if (previousCallIndex < 0)
-		{
-			return null;
-		}
-
-		CallCode call = waveCode.getCall(previousCallIndex);
-
-		if (call == null)
-		{
-			return null;
-		}
-
-		HealerInstruction instruction = call.getInstruction(healerOrder);
-
-		if (instruction == null || !instruction.hasTarget())
-		{
-			return null;
-		}
-
-		int foodThisCall = countFoodForCall(healerOrder, previousCallIndex, feedEvents);
-		int lastFoodElapsed = lastFoodElapsed(healerOrder, previousCallIndex, feedEvents);
-		return new HealerCodeStatus(instruction, CodeDisplayState.PREVIOUS, foodThisCall, lastFoodElapsed);
+		return HealerCodeProgress.getPreviousStatus(getActiveWaveCode(wave), healerOrder, currentCallIndex, feedEvents);
 	}
 
 	public HealerCodeStatus getDisplayStatus(int wave, int healerOrder, int currentCallIndex, List<FeedEvent> feedEvents)
 	{
-		List<InstructionProgress> progresses = getInstructionProgresses(wave, healerOrder, currentCallIndex, feedEvents);
-
-		InstructionProgress currentProgress = null;
-		InstructionProgress mostRecentProgress = null;
-
-		for (InstructionProgress progress : progresses)
-		{
-			if (!progress.hasTarget())
-			{
-				continue;
-			}
-
-			mostRecentProgress = progress;
-
-			if (progress.callIndex == currentCallIndex)
-			{
-				currentProgress = progress;
-			}
-
-			CodeDisplayState state = getState(progress.instruction, progress.foodFed, progress.lastFoodElapsed);
-
-			if (progress.callIndex < currentCallIndex && state != CodeDisplayState.COMPLETE)
-			{
-				// Keep an unfinished prior-call code visible and active instead of hiding it
-				// behind the current call's instruction.
-				return progress.status(CodeDisplayState.IN_PROGRESS);
-			}
-		}
-
-		if (currentProgress != null)
-		{
-			return currentProgress.status(getState(currentProgress.instruction, currentProgress.foodFed, currentProgress.lastFoodElapsed));
-		}
-
-		return mostRecentProgress == null ? null : mostRecentProgress.status(CodeDisplayState.PREVIOUS);
+		return HealerCodeProgress.getDisplayStatus(getActiveWaveCode(wave), healerOrder, currentCallIndex, feedEvents);
 	}
 
 	public HealerCodeStatus getPanelStatusForCall(int wave, int healerOrder, int currentCallIndex, int panelCallIndex, List<FeedEvent> feedEvents)
 	{
-		if (panelCallIndex > currentCallIndex)
-		{
-			WaveCode waveCode = getActiveWaveCode(wave);
-			CallCode call = waveCode == null ? null : waveCode.getCall(panelCallIndex);
-			HealerInstruction instruction = call == null ? null : call.getInstruction(healerOrder);
-			return instruction != null && instruction.hasTarget()
-					? new HealerCodeStatus(instruction, CodeDisplayState.NOT_STARTED, 0, -1)
-					: null;
-		}
-
-		for (InstructionProgress progress : getInstructionProgresses(wave, healerOrder, currentCallIndex, feedEvents))
-		{
-			if (progress.callIndex == panelCallIndex)
-			{
-				return progress.hasTarget() ? progress.status(getState(progress.instruction, progress.foodFed, progress.lastFoodElapsed)) : null;
-			}
-		}
-
-		return null;
+		return HealerCodeProgress.getPanelStatusForCall(getActiveWaveCode(wave), healerOrder, currentCallIndex, panelCallIndex, feedEvents);
 	}
 
 	public int getPanelFoodCountForCall(int wave, int healerOrder, int currentCallIndex, int panelCallIndex, List<FeedEvent> feedEvents)
 	{
-		for (InstructionProgress progress : getInstructionProgresses(wave, healerOrder, currentCallIndex, feedEvents))
-		{
-			if (progress.callIndex == panelCallIndex)
-			{
-				return progress.foodFed;
-			}
-		}
-
-		return 0;
-	}
-
-	private List<InstructionProgress> getInstructionProgresses(int wave, int healerOrder, int currentCallIndex, List<FeedEvent> feedEvents)
-	{
-		WaveCode waveCode = getActiveWaveCode(wave);
-
-		if (waveCode == null)
-		{
-			return new ArrayList<>();
-		}
-
-		List<InstructionProgress> progresses = new ArrayList<>();
-
-		for (int callIndex = 0; callIndex <= currentCallIndex; callIndex++)
-		{
-			CallCode call = waveCode.getCall(callIndex);
-			HealerInstruction instruction = call == null ? null : call.getInstruction(healerOrder);
-			progresses.add(new InstructionProgress(callIndex, instruction));
-		}
-
-		List<FeedEvent> events = new ArrayList<>();
-
-		for (FeedEvent event : safeEvents(feedEvents))
-		{
-			if (event.getHealerOrder() == healerOrder)
-			{
-				events.add(event);
-			}
-		}
-
-		events.sort(Comparator.comparingInt(FeedEvent::getElapsedSeconds));
-
-		for (FeedEvent event : events)
-		{
-			InstructionProgress fallbackProgress = null;
-
-			for (InstructionProgress progress : progresses)
-			{
-				if (progress.callIndex == event.getCallIndex())
-				{
-					fallbackProgress = progress;
-				}
-
-				// Feeds after a call change should continue satisfying the earliest
-				// incomplete prior instruction before they apply to the new call.
-				if (event.getCallIndex() >= progress.callIndex
-						&& progress.acceptsMoreFood())
-				{
-					progress.addFood(event.getElapsedSeconds());
-					fallbackProgress = null;
-					break;
-				}
-			}
-
-			if (fallbackProgress != null)
-			{
-				fallbackProgress.addFood(event.getElapsedSeconds());
-			}
-		}
-
-		return progresses;
+		return HealerCodeProgress.getPanelFoodCountForCall(getActiveWaveCode(wave), healerOrder, currentCallIndex, panelCallIndex, feedEvents);
 	}
 
 	public RunPreset createUserPreset(String name, Map<Integer, String> waveCodeIds)
@@ -668,100 +596,57 @@ public class HealerCodeManager
 		return false;
 	}
 
-	public WaveCode createUserWaveCode(int wave, String name, String sourceText)
+	public WaveCode saveWaveCode(String selectedId, WaveCode draft)
 	{
-		WaveCode code = importOrReplaceWaveCode(HealerCodeParser.parseWaveCode(null, name, wave, false, sourceText));
-		save();
-		return code;
-	}
-
-	public boolean updateUserWaveCode(String id, int wave, String name, String sourceText)
-	{
-		if (id == null || name == null || name.trim().isEmpty())
+		if (draft == null || isBlank(draft.getName()))
 		{
-			return false;
+			return null;
 		}
 
-		WaveCode updated = HealerCodeParser.parseWaveCode(id, name, wave, false, sourceText);
-
-		for (int i = 0; i < userStore.getWaveCodes().size(); i++)
+		WaveCode builtIn = findBuiltInWaveCode(selectedId);
+		if (builtIn != null)
 		{
-			if (id.equals(userStore.getWaveCodes().get(i).getId()))
+			WaveCode updated = copyWaveCode(draft, builtIn.getId(), true);
+			if (sameWaveCodeContent(builtIn, updated))
 			{
-				List<WaveCode> waveCodes = new ArrayList<>(userStore.getWaveCodes());
-				waveCodes.set(i, updated);
-				userStore.setWaveCodes(waveCodes);
+				removeStoredWaveCode(builtIn.getId());
 				save();
-				return true;
+				return builtIn;
 			}
+
+			upsertStoredWaveCode(updated);
+			save();
+			return updated;
 		}
 
-		return false;
+		WaveCode existing = findStoredUserWaveCode(selectedId);
+		if (existing != null)
+		{
+			WaveCode updated = copyWaveCode(draft, existing.getId(), false);
+			replaceStoredUserWaveCode(updated);
+			save();
+			return updated;
+		}
+
+		WaveCode saved = importWaveCode(draft);
+		save();
+		return saved;
 	}
 
-	public boolean updateBuiltInWaveCode(String id, String sourceText)
+	public boolean isModifiedBuiltInWaveCode(String id)
 	{
 		WaveCode builtIn = findBuiltInWaveCode(id);
-
-		if (builtIn == null || sourceText == null || sourceText.trim().isEmpty())
-		{
-			return false;
-		}
-
-		WaveCode updated = HealerCodeParser.parseWaveCode(
-				builtIn.getId(),
-				builtIn.getName(),
-				builtIn.getWave(),
-				true,
-				sourceText
-		);
-		List<WaveCode> waveCodes = new ArrayList<>(userStore.getWaveCodes());
-
-		for (int i = 0; i < waveCodes.size(); i++)
-		{
-			if (id.equals(waveCodes.get(i).getId()))
-			{
-				waveCodes.set(i, updated);
-				userStore.setWaveCodes(waveCodes);
-				save();
-				return true;
-			}
-		}
-
-		waveCodes.add(updated);
-		userStore.setWaveCodes(waveCodes);
-		save();
-		return true;
+		WaveCode override = findStoredUserWaveCode(id);
+		return builtIn != null && override != null && !sameWaveCodeContent(builtIn, override);
 	}
 
 	public boolean resetBuiltInWaveCode(String id)
 	{
-		if (findBuiltInWaveCode(id) == null)
+		if (findBuiltInWaveCode(id) == null || !removeStoredWaveCode(id))
 		{
 			return false;
 		}
 
-		boolean removed = false;
-		List<WaveCode> waveCodes = new ArrayList<>();
-
-		for (WaveCode code : userStore.getWaveCodes())
-		{
-			if (id.equals(code.getId()))
-			{
-				removed = true;
-			}
-			else
-			{
-				waveCodes.add(code);
-			}
-		}
-
-		if (!removed)
-		{
-			return false;
-		}
-
-		userStore.setWaveCodes(waveCodes);
 		save();
 		return true;
 	}
@@ -805,141 +690,69 @@ public class HealerCodeManager
 		return true;
 	}
 
-	private static CodeDisplayState getState(HealerInstruction instruction, int foodFed, int lastFoodElapsed)
+	private HealerCodeExportResult importWaveCodeExport(WaveCode importedWaveCode, Integer expectedWave)
 	{
-		if (foodFed <= 0)
+		if (importedWaveCode == null || isBlank(importedWaveCode.getName()))
 		{
-			return CodeDisplayState.NOT_STARTED;
+			return null;
 		}
 
-		if (foodFed < instruction.getTargetFoodCount())
+		if (expectedWave != null && importedWaveCode.getWave() != expectedWave)
 		{
-			return CodeDisplayState.IN_PROGRESS;
+			return null;
 		}
 
-		if (instruction.getAfterSeconds() != null && lastFoodElapsed < instruction.getAfterSeconds())
-		{
-			return CodeDisplayState.IN_PROGRESS;
-		}
-
-		if (instruction.getBeforeSeconds() != null && lastFoodElapsed >= instruction.getBeforeSeconds())
-		{
-			return CodeDisplayState.IN_PROGRESS;
-		}
-
-		return CodeDisplayState.COMPLETE;
-	}
-
-	private int countFoodForCall(int healerOrder, int callIndex, List<FeedEvent> feedEvents)
-	{
-		int count = 0;
-
-		for (FeedEvent event : safeEvents(feedEvents))
-		{
-			if (event.getHealerOrder() == healerOrder
-					&& event.getCallIndex() == callIndex)
-			{
-				count++;
-			}
-		}
-
-		return count;
-	}
-
-	private int lastFoodElapsed(int healerOrder, int callIndex, List<FeedEvent> feedEvents)
-	{
-		int last = -1;
-
-		for (FeedEvent event : safeEvents(feedEvents))
-		{
-			if (event.getHealerOrder() == healerOrder
-					&& event.getCallIndex() == callIndex)
-			{
-				last = Math.max(last, event.getElapsedSeconds());
-			}
-		}
-
-		return last;
-	}
-
-	private List<FeedEvent> safeEvents(List<FeedEvent> feedEvents)
-	{
-		return feedEvents == null ? new ArrayList<>() : feedEvents;
-	}
-
-	private WaveCode exportWaveCode(WaveCode waveCode)
-	{
-		return HealerCodeParser.parseWaveCode(
+		WaveCode saved = importWaveCode(importedWaveCode);
+		userStore.setActiveRunPresetId(null);
+		userStore.getActiveWaveCodeIds().put(saved.getWave(), saved.getId());
+		save();
+		return new HealerCodeExportResult(
 				null,
-				waveCode.getName(),
-				waveCode.getWave(),
-				false,
-				waveCode.getSourceText()
+				saved.getId(),
+				waveCodeDisplayName(saved),
+				saved.getWave(),
+				HealerCodeExportType.WAVE_CODE,
+				waveSummary("Import", saved)
 		);
 	}
 
-	private void importOrReplaceWaveCodes(List<WaveCode> waveCodes)
+	private HealerCodeExportResult importRunPresetExport(HealerCodeExport imported)
 	{
-		for (WaveCode waveCode : waveCodes)
+		RunPreset importedPreset = imported.getPreset();
+		if (importedPreset == null)
+		{
+			return null;
+		}
+
+		Map<String, WaveCode> importedWaveCodesByReference = new HashMap<>();
+		List<WaveCode> savedWaveCodes = new ArrayList<>();
+		for (WaveCode waveCode : imported.getWaveCodes())
 		{
 			if (waveCode == null || isBlank(waveCode.getName()))
 			{
 				continue;
 			}
 
-			importOrReplaceWaveCode(waveCode);
-		}
-	}
-
-	private WaveCode importOrReplaceWaveCode(WaveCode importedWaveCode)
-	{
-		WaveCode existingUserCode = findStoredUserWaveCode(importedWaveCode.getWave(), importedWaveCode.getName());
-		WaveCode builtInCode = findBuiltInWaveCode(importedWaveCode.getWave(), importedWaveCode.getName());
-		String id = existingUserCode != null
-				? existingUserCode.getId()
-				: builtInCode != null ? builtInCode.getId() : userId("wave", importedWaveCode.getWave() + "-" + importedWaveCode.getName());
-		boolean builtIn = existingUserCode != null ? existingUserCode.isBuiltIn() : builtInCode != null;
-		WaveCode updated = HealerCodeParser.parseWaveCode(
-				id,
-				importedWaveCode.getName(),
-				importedWaveCode.getWave(),
-				builtIn,
-				importedWaveCode.getSourceText()
-		);
-		List<WaveCode> storedWaveCodes = new ArrayList<>(userStore.getWaveCodes());
-
-		for (int i = 0; i < storedWaveCodes.size(); i++)
-		{
-			WaveCode storedWaveCode = storedWaveCodes.get(i);
-
-			if (sameWaveCodeName(storedWaveCode, importedWaveCode.getWave(), importedWaveCode.getName()))
-			{
-				storedWaveCodes.set(i, updated);
-				userStore.setWaveCodes(storedWaveCodes);
-				return updated;
-			}
+			WaveCode saved = importWaveCode(waveCode);
+			importedWaveCodesByReference.put(waveReference(waveCode.getWave(), waveCode.getName()), saved);
+			savedWaveCodes.add(saved);
 		}
 
-		storedWaveCodes.add(updated);
-		userStore.setWaveCodes(storedWaveCodes);
-		return updated;
-	}
-
-	private RunPreset importRunPreset(RunPreset importedPreset)
-	{
 		Map<Integer, String> localWaveCodeIds = new HashMap<>();
-
 		for (Map.Entry<Integer, String> entry : importedPreset.getWaveCodeIds().entrySet())
 		{
 			Integer wave = entry.getKey();
 			String importedReference = entry.getValue();
-
 			if (wave == null || isBlank(importedReference))
 			{
 				continue;
 			}
 
-			WaveCode waveCode = findWaveCode(wave, importedReference);
+			WaveCode waveCode = importedWaveCodesByReference.get(waveReference(wave, importedReference));
+			if (waveCode == null)
+			{
+				waveCode = findWaveCode(wave, importedReference);
+			}
 
 			if (waveCode != null)
 			{
@@ -947,9 +760,78 @@ public class HealerCodeManager
 			}
 		}
 
-		RunPreset existingPreset = findRunPresetByName(importedPreset.getName());
-		String id = existingPreset == null ? userId("preset", importedPreset.getName()) : existingPreset.getId();
-		return new RunPreset(id, importedPreset.getName(), false, localWaveCodeIds);
+		if (localWaveCodeIds.isEmpty())
+		{
+			return null;
+		}
+
+		if (isBlank(importedPreset.getName()))
+		{
+			userStore.setActiveRunPresetId(null);
+			userStore.setActiveWaveCodeIds(localWaveCodeIds);
+			save();
+			RunPreset activePreset = new RunPreset(null, null, false, localWaveCodeIds);
+			return new HealerCodeExportResult(
+					null,
+					null,
+					runPresetDisplayName(activePreset),
+					0,
+					HealerCodeExportType.RUN_PRESET,
+					presetSummary("Import", activePreset, savedWaveCodes)
+			);
+		}
+
+		RunPreset preset = importRunPreset(importedPreset.getName(), localWaveCodeIds);
+		userStore.setActiveRunPresetId(preset.getId());
+		userStore.setActiveWaveCodeIds(preset.getWaveCodeIds());
+		save();
+		return new HealerCodeExportResult(
+				null,
+				preset.getId(),
+				runPresetDisplayName(preset),
+				0,
+				HealerCodeExportType.RUN_PRESET,
+				presetSummary("Import", preset, savedWaveCodes)
+		);
+	}
+
+	private WaveCode importWaveCode(WaveCode importedWaveCode)
+	{
+		WaveCode candidate = copyWaveCode(importedWaveCode, null, false);
+		WaveCode existing = findWaveCode(candidate.getWave(), candidate.getName());
+
+		if (existing != null && sameWaveCodeContent(existing, candidate))
+		{
+			return existing;
+		}
+
+		if (existing != null)
+		{
+			candidate.setName(uniqueWaveCodeName(candidate.getWave(), candidate.getName()));
+		}
+
+		candidate.setId(uniqueUserId("wave", candidate.getWave() + "-" + candidate.getName()));
+		candidate.setBuiltIn(false);
+		List<WaveCode> waveCodes = new ArrayList<>(userStore.getWaveCodes());
+		waveCodes.add(candidate);
+		userStore.setWaveCodes(waveCodes);
+		return candidate;
+	}
+
+	private RunPreset importRunPreset(String name, Map<Integer, String> waveCodeIds)
+	{
+		RunPreset existing = findRunPresetByName(name);
+		if (existing != null && existing.getWaveCodeIds().equals(waveCodeIds))
+		{
+			return existing;
+		}
+
+		String savedName = existing == null ? name : uniquePresetName(name);
+		RunPreset preset = new RunPreset(uniqueUserId("preset", savedName), savedName, false, waveCodeIds);
+		List<RunPreset> presets = new ArrayList<>(userStore.getRunPresets());
+		presets.add(preset);
+		userStore.setRunPresets(presets);
+		return preset;
 	}
 
 	private void upsertRunPreset(RunPreset importedPreset)
@@ -970,49 +852,310 @@ public class HealerCodeManager
 		userStore.setRunPresets(presets);
 	}
 
-	private static class InstructionProgress
+	private WaveCode exportableWaveCode(WaveCode waveCode)
 	{
-		private final int callIndex;
-		private final HealerInstruction instruction;
-		private int foodFed;
-		private int lastFoodElapsed = -1;
+		return copyWaveCode(waveCode, null, false);
+	}
 
-		private InstructionProgress(int callIndex, HealerInstruction instruction)
+	private WaveCode copyWaveCode(WaveCode source, String id, boolean builtIn)
+	{
+		WaveCode copy = new WaveCode(
+				id,
+				source.getName() == null ? "" : source.getName().trim(),
+				source.getWave(),
+				builtIn,
+				copyCalls(source.getCalls())
+		);
+		copy.setOverstock(source.getOverstock());
+		copy.setAlchHorn(source.isAlchHorn());
+		copy.setRestockingInstructions(source.getRestockingInstructions());
+		copy.setAdditionalNotes(source.getAdditionalNotes());
+		copy.setLegacyMode(source.isLegacyMode());
+		if (source.isLegacyMode())
 		{
-			this.callIndex = callIndex;
-			this.instruction = instruction;
+			copy.setLegacySourceText(source.getSourceText());
+		}
+		copy.setExpectedTimesSeconds(source.getExpectedTimesSeconds());
+		ensureCallCapacity(copy);
+		return copy;
+	}
+
+	private static List<CallCode> copyCalls(List<CallCode> source)
+	{
+		List<CallCode> calls = new ArrayList<>();
+		if (source != null)
+		{
+			for (CallCode call : source)
+			{
+				if (call != null)
+				{
+					calls.add(new CallCode(call.getCallIndex(), copyInstructions(call.getHealerInstructions()), call.getNote()));
+				}
+			}
+		}
+		return calls;
+	}
+
+	private static List<HealerInstruction> copyInstructions(List<HealerInstruction> source)
+	{
+		List<HealerInstruction> instructions = new ArrayList<>();
+		if (source != null)
+		{
+			for (HealerInstruction instruction : source)
+			{
+				instructions.add(instruction == null ? new HealerInstruction() : instruction.copy());
+			}
+		}
+		return instructions;
+	}
+
+	private static void ensureCallCapacity(WaveCode code)
+	{
+		List<CallCode> calls = new ArrayList<>(code.getCalls());
+		while (calls.size() < HealerCodeFormatter.CALL_COUNT)
+		{
+			calls.add(new CallCode(calls.size(), new ArrayList<>(), null));
+		}
+		code.setCalls(calls);
+	}
+
+	private void replaceStoredUserWaveCode(WaveCode updated)
+	{
+		List<WaveCode> waveCodes = new ArrayList<>(userStore.getWaveCodes());
+		for (int i = 0; i < waveCodes.size(); i++)
+		{
+			if (updated.getId().equals(waveCodes.get(i).getId()))
+			{
+				waveCodes.set(i, updated);
+				userStore.setWaveCodes(waveCodes);
+				return;
+			}
+		}
+	}
+
+	private void upsertStoredWaveCode(WaveCode updated)
+	{
+		List<WaveCode> waveCodes = new ArrayList<>(userStore.getWaveCodes());
+		for (int i = 0; i < waveCodes.size(); i++)
+		{
+			if (updated.getId().equals(waveCodes.get(i).getId()))
+			{
+				waveCodes.set(i, updated);
+				userStore.setWaveCodes(waveCodes);
+				return;
+			}
 		}
 
-		private HealerCodeStatus status(CodeDisplayState state)
+		waveCodes.add(updated);
+		userStore.setWaveCodes(waveCodes);
+	}
+
+	private boolean removeStoredWaveCode(String id)
+	{
+		if (id == null)
 		{
-			return new HealerCodeStatus(instruction, state, foodFed, lastFoodElapsed);
+			return false;
 		}
 
-		private void addFood(int elapsedSeconds)
+		List<WaveCode> waveCodes = new ArrayList<>(userStore.getWaveCodes());
+		boolean removed = waveCodes.removeIf(code -> code != null && id.equals(code.getId()));
+		if (removed)
 		{
-			foodFed++;
-			lastFoodElapsed = Math.max(lastFoodElapsed, elapsedSeconds);
+			userStore.setWaveCodes(waveCodes);
+		}
+		return removed;
+	}
+
+	private boolean sameWaveCodeContent(WaveCode first, WaveCode second)
+	{
+		if (first == null || second == null)
+		{
+			return first == second;
 		}
 
-		private boolean hasTarget()
-		{
-			return instruction != null && instruction.hasTarget();
-		}
+		return first.getWave() == second.getWave()
+				&& sameText(first.getName(), second.getName())
+				&& first.getOverstock() == second.getOverstock()
+				&& first.isAlchHorn() == second.isAlchHorn()
+				&& sameText(first.getRestockingInstructions(), second.getRestockingInstructions())
+				&& sameText(first.getAdditionalNotes(), second.getAdditionalNotes())
+				&& first.getExpectedTimesSeconds().equals(second.getExpectedTimesSeconds())
+				&& sameCalls(first.getCalls(), second.getCalls());
+	}
 
-		private boolean acceptsMoreFood()
+	private boolean sameCalls(List<CallCode> first, List<CallCode> second)
+	{
+		for (int callIndex = 0; callIndex < HealerCodeFormatter.CALL_COUNT; callIndex++)
 		{
-			if (!hasTarget())
+			CallCode firstCall = callAt(first, callIndex);
+			CallCode secondCall = callAt(second, callIndex);
+			if (!sameText(firstCall == null ? null : firstCall.getNote(), secondCall == null ? null : secondCall.getNote())
+					|| !sameInstructions(
+							firstCall == null ? null : firstCall.getHealerInstructions(),
+							secondCall == null ? null : secondCall.getHealerInstructions()
+					))
 			{
 				return false;
 			}
-
-			if (foodFed < instruction.getTargetFoodCount())
-			{
-				return true;
-			}
-
-			return getState(instruction, foodFed, lastFoodElapsed) != CodeDisplayState.COMPLETE;
 		}
+		return true;
+	}
+
+	private static CallCode callAt(List<CallCode> calls, int callIndex)
+	{
+		if (calls == null)
+		{
+			return null;
+		}
+
+		for (CallCode call : calls)
+		{
+			if (call != null && call.getCallIndex() == callIndex)
+			{
+				return call;
+			}
+		}
+		return null;
+	}
+
+	private static boolean sameInstructions(List<HealerInstruction> first, List<HealerInstruction> second)
+	{
+		int size = Math.max(first == null ? 0 : first.size(), second == null ? 0 : second.size());
+		for (int index = 0; index < size; index++)
+		{
+			HealerInstruction firstInstruction = instructionAt(first, index);
+			HealerInstruction secondInstruction = instructionAt(second, index);
+			if (firstInstruction.getTargetFoodCount() != secondInstruction.getTargetFoodCount()
+					|| !sameInteger(firstInstruction.getAfterSeconds(), secondInstruction.getAfterSeconds())
+					|| !sameInteger(firstInstruction.getBeforeSeconds(), secondInstruction.getBeforeSeconds())
+					|| !sameInteger(firstInstruction.getExactSeconds(), secondInstruction.getExactSeconds()))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static HealerInstruction instructionAt(List<HealerInstruction> instructions, int index)
+	{
+		if (instructions == null || index < 0 || index >= instructions.size() || instructions.get(index) == null)
+		{
+			return new HealerInstruction();
+		}
+		return instructions.get(index);
+	}
+
+	private static boolean sameInteger(Integer first, Integer second)
+	{
+		return first == null ? second == null : first.equals(second);
+	}
+
+	private static boolean sameText(String first, String second)
+	{
+		return normalizeNullable(first).equals(normalizeNullable(second));
+	}
+
+	private String uniqueWaveCodeName(int wave, String baseName)
+	{
+		String cleanBaseName = isBlank(baseName) ? "Wave Code" : baseName.trim();
+		String candidate = cleanBaseName;
+		int suffix = 1;
+		while (findWaveCode(wave, candidate) != null)
+		{
+			candidate = cleanBaseName + " (" + suffix++ + ")";
+		}
+		return candidate;
+	}
+
+	private String uniquePresetName(String baseName)
+	{
+		String cleanBaseName = isBlank(baseName) ? "Run Preset" : baseName.trim();
+		String candidate = cleanBaseName;
+		int suffix = 1;
+		while (findRunPresetByName(candidate) != null)
+		{
+			candidate = cleanBaseName + " (" + suffix++ + ")";
+		}
+		return candidate;
+	}
+
+	private String uniqueUserId(String type, String name)
+	{
+		String baseId = userId(type, name);
+		String candidate = baseId;
+		int suffix = 1;
+		while (findRunPreset(candidate) != null || findWaveCode(candidate) != null)
+		{
+			candidate = baseId + "-" + suffix++;
+		}
+		return candidate;
+	}
+
+	private List<String> waveSummary(String action, WaveCode code)
+	{
+		List<String> lines = new ArrayList<>();
+		lines.add(action + " wave code: Wave " + code.getWave() + " - " + waveCodeDisplayName(code));
+		addCodeSummaryLines(lines, code);
+		return lines;
+	}
+
+	private List<String> presetSummary(String action, RunPreset preset, List<WaveCode> waveCodes)
+	{
+		List<String> lines = new ArrayList<>();
+		lines.add(action + " run preset: " + runPresetDisplayName(preset));
+		for (Map.Entry<Integer, String> entry : new java.util.TreeMap<>(preset.getWaveCodeIds()).entrySet())
+		{
+			WaveCode waveCode = findSummaryWaveCode(entry.getKey(), entry.getValue(), waveCodes);
+			lines.add("");
+			lines.add("Wave " + entry.getKey() + " - " + (waveCode == null ? entry.getValue() : waveCodeDisplayName(waveCode)));
+			addCodeSummaryLines(lines, waveCode);
+		}
+		return lines;
+	}
+
+	private WaveCode findSummaryWaveCode(Integer wave, String reference, List<WaveCode> waveCodes)
+	{
+		WaveCode waveCode = findWaveCode(reference);
+		if (waveCode != null)
+		{
+			return waveCode;
+		}
+
+		if (waveCodes == null)
+		{
+			return null;
+		}
+
+		for (WaveCode candidate : waveCodes)
+		{
+			if (candidate != null
+					&& wave != null
+					&& candidate.getWave() == wave
+					&& sameName(candidate.getName(), reference))
+			{
+				return candidate;
+			}
+		}
+		return null;
+	}
+
+	private static void addCodeSummaryLines(List<String> lines, WaveCode code)
+	{
+		if (code == null || isBlank(code.getSourceText()))
+		{
+			lines.add("No code text.");
+			return;
+		}
+
+		for (String line : code.getSourceText().split("\\r?\\n", -1))
+		{
+			lines.add(line);
+		}
+	}
+
+	private static String waveReference(int wave, String name)
+	{
+		return wave + ":" + normalizeName(name);
 	}
 
 	private WaveCode findStoredUserWaveCode(String id)
@@ -1025,42 +1168,6 @@ public class HealerCodeManager
 		for (WaveCode code : userStore.getWaveCodes())
 		{
 			if (id.equals(code.getId()))
-			{
-				return code;
-			}
-		}
-
-		return null;
-	}
-
-	private WaveCode findStoredUserWaveCode(int wave, String name)
-	{
-		if (isBlank(name))
-		{
-			return null;
-		}
-
-		for (WaveCode code : userStore.getWaveCodes())
-		{
-			if (sameWaveCodeName(code, wave, name))
-			{
-				return code;
-			}
-		}
-
-		return null;
-	}
-
-	private WaveCode findBuiltInWaveCode(int wave, String name)
-	{
-		if (isBlank(name))
-		{
-			return null;
-		}
-
-		for (WaveCode code : builtIns.getWaveCodes())
-		{
-			if (sameWaveCodeName(code, wave, name))
 			{
 				return code;
 			}
@@ -1122,9 +1229,34 @@ public class HealerCodeManager
 		return name == null ? "" : name.trim().toLowerCase();
 	}
 
+	private static String normalizeNullable(String value)
+	{
+		return value == null ? "" : value.trim();
+	}
+
+	private static String normalizedExportName(String name)
+	{
+		return isBlank(name) ? null : name.trim();
+	}
+
+	public static String runPresetDisplayName(RunPreset preset)
+	{
+		return preset == null || isBlank(preset.getName()) ? "unnamed run preset" : preset.getName().trim();
+	}
+
+	public static String waveCodeDisplayName(WaveCode code)
+	{
+		return code == null || isBlank(code.getName()) ? "unnamed wave code" : code.getName().trim();
+	}
+
 	private static boolean isBlank(String value)
 	{
 		return value == null || value.trim().isEmpty();
+	}
+
+	private static boolean isBuiltInWaveCodeId(String id)
+	{
+		return id != null && id.startsWith("builtin:");
 	}
 
 	private String userId(String type, String name)

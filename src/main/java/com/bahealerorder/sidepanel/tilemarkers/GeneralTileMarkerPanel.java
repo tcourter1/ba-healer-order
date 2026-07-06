@@ -3,6 +3,7 @@ package com.bahealerorder.sidepanel.tilemarkers;
 import com.bahealerorder.common.BaClipboard;
 import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.sidepanel.BaPanelUi;
+import com.bahealerorder.sidepanel.BaTransferDialog;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import com.bahealerorder.tilemarkers.TileMarkerAssignmentPreset;
@@ -307,6 +308,7 @@ public class GeneralTileMarkerPanel extends JPanel
 			String strategyId = selectedWaveStrategyId(comboBox);
 			openStrategyEditorDialog(wave, strategyId);
 		}));
+		menu.add(menuItem("Delete", BaIcons.trashIcon(), () -> deleteSelectedWaveStrategy(comboBox)));
 		menu.add(menuItem("Import", BaIcons.importIcon(), () -> importWaveSelectionFromClipboard(wave)));
 		menu.add(menuItem("Export", BaIcons.exportIcon(), () -> exportWaveSelectionToClipboard(wave)));
 		menu.add(menuItem("Preview", BaIcons.eyeIcon(), () -> openPreviewDialog(wave)));
@@ -518,6 +520,32 @@ public class GeneralTileMarkerPanel extends JPanel
 		refreshAll();
 	}
 
+	private void deleteSelectedWaveStrategy(JComboBox<WaveSelectionOption> comboBox)
+	{
+		String strategyId = selectedWaveStrategyId(comboBox);
+		if (isBlank(strategyId))
+		{
+			Toolkit.getDefaultToolkit().beep();
+			return;
+		}
+
+		TileMarkerStrategyPreset preset = strategyManager.findStrategyPreset(strategyId);
+		if (preset == null || preset.isBuiltIn())
+		{
+			Toolkit.getDefaultToolkit().beep();
+			return;
+		}
+
+		int result = JOptionPane.showConfirmDialog(this, "Delete this wave strategy?", "Delete Strategy", JOptionPane.OK_CANCEL_OPTION);
+		if (result != JOptionPane.OK_OPTION)
+		{
+			return;
+		}
+
+		strategyManager.deleteStrategyPreset(strategyId);
+		refreshAll();
+	}
+
 	private void clearAssignmentSelections()
 	{
 		strategyManager.clearWaveSelections(selectedContext);
@@ -681,7 +709,7 @@ public class GeneralTileMarkerPanel extends JPanel
 
 	private void showTransferDialog(String title, String message, String action, TileMarkerExportResult result)
 	{
-		TileMarkerTransferDialog.show(this, title, message, action, result.getSummaryLines());
+		BaTransferDialog.show(this, title, message, action, result.getSummaryLines());
 	}
 
 	private String exportMessage(TileMarkerExportResult result)
@@ -917,9 +945,11 @@ public class GeneralTileMarkerPanel extends JPanel
 			}
 
 			WaveSelectionOption option = (WaveSelectionOption) value;
-			if (option.isBuiltIn())
+			if (!isSelected)
 			{
-				label.setForeground(new Color(120, 120, 120));
+				label.setForeground(option.isBuiltIn()
+						? new Color(120, 120, 120)
+						: BaPanelUi.ACTION_CONTROL_TEXT_COLOR);
 			}
 			return label;
 		}

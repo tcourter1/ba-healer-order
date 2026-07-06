@@ -143,7 +143,10 @@ public final class BaPanelUi
 	{
 		component.setForeground(ACTION_CONTROL_TEXT_COLOR);
 		component.setDisabledTextColor(ColorScheme.MEDIUM_GRAY_COLOR);
-		component.setBorder(BorderFactory.createLineBorder(ACTION_CONTROL_BORDER_COLOR));
+		component.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createLineBorder(ACTION_CONTROL_BORDER_COLOR),
+				BorderFactory.createEmptyBorder(0, 6, 0, 6)
+		));
 		fixedSize(component, width, height);
 	}
 

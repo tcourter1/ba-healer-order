@@ -44,6 +44,7 @@ class WaveOverviewSelectorPanel extends JPanel
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
 	private static final int SELECTOR_WIDTH = CONTENT_WIDTH - 16;
 	private static final int RUN_DROPDOWN_POPUP_WIDTH = CONTENT_WIDTH;
+	private static final int RUN_DROPDOWN_TABLE_WIDTH = RUN_DROPDOWN_POPUP_WIDTH - 20;
 	private static final int ACTION_BUTTON_WIDTH = CONTROL_HEIGHT + 4;
 	private static final int RUN_DROPDOWN_LIMIT = 10;
 	private static final int RUN_STATUS_HTML_WIDTH = 64;
@@ -112,6 +113,11 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	void refreshSelectors()
 	{
+		if (runCombo.isPopupVisible() || waveCombo.isPopupVisible())
+		{
+			return;
+		}
+
 		refreshingControls = true;
 
 		DefaultComboBoxModel<SelectorItem> runModel = new DefaultComboBoxModel<>();
@@ -320,7 +326,7 @@ class WaveOverviewSelectorPanel extends JPanel
 		String role = getRunRole(run);
 		String status = run.isComplete() ? run.getRoundDuration() : "Incomplete";
 		String age = formatRunDropdownAge(run);
-		return "<html><table width=\"" + RUN_DROPDOWN_POPUP_WIDTH + "\" cellpadding=\"0\" cellspacing=\"0\"><tr>"
+		return "<html><table width=\"" + RUN_DROPDOWN_TABLE_WIDTH + "\" cellpadding=\"0\" cellspacing=\"0\"><tr>"
 				+ "<td>" + formatRoleHtml(role) + formatRunAgeHtml(age) + "</td>"
 				+ "<td width=\"" + RUN_STATUS_HTML_WIDTH + "\" align=\"right\">" + escapeHtml(status) + "</td>"
 				+ "</tr></table></html>";

@@ -8,10 +8,21 @@ import java.util.Map;
 
 public class StrategyStore
 {
+	private int version;
 	private String activeRunPresetId;
 	private Map<Integer, String> activeWaveCodeIds = new HashMap<>();
 	private List<RunPreset> runPresets = new ArrayList<>();
 	private List<WaveCode> waveCodes = new ArrayList<>();
+
+	public int getVersion()
+	{
+		return version;
+	}
+
+	public void setVersion(int version)
+	{
+		this.version = version;
+	}
 
 	public String getActiveRunPresetId()
 	{

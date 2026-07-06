@@ -11,6 +11,9 @@ import com.bahealerorder.common.BaWaveInfo;
 import com.bahealerorder.common.BaWaveOverviewRun;
 import com.bahealerorder.common.BaWaveOverviewSnapshot;
 import com.bahealerorder.common.BaWaveOverviewStore;
+import com.bahealerorder.healer.HealerCodeManager;
+import com.bahealerorder.healer.codes.HealerCodeFormatter;
+import com.bahealerorder.healer.codes.WaveCode;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import com.bahealerorder.tilemarkers.TimedStrategyNote;
 import com.bahealerorder.tilemarkers.TimedStrategyNotes;
@@ -92,6 +95,7 @@ public class WaveOverviewPanel extends JPanel
 	private final BaRoleDetector roleDetector;
 	private final BaWaveLifecycleService waveLifecycleService;
 	private final GeneralTileMarkerStrategyManager strategyManager;
+	private final HealerCodeManager healerCodeManager;
 	private final WaveOverviewSelectorPanel selectorPanel;
 	private final Map<BaOverviewNpcType, ImageIcon> overviewIcons = new EnumMap<>(BaOverviewNpcType.class);
 	private final JLabel titleLabel = label("Wave Overview", true);
@@ -110,7 +114,8 @@ public class WaveOverviewPanel extends JPanel
 			BaWaveOverviewStore store,
 			BaRoleDetector roleDetector,
 			BaWaveLifecycleService waveLifecycleService,
-			GeneralTileMarkerStrategyManager strategyManager)
+			GeneralTileMarkerStrategyManager strategyManager,
+			HealerCodeManager healerCodeManager)
 	{
 		this.spriteManager = spriteManager;
 		this.itemManager = itemManager;
@@ -120,6 +125,7 @@ public class WaveOverviewPanel extends JPanel
 		this.roleDetector = roleDetector;
 		this.waveLifecycleService = waveLifecycleService;
 		this.strategyManager = strategyManager;
+		this.healerCodeManager = healerCodeManager;
 		this.selectorPanel = new WaveOverviewSelectorPanel(store, this::createColumnMenuButton, () ->
 		{
 			lastRenderSignature = null;
@@ -130,6 +136,8 @@ public class WaveOverviewPanel extends JPanel
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		setAlignmentX(LEFT_ALIGNMENT);
 		setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
+		contentPanel.setAlignmentX(LEFT_ALIGNMENT);
+		contentPanel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, Integer.MAX_VALUE));
 		add(createWaveOverviewSection());
 		refreshAll();
 	}
@@ -525,6 +533,7 @@ public class WaveOverviewPanel extends JPanel
 				+ ":" + (selectedRun == null ? "none" : selectedRun.metadataSignature())
 				+ ":" + activeNotes
 				+ ":" + getActiveStrategyName(snapshot)
+				+ ":" + getActiveHealerCodeName(snapshot)
 				+ ":" + (isBlank(activeNotes) ? "" : getCurrentWaveTick())
 				+ ":" + (snapshot == null ? "none" : snapshot.signature());
 	}
@@ -564,9 +573,7 @@ public class WaveOverviewPanel extends JPanel
 
 		JPanel row = new JPanel(new BorderLayout());
 		row.setBackground(background);
-		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setAlignmentX(LEFT_ALIGNMENT);
+		fixedSize(row, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		row.add(label, BorderLayout.CENTER);
 		return row;
 	}
@@ -617,13 +624,54 @@ public class WaveOverviewPanel extends JPanel
 
 		TileMarkerRoleContext context = getDisplayRoleContext();
 		String notes = strategyManager.getActiveNotes(snapshot.getWave(), context);
-		return notes == null ? "" : notes.trim();
+		String codeText = getActiveHealerCodeText(snapshot);
+		notes = notes == null ? "" : notes.trim();
+
+		if (isBlank(codeText))
+		{
+			return notes;
+		}
+
+		if (isBlank(notes))
+		{
+			return codeText;
+		}
+
+		return codeText + "\n\n" + notes;
 	}
 
 	private String getNotesHeading(BaWaveOverviewSnapshot snapshot)
 	{
+		String codeName = getActiveHealerCodeName(snapshot);
+		if (!isBlank(codeName))
+		{
+			return codeName;
+		}
+
 		String strategyName = getActiveStrategyName(snapshot);
 		return (isBlank(strategyName) ? "Strategy" : strategyName) + " Notes";
+	}
+
+	private String getActiveHealerCodeText(BaWaveOverviewSnapshot snapshot)
+	{
+		if (snapshot == null || !store.isSelectedWaveInProgress() || !roleDetector.isRole(BaRole.HEALER))
+		{
+			return "";
+		}
+
+		WaveCode code = healerCodeManager.getActiveWaveCode(snapshot.getWave());
+		return code == null ? "" : HealerCodeFormatter.formatDisplay(code).trim();
+	}
+
+	private String getActiveHealerCodeName(BaWaveOverviewSnapshot snapshot)
+	{
+		if (snapshot == null || !store.isSelectedWaveInProgress() || !roleDetector.isRole(BaRole.HEALER))
+		{
+			return "";
+		}
+
+		WaveCode code = healerCodeManager.getActiveWaveCode(snapshot.getWave());
+		return code == null || code.getName() == null ? "" : code.getName().trim();
 	}
 
 	private String getActiveStrategyName(BaWaveOverviewSnapshot snapshot)
@@ -661,18 +709,34 @@ public class WaveOverviewPanel extends JPanel
 
 	private JPanel createNotesPanel(String headingText, String notes, Color headingColor, int currentWaveTick)
 	{
-		int height = getMessageHeight(notes) + CONTROL_HEIGHT + 6;
+		int notesHeight = getMessageHeight(notes);
+		int width = CONTENT_WIDTH - 16;
+		int height = notesHeight + CONTROL_HEIGHT + 6;
 		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, height));
-		panel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, height));
+		panel.setPreferredSize(new Dimension(width, height));
+		panel.setMinimumSize(new Dimension(width, height));
+		panel.setMaximumSize(new Dimension(width, height));
 		panel.setAlignmentX(LEFT_ALIGNMENT);
 
+		panel.add(notesHeadingRow(headingText, headingColor, width));
+		panel.add(Box.createVerticalStrut(4));
+		JTextPane notesText = createNotesText(notes, currentWaveTick);
+		fixedSize(notesText, width, notesHeight);
+		panel.add(notesText);
+		return panel;
+	}
+
+	private JPanel notesHeadingRow(String headingText, Color headingColor, int width)
+	{
 		JLabel heading = label(headingText, true);
 		heading.setForeground(headingColor);
-		panel.add(heading);
-		panel.add(Box.createVerticalStrut(4));
-		panel.add(createNotesText(notes, currentWaveTick));
-		return panel;
+
+		JPanel row = new JPanel(new BorderLayout());
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		fixedSize(row, width, CONTROL_HEIGHT);
+		heading.setHorizontalAlignment(SwingConstants.CENTER);
+		row.add(heading, BorderLayout.CENTER);
+		return row;
 	}
 
 	private JTextPane createNotesText(String notes, int currentWaveTick)
@@ -682,6 +746,7 @@ public class WaveOverviewPanel extends JPanel
 		text.setEditable(false);
 		text.setFocusable(false);
 		text.setOpaque(false);
+		text.setAlignmentX(LEFT_ALIGNMENT);
 
 		StyledDocument document = text.getStyledDocument();
 		List<TimedStrategyNote> timedNotes = TimedStrategyNotes.parse(notes);

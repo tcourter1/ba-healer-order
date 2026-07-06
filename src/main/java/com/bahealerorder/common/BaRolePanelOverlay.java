@@ -89,7 +89,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         }
 
         BaUtilitiesConfig.FoodPanelStyle panelStyle = getEffectivePanelStyle();
-        String sourceText = healerController.getCurrentWaveCodeSource();
+        String sourceText = healerController.getCurrentWaveCodeDisplaySource();
         String notes = getCurrentWaveNotes();
         boolean healerContent = shouldRenderHealerContent(panelStyle, sourceText);
         boolean notesContent = !isBlank(notes);
@@ -632,7 +632,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
     private boolean addCurrentWaveCode(boolean collapsible)
     {
-        String sourceText = healerController.getCurrentWaveCodeSource();
+        String sourceText = healerController.getCurrentWaveCodeDisplaySource();
 
         if (isBlank(sourceText))
         {

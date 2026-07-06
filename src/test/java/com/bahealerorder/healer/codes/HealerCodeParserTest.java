@@ -20,11 +20,31 @@ public class HealerCodeParserTest
 	}
 
 	@Test
+	public void parsesExactInstruction()
+	{
+		HealerInstruction instruction = HealerCodeParser.parseInstruction("2{27}");
+
+		assertEquals(2, instruction.getTargetFoodCount());
+		assertEquals(Integer.valueOf(27), instruction.getExactSeconds());
+	}
+
+	@Test
 	public void treatsSpamAsNoTarget()
 	{
 		HealerInstruction instruction = HealerCodeParser.parseInstruction("X");
 
 		assertFalse(instruction.hasTarget());
+	}
+
+	@Test
+	public void preservesNoTargetCodeText()
+	{
+		WaveCode code = HealerCodeParser.parseWaveCode(null, "No Target", 8, false, "spam-X-0");
+
+		assertFalse(code.getCall(0).getInstruction(1).hasTarget());
+		assertEquals("spam", HealerCodeFormatter.formatInstruction(code.getCall(0).getInstruction(1)));
+		assertEquals("X", HealerCodeFormatter.formatInstruction(code.getCall(0).getInstruction(2)));
+		assertEquals("spam-X-0", code.getSourceText());
 	}
 
 	@Test
@@ -50,7 +70,7 @@ public class HealerCodeParserTest
 	}
 
 	@Test
-	public void treatsC5VariantAsComment()
+	public void convertsC5MetadataIntoStructuredFields()
 	{
 		StrategyStore store = BuiltInStrategyLibrary.create();
 		WaveCode waveCode = null;
@@ -66,7 +86,71 @@ public class HealerCodeParserTest
 
 		assertNotNull(waveCode);
 		assertNotNull(waveCode.getCall(0));
-		assertEquals(1, waveCode.getCalls().size());
-		assertEquals("Alch horn, 6x os\n3(22)[43]-7-4(21)-6-8\n// If 12s not on Coll:\n// 8-2(21)-4(21)-6-8", waveCode.getSourceText());
+		assertEquals(3, waveCode.getCalls().size());
+		assertEquals(true, waveCode.isAlchHorn());
+		assertEquals("Alch horn\n3(22)[43]-7-4(21)-6-8", waveCode.getSourceText());
+	}
+
+	@Test
+	public void usesNameForOverstockInsteadOfRestockText()
+	{
+		StrategyStore store = BuiltInStrategyLibrary.create();
+		WaveCode regular = findCode(store, "builtin:w6:regular");
+		WaveCode oneTimes = findCode(store, "builtin:w6:1x-os");
+		WaveCode twoTimes = findCode(store, "builtin:w6:2x-os");
+
+		assertNotNull(regular);
+		assertNotNull(oneTimes);
+		assertNotNull(twoTimes);
+		assertEquals(HealerCodeOverstock.REGULAR, regular.getOverstock());
+		assertEquals(HealerCodeOverstock.ONE_X, oneTimes.getOverstock());
+		assertEquals(HealerCodeOverstock.TWO_X, twoTimes.getOverstock());
+		assertEquals("3x os + 1x reg", regular.getRestockingInstructions());
+	}
+
+	@Test
+	public void parsesFormattedMetadataBackIntoStructuredFields()
+	{
+		WaveCode code = HealerCodeParser.parseWaveCode(
+				null,
+				"Practice",
+				9,
+				false,
+				"Alch horn, 2x OS\n2(18)-4-1-1\nExpected: #1=42s, #7=48s\nRestock: 4x os + 1 reg\nNotes"
+		);
+
+		assertEquals(true, code.isAlchHorn());
+		assertEquals(HealerCodeOverstock.TWO_X, code.getOverstock());
+		assertEquals(Integer.valueOf(42), code.getExpectedTimeSeconds(1));
+		assertEquals(Integer.valueOf(48), code.getExpectedTimeSeconds(7));
+		assertEquals("4x os + 1 reg", code.getRestockingInstructions());
+		assertEquals("Notes", code.getAdditionalNotes());
+	}
+
+	@Test
+	public void displayTextStripsCodeNameAndExpectedLines()
+	{
+		WaveCode code = HealerCodeParser.parseWaveCode(
+				null,
+				"1x OS",
+				5,
+				false,
+				"Wave 5 - 1x OS\n1x OS\n2-2\nExpected: #5=48s"
+		);
+
+		assertEquals("2-2", HealerCodeFormatter.formatDisplay(code));
+	}
+
+	private static WaveCode findCode(StrategyStore store, String id)
+	{
+		for (WaveCode code : store.getWaveCodes())
+		{
+			if (id.equals(code.getId()))
+			{
+				return code;
+			}
+		}
+
+		return null;
 	}
 }

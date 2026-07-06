@@ -16,6 +16,7 @@ import com.bahealerorder.common.BaWaveInfo;
 import com.bahealerorder.common.BaWaveOverviewService;
 import com.bahealerorder.common.NpcIndexOrderer;
 import com.bahealerorder.healer.codes.CodeDisplayState;
+import com.bahealerorder.healer.codes.HealerCodeFormatter;
 import com.bahealerorder.healer.codes.HealerCodeStatus;
 import com.bahealerorder.healer.codes.WaveCode;
 import com.bahealerorder.healer.ttk.HealerTtkPrediction;
@@ -572,6 +573,7 @@ public class HealerController
 		}
 
 		String sharedDeathTime = getSharedHealerDeathTime(healerOrder);
+		String expectedDeathTime = getExpectedHealerDeathTime(healerOrder);
 
 		if (isHealerDead(healerOrder)) return sharedDeathTime;
 
@@ -581,14 +583,27 @@ public class HealerController
 
 		if (npc == null)
 		{
-			return sharedDeathTime;
+			return expectedDeathTime;
 		}
 
 		HealerTtkPrediction prediction = ttkTracker.getPrediction(npc.getIndex());
-		if (!prediction.hasValue()) return sharedDeathTime;
+		if (!prediction.hasValue()) return expectedDeathTime;
 		if (prediction.isUnknown()) return "?";
 
 		return formatTickAsWaveTime(prediction.getDeathTick());
+	}
+
+	private String getExpectedHealerDeathTime(int healerOrder)
+	{
+		int wave = getCurrentWave();
+		int initialHealerCount = BaWaveInfo.getInitialCount(wave, BaOverviewNpcType.HEALER);
+		if (healerOrder > initialHealerCount)
+		{
+			return null;
+		}
+
+		Integer seconds = codeManager.getExpectedTimeSeconds(wave, healerOrder);
+		return seconds == null ? null : String.valueOf(seconds);
 	}
 
 	private String getSharedHealerDeathTime(int healerOrder)
@@ -668,6 +683,12 @@ public class HealerController
 	{
 		WaveCode waveCode = codeManager.getActiveWaveCode(getCurrentWave());
 		return waveCode == null ? null : waveCode.getSourceText();
+	}
+
+	public String getCurrentWaveCodeDisplaySource()
+	{
+		WaveCode waveCode = codeManager.getActiveWaveCode(getCurrentWave());
+		return waveCode == null ? null : HealerCodeFormatter.formatDisplay(waveCode);
 	}
 
 	public String getCurrentWaveCodeName()
@@ -883,6 +904,11 @@ public class HealerController
 			builder.append(" [").append(status.getInstruction().getBeforeSeconds()).append(']');
 		}
 
+		if (status.getInstruction().getExactSeconds() != null)
+		{
+			builder.append(" {").append(status.getInstruction().getExactSeconds()).append('}');
+		}
+
 		return builder.toString();
 	}
 
@@ -1015,6 +1041,13 @@ public class HealerController
 
 		if (spawnTick < 0)
 		{
+			Integer expectedSpawnSeconds = codeManager.getExpectedTimeSeconds(wave, healerOrder);
+			if (expectedSpawnSeconds != null)
+			{
+				String secondsSuffix = includeSecondsSuffix ? "s" : "";
+				return expectedSpawnSeconds + secondsSuffix + " (R" + reserveNumber + ")";
+			}
+
 			return "R" + reserveNumber;
 		}
 

@@ -3,6 +3,7 @@ package com.bahealerorder.sidepanel.tilemarkers;
 import com.bahealerorder.common.BaClipboard;
 import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.sidepanel.BaPanelUi;
+import com.bahealerorder.sidepanel.BaTransferDialog;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import com.bahealerorder.tilemarkers.TileMarkerExportResult;
 import com.bahealerorder.tilemarkers.TileMarkerExportType;
@@ -496,7 +497,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		}
 
 		BaClipboard.copyText(result.getJson());
-		TileMarkerTransferDialog.show(this, "Export Strategy", "Exported " + result.getTypedName() + ".", "Export", result.getSummaryLines());
+		BaTransferDialog.show(this, "Export Strategy", "Exported " + result.getTypedName() + ".", "Export", result.getSummaryLines());
 	}
 
 	private void importStrategyFromClipboard()
@@ -545,7 +546,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		{
 			strategiesChanged.run();
 		}
-		TileMarkerTransferDialog.show(this, "Import Strategy", "Imported " + result.getTypedName() + ".", "Import", result.getSummaryLines());
+		BaTransferDialog.show(this, "Import Strategy", "Imported " + result.getTypedName() + ".", "Import", result.getSummaryLines());
 	}
 
 	boolean confirmDiscard(Component parent)

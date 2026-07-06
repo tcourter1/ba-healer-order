@@ -305,7 +305,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	{
 		List<SidePanelTab> tabs = new ArrayList<>();
 		tabs.add(SidePanelTab.icon(OVERVIEW_TAB, BaIcons.waveOverviewIcon(TAB_ICON_SIZE), "Wave Overview", waveOverviewPanel));
-		tabs.add(SidePanelTab.item(HEALER_TAB, BaRole.HEALER.getPlayerIconItemId(), "Healer Codes", healerCodePanel));
+		tabs.add(SidePanelTab.icon(HEALER_TAB, BaIcons.healerCodeIcon(TAB_ICON_SIZE), "Healer Codes", healerCodePanel));
 		tabs.add(SidePanelTab.icon(TILE_MARKERS_TAB, BaIcons.tileMarkerIcon(TAB_ICON_SIZE), "Tile Markers", generalTileMarkerPanel));
 
 		tabGroup.setLayout(new DynamicGridLayout(1, tabs.size(), 6, 0));
@@ -379,14 +379,6 @@ public class BaUtilitiesPanel extends PluginPanel
 		{
 			tab.setIcon(sidePanelTab.icon);
 		}
-		else if (sidePanelTab.itemId != null)
-		{
-			AsyncBufferedImage icon = itemManager.getImage(sidePanelTab.itemId);
-			if (icon != null)
-			{
-				icon.onLoaded(() -> SwingUtilities.invokeLater(() -> tab.setIcon(scaledIcon(icon))));
-			}
-		}
 
 		return tab;
 	}
@@ -404,34 +396,22 @@ public class BaUtilitiesPanel extends PluginPanel
 	private static class SidePanelTab
 	{
 		private final String id;
-		private final Integer itemId;
 		private final ImageIcon icon;
 		private final String tooltip;
 		private final JComponent content;
 
-		private static SidePanelTab item(String id, int itemId, String tooltip, JComponent content)
-		{
-			return new SidePanelTab(id, itemId, null, tooltip, content);
-		}
-
 		private static SidePanelTab icon(String id, ImageIcon icon, String tooltip, JComponent content)
 		{
-			return new SidePanelTab(id, null, icon, tooltip, content);
+			return new SidePanelTab(id, icon, tooltip, content);
 		}
 
-		private SidePanelTab(String id, Integer itemId, ImageIcon icon, String tooltip, JComponent content)
+		private SidePanelTab(String id, ImageIcon icon, String tooltip, JComponent content)
 		{
 			this.id = id;
-			this.itemId = itemId;
 			this.icon = icon;
 			this.tooltip = tooltip;
 			this.content = content;
 		}
-	}
-
-	private ImageIcon scaledIcon(BufferedImage image)
-	{
-		return new ImageIcon(image.getScaledInstance(TAB_ICON_SIZE, TAB_ICON_SIZE, Image.SCALE_SMOOTH));
 	}
 
 	private ImageIcon scaledRoleIcon(BufferedImage image)
