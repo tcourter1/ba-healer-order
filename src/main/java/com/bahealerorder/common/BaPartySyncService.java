@@ -1,7 +1,7 @@
 package com.bahealerorder.common;
 
 import com.bahealerorder.BaUtilitiesConfig;
-import com.bahealerorder.BaUtilitiesPanel;
+import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -219,7 +219,7 @@ public class BaPartySyncService
 
 		if (!changed && !forceSend) return;
 
-		if (!isBaPartySyncConnected() || !waveLifecycleService.isWaveActive()) return;
+		if (!isBaPartySyncConnected() || !isRealWaveActive()) return;
 
 		BaHealerFoodCountMessage message = new BaHealerFoodCountMessage(
 				playerName,
@@ -352,7 +352,7 @@ public class BaPartySyncService
 
 	private void updateBaPartySync()
 	{
-		Optional<BaTeamRoster> teamRoster = isWaveActive()
+		Optional<BaTeamRoster> teamRoster = isRealWaveActive()
 				|| client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING) == 1
 				? Optional.empty()
 				: getBaTeamRosterFromWidgets();
@@ -369,7 +369,7 @@ public class BaPartySyncService
 			return;
 		}
 
-		if (isWaveActive())
+		if (isRealWaveActive())
 		{
 			setBaPartySyncStatus(partyService.isInParty() ? "In Wave" : "In Wave - Not Connected", baPartySyncProgenitorName);
 			return;
@@ -699,7 +699,7 @@ public class BaPartySyncService
 
 	private BaHealerFoodCounts getDisplayableHealerFoodCounts(String playerName, String role, boolean inParty)
 	{
-		if (!waveLifecycleService.isWaveActive() || BaRole.fromDisplayName(role) != BaRole.HEALER)
+		if (!isRealWaveActive() || BaRole.fromDisplayName(role) != BaRole.HEALER)
 		{
 			return null;
 		}
@@ -827,9 +827,14 @@ public class BaPartySyncService
 		return null;
 	}
 
-	private boolean isWaveActive()
+	private boolean isRealWaveActive()
 	{
-		return waveLifecycleService.isWaveActive();
+		return isRealWaveActive(waveLifecycleService);
+	}
+
+	static boolean isRealWaveActive(BaWaveLifecycleService waveLifecycleService)
+	{
+		return waveLifecycleService.isWaveActive() && !waveLifecycleService.isDevWaveActive();
 	}
 
 	private static class BaTeamRoster

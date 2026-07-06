@@ -26,6 +26,7 @@ public class BaWaveLifecycleService
 	private long startTimeMs = -1;
 	private int messageNodeId = -1;
 	private boolean arenaConfirmed;
+	private boolean devWaveActive;
 
 	@Inject
 	BaWaveLifecycleService(Client client, BaRoleDetector roleDetector)
@@ -52,6 +53,8 @@ public class BaWaveLifecycleService
 	{
 		if (!isWaveActive()) return null;
 
+		if (devWaveActive) return null;
+
 		if (isArenaVisible())
 		{
 			arenaConfirmed = true;
@@ -74,6 +77,26 @@ public class BaWaveLifecycleService
 		return endedWave;
 	}
 
+	public boolean isDevWaveActive()
+	{
+		return devWaveActive && isWaveActive();
+	}
+
+	public WaveStart startDevWave(int wave)
+	{
+		if (!BaWaveInfo.isValidWave(wave)) return null;
+
+		WaveStart waveStart = start(null, "---- Wave: " + wave + " ----", "dev command");
+
+		if (waveStart != null)
+		{
+			devWaveActive = true;
+			arenaConfirmed = true;
+		}
+
+		return waveStart;
+	}
+
 	public void reset()
 	{
 		clearWave();
@@ -81,6 +104,7 @@ public class BaWaveLifecycleService
 
 	private void clearWave()
 	{
+		devWaveActive = false;
 		wave = -1;
 		startTick = -1;
 		startTimeMs = -1;

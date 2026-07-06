@@ -76,11 +76,18 @@ The active code can also be displayed in the Penance Healers' right-click menu.
 
 <img width="413" height="249" alt="image" src="https://github.com/user-attachments/assets/4f12e807-1992-4530-b050-381c0448e283" />
 
-### Defender Strategies
+### Tile Markers and Strategies
 
-<img width="218" height="135" alt="image" src="https://github.com/user-attachments/assets/b55bdaa9-0696-417e-bde9-4b5fa453f536" />
+BA Utilities includes a fully interactable map of the Barbarian Assault arena that can be used to mark and label useful tiles.
 
-Coming soon!
+<img width="1064" height="690" alt="image" src="https://github.com/user-attachments/assets/43bfa6e8-3ffd-4114-bfe6-c7be0156cd08" />
+
+Dynamic notes can also be added that change color as the wave progresses.
+
+<img width="403" height="176" alt="image" src="https://github.com/user-attachments/assets/d13e789a-b55b-4e70-b6fe-96df2aa169ec" />
+<img width="403" height="171" alt="image" src="https://github.com/user-attachments/assets/61dcd87c-5865-40ad-9992-825cea5de692" />
+
+These tile markers and notes can be set per-wave and per-role, so your strategy updates dynamically depending on the conditions.
 
 ## Healer Features
 
@@ -212,6 +219,14 @@ BA Utilities does not automate gameplay. It provides visual tracking, menu organ
 
 <details>
 <summary>Show version history</summary>
+
+### 2.2.0
+* Added options for customizing overlay panel
+* Improved ::bawave dev command support 
+* Added a tile marker editor for creating, editing, importing, and exporting tile markers
+* Added dynamic notes that update as wave time progresses
+* Implemented per-wave and per-role strategies that combine tile markers and notes
+* Added runtime tile marker rendering
 
 ### 2.1.1
 * Re-added food count height config

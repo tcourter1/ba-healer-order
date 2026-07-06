@@ -1,6 +1,6 @@
 package com.bahealerorder.common;
 
-import com.bahealerorder.BaUtilitiesPanel;
+import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import com.bahealerorder.healer.HealerSharedState;
 import java.util.List;
 import java.util.Locale;
@@ -167,10 +167,11 @@ public class BaWaveOverviewService
 	public void onGameTick()
 	{
 		boolean metadataChanged = waveLifecycleService.isWaveActive() && saveCurrentRunMetadata();
-		if (!updatePending && !syncPending && !metadataChanged) return;
+		boolean activeWaveTick = waveLifecycleService.isWaveActive();
+		if (!updatePending && !syncPending && !metadataChanged && !activeWaveTick) return;
 
 		boolean changed = updatePending && saveCurrentSnapshot();
-		if (changed || metadataChanged)
+		if (changed || metadataChanged || activeWaveTick)
 		{
 			refreshPanel();
 		}

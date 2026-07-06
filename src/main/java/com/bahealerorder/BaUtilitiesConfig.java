@@ -40,6 +40,13 @@ public interface BaUtilitiesConfig extends Config
 	)
 	String attackerSection = "attacker";
 
+	@ConfigSection(
+			name = "Defender",
+			description = "Utility helpers for the BA defender role",
+			position = 4
+	)
+	String defenderSection = "defender";
+
 	enum HighlightStyle
 	{
 		NONE("None"),
@@ -131,6 +138,26 @@ public interface BaUtilitiesConfig extends Config
 		private final String name;
 
 		FoodPanelStyle(String name)
+		{
+			this.name = name;
+		}
+
+		@Override
+		public String toString()
+		{
+			return name;
+		}
+	}
+
+	enum OverlayFont
+	{
+		DEFAULT("Default"),
+		ARIAL("Arial"),
+		ARIAL_BOLD("Arial Bold");
+
+		private final String name;
+
+		OverlayFont(String name)
 		{
 			this.name = name;
 		}
@@ -271,6 +298,18 @@ public interface BaUtilitiesConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "highlightDefenderHammer",
+			name = "Highlight Hammer",
+			description = "Highlights ground hammer items while playing Defender when you need a hammer",
+			section = defenderSection,
+			position = 1
+	)
+	default boolean highlightDefenderHammer()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 			keyName = "highlightStyle",
 			name = "Highlight Style",
 			description = "Choose how tracked Penance Healers are highlighted",
@@ -332,6 +371,59 @@ public interface BaUtilitiesConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "showOverlayPanel",
+			name = "Show Overlay Panel",
+			description = "Shows the role-aware overlay panel when the current role has panel content",
+			section = generalSection,
+			position = 5
+	)
+	default boolean showOverlayPanel()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "overlayFont",
+			name = "Overlay Font",
+			description = "Font used by the on-screen BA Utilities overlay panel",
+			section = generalSection,
+			position = 6
+	)
+	default OverlayFont overlayFont()
+	{
+		return OverlayFont.DEFAULT;
+	}
+
+	@Range(
+			min = 8,
+			max = 24
+	)
+	@ConfigItem(
+			keyName = "foodPanelOverlayTextSize",
+			name = "Overlay Text Size",
+			description = "Font size used by the on-screen BA Utilities overlay panel. Panel spacing scales proportionally with this value.",
+			section = generalSection,
+			position = 7
+	)
+	default int foodPanelOverlayTextSize()
+	{
+		return 16;
+	}
+
+	@Alpha
+	@ConfigItem(
+			keyName = "foodPanelOverlayBackgroundColor",
+			name = "Overlay Panel Background",
+			description = "Background color used by the on-screen BA Utilities overlay panel",
+			section = generalSection,
+			position = 8
+	)
+	default Color foodPanelOverlayBackgroundColor()
+	{
+		return new Color(70, 61, 50, 156);
+	}
+
+	@ConfigItem(
 			keyName = "spreadStackedLabels",
 			name = "Spread Stacked Labels",
 			description = "Horizontally separates healer labels when multiple Penance Healers occupy the same tile",
@@ -368,11 +460,23 @@ public interface BaUtilitiesConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "foodPanelStyle",
+			name = "Healer Panel Style",
+			description = "Choose how the overlay panel displays tracked healer food",
+			section = healerSection,
+			position = 9
+	)
+	default FoodPanelStyle foodPanelStyle()
+	{
+		return FoodPanelStyle.SIMPLIFIED;
+	}
+
+	@ConfigItem(
 			keyName = "healerFoodOnly",
 			name = "Use-Food on Healers Only",
 			description = "When poisoned food is selected, only Penance Healer Use entries remain clickable",
 			section = healerSection,
-			position = 9
+			position = 10
 	)
 	default boolean healerFoodOnly()
 	{
@@ -384,7 +488,7 @@ public interface BaUtilitiesConfig extends Config
 			name = "Dispenser Food Highlight",
 			description = "Highlights the correct Take option on the healer dispenser for the current food call",
 			section = healerSection,
-			position = 10
+			position = 11
 	)
 	default boolean highlightCalledDispenserFood()
 	{
@@ -396,35 +500,11 @@ public interface BaUtilitiesConfig extends Config
 			name = "Dispenser Options",
 			description = "Optional healer dispenser menu cleanup",
 			section = healerSection,
-			position = 11
+			position = 12
 	)
 	default DispenserOptions dispenserOptions()
 	{
 		return DispenserOptions.NONE;
-	}
-
-	@ConfigItem(
-			keyName = "foodPanelStyle",
-			name = "Food Panel Style",
-			description = "Choose how the food panel displays tracked healer food",
-			section = healerSection,
-			position = 12
-	)
-	default FoodPanelStyle foodPanelStyle()
-	{
-		return FoodPanelStyle.ROWS;
-	}
-
-	@ConfigItem(
-			keyName = "showFoodPanelAsHealerOnly",
-			name = "Show Food Panel as Healer Only",
-			description = "Only shows the food panel while playing the Healer role",
-			section = healerSection,
-			position = 13
-	)
-	default boolean showFoodPanelAsHealerOnly()
-	{
-		return true;
 	}
 
 	@ConfigItem(

@@ -1,7 +1,9 @@
-package com.bahealerorder.healer;
+package com.bahealerorder.sidepanel.healercodes;
 
+import com.bahealerorder.healer.HealerCodeManager;
 import com.bahealerorder.healer.codes.RunPreset;
 import com.bahealerorder.healer.codes.WaveCode;
+import com.bahealerorder.sidepanel.BaPanelUi;
 import com.formdev.flatlaf.FlatClientProperties;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -224,7 +226,7 @@ public class HealerCodePanel extends JPanel
 	{
 		String activePresetId = codeManager.getActiveRunPresetId();
 		presetCombo.removeAllItems();
-		presetCombo.addItem(new ComboItem(null, ""));
+		presetCombo.addItem(new ComboItem(null, "Select a preset..."));
 
 		for (RunPreset preset : codeManager.getRunPresets())
 		{
@@ -597,7 +599,7 @@ public class HealerCodePanel extends JPanel
 	{
 		JButton button = new JButton(text);
 		button.addActionListener(event -> runnable.run());
-		fixedSize(button, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
+		BaPanelUi.styleActionButton(button, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		return button;
 	}
 
@@ -628,8 +630,7 @@ public class HealerCodePanel extends JPanel
 
 	private void styleCombo(JComboBox<ComboItem> comboBox, int width)
 	{
-		comboBox.setFocusable(false);
-		fixedSize(comboBox, width, CONTROL_HEIGHT);
+		BaPanelUi.styleCombo(comboBox, width, CONTROL_HEIGHT);
 	}
 
 	private void styleTextArea(JTextArea area, int rows)

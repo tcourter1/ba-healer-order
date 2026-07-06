@@ -1,14 +1,18 @@
-package com.bahealerorder.common;
+package com.bahealerorder.sidepanel.overview;
 
-import java.awt.BasicStroke;
+import com.bahealerorder.common.BaRole;
+import com.bahealerorder.common.BaRoleColors;
+import com.bahealerorder.common.BaIcons;
+import com.bahealerorder.common.BaWaveInfo;
+import com.bahealerorder.common.BaWaveOverviewRun;
+import com.bahealerorder.common.BaWaveOverviewSnapshot;
+import com.bahealerorder.common.BaWaveOverviewStore;
+import com.bahealerorder.sidepanel.BaPanelUi;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
@@ -21,7 +25,6 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -40,6 +43,7 @@ class WaveOverviewSelectorPanel extends JPanel
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
 	private static final int SELECTOR_WIDTH = CONTENT_WIDTH - 16;
+	private static final int RUN_DROPDOWN_POPUP_WIDTH = CONTENT_WIDTH;
 	private static final int ACTION_BUTTON_WIDTH = CONTROL_HEIGHT + 4;
 	private static final int RUN_DROPDOWN_LIMIT = 10;
 	private static final int RUN_STATUS_HTML_WIDTH = 64;
@@ -47,7 +51,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private final BaWaveOverviewStore store;
 	private final Runnable onSelectionChanged;
-	private final FixedPopupWidthComboBox<SelectorItem> runCombo = new FixedPopupWidthComboBox<>(SELECTOR_WIDTH);
+	private final FixedPopupWidthComboBox<SelectorItem> runCombo = new FixedPopupWidthComboBox<>(RUN_DROPDOWN_POPUP_WIDTH);
 	private final JComboBox<SelectorItem> waveCombo = new JComboBox<>();
 	private final JButton deleteRunButton = new JButton();
 
@@ -180,30 +184,12 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private JButton createDeleteRunButton()
 	{
-		deleteRunButton.setIcon(createTrashIcon());
+		deleteRunButton.setIcon(BaIcons.trashIcon());
 		deleteRunButton.setToolTipText("Delete selected run");
 		SwingUtil.removeButtonDecorations(deleteRunButton);
 		fixedSize(deleteRunButton, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT);
 		deleteRunButton.addActionListener(event -> deleteSelectedRun());
 		return deleteRunButton;
-	}
-
-	private ImageIcon createTrashIcon()
-	{
-		int size = 14;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(ColorScheme.TEXT_COLOR);
-		graphics.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		graphics.drawLine(5, 3, 9, 3);
-		graphics.drawLine(6, 2, 8, 2);
-		graphics.drawLine(3, 5, 11, 5);
-		graphics.drawRoundRect(4, 6, 6, 6, 2, 2);
-		graphics.drawLine(6, 8, 6, 10);
-		graphics.drawLine(8, 8, 8, 10);
-		graphics.dispose();
-		return new ImageIcon(image);
 	}
 
 	private void deleteSelectedRun()
@@ -334,7 +320,7 @@ class WaveOverviewSelectorPanel extends JPanel
 		String role = getRunRole(run);
 		String status = run.isComplete() ? run.getRoundDuration() : "Incomplete";
 		String age = formatRunDropdownAge(run);
-		return "<html><table width=\"" + SELECTOR_WIDTH + "\" cellpadding=\"0\" cellspacing=\"0\"><tr>"
+		return "<html><table width=\"" + RUN_DROPDOWN_POPUP_WIDTH + "\" cellpadding=\"0\" cellspacing=\"0\"><tr>"
 				+ "<td>" + formatRoleHtml(role) + formatRunAgeHtml(age) + "</td>"
 				+ "<td width=\"" + RUN_STATUS_HTML_WIDTH + "\" align=\"right\">" + escapeHtml(status) + "</td>"
 				+ "</tr></table></html>";
@@ -379,21 +365,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private String getRoleHtmlColor(BaRole role)
 	{
-		if (role == null) return null;
-
-		switch (role)
-		{
-			case ATTACKER:
-				return "#ff5a5a";
-			case HEALER:
-				return "#55d96a";
-			case DEFENDER:
-				return "#65a7ff";
-			case COLLECTOR:
-				return "#ffd84d";
-			default:
-				return null;
-		}
+		return BaRoleColors.htmlColor(role);
 	}
 
 	private String formatRunAge(String runName)
@@ -441,8 +413,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private static void styleCombo(JComboBox<?> comboBox, int width)
 	{
-		comboBox.setFocusable(false);
-		fixedSize(comboBox, width, CONTROL_HEIGHT);
+		BaPanelUi.styleCombo(comboBox, width, CONTROL_HEIGHT);
 	}
 
 	private static void fixedSize(JComponent component, int width, int height)

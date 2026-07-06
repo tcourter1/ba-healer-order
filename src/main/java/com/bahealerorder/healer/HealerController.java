@@ -1,13 +1,14 @@
 package com.bahealerorder.healer;
 
 import com.bahealerorder.BaUtilitiesConfig;
-import com.bahealerorder.BaUtilitiesPanel;
+import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import com.bahealerorder.common.BaHealerFoodCounts;
 import com.bahealerorder.common.BaHealerSyncMessage;
 import com.bahealerorder.common.BaOverviewNpcType;
 import com.bahealerorder.common.BaPartySyncService;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.BaRoleDetector;
+import com.bahealerorder.common.BaRolePanelOverlay;
 import com.bahealerorder.common.BaWaveLifecycleService;
 import com.bahealerorder.common.BaWaveLifecycleService.WaveStart;
 import com.bahealerorder.common.BaWaveInfo;
@@ -127,7 +128,7 @@ public class HealerController
 	private HealerOverlay overlay;
 
 	@Inject
-	private HealerFoodOverlay foodOverlay;
+	private BaRolePanelOverlay rolePanelOverlay;
 
 	@Inject
 	private BaUtilitiesPanel panel;
@@ -187,19 +188,20 @@ public class HealerController
 		SwingUtilities.updateComponentTreeUI(panel.getWrappedPanel());
 		resetAllState();
 		overlay.setController(this);
-		foodOverlay.setController(this);
+		rolePanelOverlay.setHealerController(this);
 		hooks.registerRenderableDrawListener(drawListener);
-		mouseManager.registerMouseListener(foodOverlay);
+		mouseManager.registerMouseListener(rolePanelOverlay);
 		overlayManager.add(overlay);
-		overlayManager.add(foodOverlay);
+		overlayManager.add(rolePanelOverlay);
 		updateNavigationButton();
 	}
 	public void shutDown()
 	{
 		removeNavigationButton();
-		overlayManager.remove(foodOverlay);
+		overlayManager.remove(rolePanelOverlay);
 		overlayManager.remove(overlay);
-		mouseManager.unregisterMouseListener(foodOverlay);
+		mouseManager.unregisterMouseListener(rolePanelOverlay);
+		rolePanelOverlay.setHealerController(null);
 		hooks.unregisterRenderableDrawListener(drawListener);
 		resetAllState();
 	}
@@ -476,13 +478,8 @@ public class HealerController
 
 	public boolean isHealerRole()
 	{
-		return roleDetector.isRole(BaRole.HEALER);
-	}
-
-	public boolean shouldShowFoodPanel()
-	{
-		return config.foodPanelStyle() != BaUtilitiesConfig.FoodPanelStyle.NONE
-				&& (!config.showFoodPanelAsHealerOnly() || isHealerRole());
+		return roleDetector.isRole(BaRole.HEALER)
+				|| (waveLifecycleService.isDevWaveActive() && !roleDetector.hasDevRoleOverride());
 	}
 
 	public BaUtilitiesConfig.FoodPanelStyle getFoodPanelStyle()
