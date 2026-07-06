@@ -43,6 +43,7 @@ import net.runelite.client.util.SwingUtil;
 @Singleton
 public class HealerCodePanel extends JPanel
 {
+	private static final String EMPTY_WAVE_SELECTION_LABEL = " ";
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
 	private static final int WAVE_ROW_GAP = 8;
@@ -293,10 +294,10 @@ public class HealerCodePanel extends JPanel
 	private void populateWaveCombo(JComboBox<WaveCodeOption> comboBox, int wave, String selectedCodeId)
 	{
 		comboBox.removeAllItems();
-		comboBox.addItem(new WaveCodeOption(null, "", false));
+		comboBox.addItem(WaveCodeOption.blank());
 		for (WaveCode code : codeManager.getWaveCodesForWave(wave))
 		{
-			comboBox.addItem(new WaveCodeOption(code.getId(), code.getName(), code.isBuiltIn()));
+			comboBox.addItem(WaveCodeOption.code(code));
 		}
 		selectWaveComboValue(comboBox, selectedCodeId);
 	}
@@ -583,6 +584,16 @@ public class HealerCodePanel extends JPanel
 			this.builtIn = builtIn;
 		}
 
+		private static WaveCodeOption blank()
+		{
+			return new WaveCodeOption(null, EMPTY_WAVE_SELECTION_LABEL, false);
+		}
+
+		private static WaveCodeOption code(WaveCode code)
+		{
+			return new WaveCodeOption(code.getId(), code.getName(), code.isBuiltIn());
+		}
+
 		@Override
 		public String toString()
 		{
@@ -598,16 +609,17 @@ public class HealerCodePanel extends JPanel
 				Object value,
 				int index,
 				boolean isSelected,
-			boolean cellHasFocus)
+				boolean cellHasFocus)
 		{
-			Component component = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+			JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+			label.setPreferredSize(new Dimension(label.getPreferredSize().width, CONTROL_HEIGHT));
 			if (!isSelected)
 			{
-				component.setForeground(value instanceof WaveCodeOption && ((WaveCodeOption) value).builtIn
+				label.setForeground(value instanceof WaveCodeOption && ((WaveCodeOption) value).builtIn
 						? new Color(120, 120, 120)
 						: BaPanelUi.ACTION_CONTROL_TEXT_COLOR);
 			}
-			return component;
+			return label;
 		}
 	}
 }

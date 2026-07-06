@@ -59,6 +59,7 @@ import net.runelite.client.util.SwingUtil;
 @Singleton
 public class GeneralTileMarkerPanel extends JPanel
 {
+	private static final String EMPTY_WAVE_SELECTION_LABEL = " ";
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
 	private static final int ROLE_ICON_SIZE = 18;
@@ -892,7 +893,7 @@ public class GeneralTileMarkerPanel extends JPanel
 
 		private static WaveSelectionOption blank()
 		{
-			return new WaveSelectionOption("", null, false);
+			return new WaveSelectionOption(EMPTY_WAVE_SELECTION_LABEL, null, false);
 		}
 
 		private static WaveSelectionOption strategy(TileMarkerStrategyPreset preset)
@@ -939,6 +940,7 @@ public class GeneralTileMarkerPanel extends JPanel
 					isSelected,
 					cellHasFocus
 			);
+			label.setPreferredSize(new Dimension(label.getPreferredSize().width, CONTROL_HEIGHT));
 			if (!(value instanceof WaveSelectionOption))
 			{
 				return label;
