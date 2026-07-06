@@ -37,6 +37,7 @@ import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.PostMenuSort;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -54,6 +55,9 @@ public class BaHealerOrderPlugin extends Plugin
 
 	@Inject
 	private Client client;
+
+	@Inject
+	private ClientThread clientThread;
 
 	@Inject
 	private AttackerController attackerController;
@@ -270,19 +274,19 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onBaHealerSyncMessage(BaHealerSyncMessage event)
 	{
-		healerController.onBaHealerSyncMessage(event);
+		clientThread.invokeLater(() -> healerController.onBaHealerSyncMessage(event));
 	}
 
 	@Subscribe
 	public void onBaHealerFoodCountMessage(BaHealerFoodCountMessage event)
 	{
-		partySyncService.onBaHealerFoodCountMessage(event);
+		clientThread.invokeLater(() -> partySyncService.onBaHealerFoodCountMessage(event));
 	}
 
 	@Subscribe
 	public void onBaWaveOverviewSyncMessage(BaWaveOverviewSyncMessage event)
 	{
-		waveOverviewService.onBaWaveOverviewSyncMessage(event);
+		clientThread.invokeLater(() -> waveOverviewService.onBaWaveOverviewSyncMessage(event));
 	}
 
 	@Subscribe
