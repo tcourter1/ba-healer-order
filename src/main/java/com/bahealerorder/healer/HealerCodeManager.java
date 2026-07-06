@@ -267,8 +267,10 @@ public class HealerCodeManager
 	public List<RunPreset> getRunPresets()
 	{
 		List<RunPreset> presets = new ArrayList<>();
+		presets.addAll(builtIns.getRunPresets());
 		presets.addAll(userStore.getRunPresets());
-		presets.sort(Comparator.comparing(HealerCodeManager::runPresetDisplayName, String.CASE_INSENSITIVE_ORDER));
+		presets.sort(Comparator.comparing(RunPreset::isBuiltIn)
+				.thenComparing(HealerCodeManager::runPresetDisplayName, String.CASE_INSENSITIVE_ORDER));
 		return presets;
 	}
 
@@ -336,6 +338,17 @@ public class HealerCodeManager
 		save();
 	}
 
+	public boolean isCodeEditorHelpVisible()
+	{
+		return userStore.isCodeEditorHelpVisible();
+	}
+
+	public void setCodeEditorHelpVisible(boolean visible)
+	{
+		userStore.setCodeEditorHelpVisible(visible);
+		save();
+	}
+
 	public RunPreset getActiveRunPreset()
 	{
 		return findRunPreset(getActiveRunPresetId());
@@ -350,7 +363,7 @@ public class HealerCodeManager
 			return null;
 		}
 
-		for (RunPreset preset : userStore.getRunPresets())
+		for (RunPreset preset : getRunPresets())
 		{
 			if (preset.getWaveCodeIds().equals(activeWaveCodes))
 			{
@@ -518,10 +531,11 @@ public class HealerCodeManager
 
 	public RunPreset createUserPreset(String name, Map<Integer, String> waveCodeIds)
 	{
-		RunPreset existingPreset = findRunPresetByName(name);
+		RunPreset existingPreset = findStoredUserRunPresetByName(name);
+		String savedName = existingPreset == null && findRunPresetByName(name) != null ? uniquePresetName(name) : name;
 		RunPreset preset = new RunPreset(
-				existingPreset == null ? userId("preset", name) : existingPreset.getId(),
-				name,
+				existingPreset == null ? userId("preset", savedName) : existingPreset.getId(),
+				savedName,
 				false,
 				new HashMap<>(waveCodeIds)
 		);
@@ -870,11 +884,6 @@ public class HealerCodeManager
 		copy.setAlchHorn(source.isAlchHorn());
 		copy.setRestockingInstructions(source.getRestockingInstructions());
 		copy.setAdditionalNotes(source.getAdditionalNotes());
-		copy.setLegacyMode(source.isLegacyMode());
-		if (source.isLegacyMode())
-		{
-			copy.setLegacySourceText(source.getSourceText());
-		}
 		copy.setExpectedTimesSeconds(source.getExpectedTimesSeconds());
 		ensureCallCapacity(copy);
 		return copy;
@@ -1026,14 +1035,22 @@ public class HealerCodeManager
 			HealerInstruction firstInstruction = instructionAt(first, index);
 			HealerInstruction secondInstruction = instructionAt(second, index);
 			if (firstInstruction.getTargetFoodCount() != secondInstruction.getTargetFoodCount()
+					|| firstInstruction.getPostRestockFoodCount() != secondInstruction.getPostRestockFoodCount()
+					|| firstInstruction.isAdvanced() != secondInstruction.isAdvanced()
 					|| !sameInteger(firstInstruction.getAfterSeconds(), secondInstruction.getAfterSeconds())
 					|| !sameInteger(firstInstruction.getBeforeSeconds(), secondInstruction.getBeforeSeconds())
-					|| !sameInteger(firstInstruction.getExactSeconds(), secondInstruction.getExactSeconds()))
+					|| !sameInteger(firstInstruction.getExactSeconds(), secondInstruction.getExactSeconds())
+					|| !sameText(advancedRaw(firstInstruction), advancedRaw(secondInstruction)))
 			{
 				return false;
 			}
 		}
 		return true;
+	}
+
+	private static String advancedRaw(HealerInstruction instruction)
+	{
+		return instruction != null && instruction.isAdvanced() ? instruction.getRaw() : null;
 	}
 
 	private static HealerInstruction instructionAt(List<HealerInstruction> instructions, int index)
@@ -1202,6 +1219,24 @@ public class HealerCodeManager
 		}
 
 		for (RunPreset preset : getRunPresets())
+		{
+			if (sameName(name, preset.getName()))
+			{
+				return preset;
+			}
+		}
+
+		return null;
+	}
+
+	private RunPreset findStoredUserRunPresetByName(String name)
+	{
+		if (isBlank(name))
+		{
+			return null;
+		}
+
+		for (RunPreset preset : userStore.getRunPresets())
 		{
 			if (sameName(name, preset.getName()))
 			{

@@ -45,6 +45,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 	private static final int TRASH_BUTTON_WIDTH = 24;
 	private static final int HEADER_ROLE_WIDTH = 126;
 	private static final int HEADER_WAVE_WIDTH = 76;
+	private static final int STRATEGY_POPUP_WIDTH = 188;
 	private static final String NOTES_TOOLTIP = "<html>Notes appear in the overlay panel, if enabled.<br>"
 			+ "To use dynamic note highlighting, start a line with a wave time.<br>"
 			+ "Example: 12.0 - Delay healer</html>";
@@ -52,7 +53,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 	private final GeneralTileMarkerStrategyManager strategyManager;
 	private final Runnable strategiesChanged;
 	private final TileMarkerSetChecklistPanel markerSetChecklist;
-	private final JComboBox<StrategyOption> strategyCombo = new JComboBox<>();
+	private final JComboBox<BaPanelUi.ComboOption> strategyCombo = BaPanelUi.fixedPopupWidthCombo(STRATEGY_POPUP_WIDTH);
 	private final JTextField strategyName = new JTextField();
 	private final JTextArea notes = new JTextArea();
 	private final JButton deleteButton = new JButton(BaIcons.trashIcon());
@@ -223,6 +224,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 	private JPanel createStrategySelector()
 	{
 		BaPanelUi.styleCombo(strategyCombo, EDITOR_WIDTH - TRASH_BUTTON_WIDTH - 6, CONTROL_HEIGHT);
+		strategyCombo.setRenderer(BaPanelUi.comboOptionRenderer(CONTROL_HEIGHT));
 		strategyCombo.addActionListener(event ->
 		{
 			if (refreshing)
@@ -244,8 +246,8 @@ class TileMarkerStrategyPresetEditor extends JPanel
 				return;
 			}
 
-			StrategyOption item = (StrategyOption) strategyCombo.getSelectedItem();
-			loadStrategy(item == null ? null : item.id);
+			BaPanelUi.ComboOption item = (BaPanelUi.ComboOption) strategyCombo.getSelectedItem();
+			loadStrategy(item == null ? null : item.getId());
 		});
 
 		deleteButton.setToolTipText("Delete selected strategy");
@@ -318,10 +320,10 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		try
 		{
 			strategyCombo.removeAllItems();
-			strategyCombo.addItem(new StrategyOption(null, "-- New --"));
+			strategyCombo.addItem(new BaPanelUi.ComboOption(null, "-- New --"));
 			for (TileMarkerStrategyPreset preset : strategyManager.getStrategyPresets(waveMap))
 			{
-				strategyCombo.addItem(new StrategyOption(preset.getId(), preset.toString()));
+				strategyCombo.addItem(new BaPanelUi.ComboOption(preset.getId(), preset.toString(), preset.isBuiltIn()));
 			}
 			selectStrategyComboValue(selectedId);
 		}
@@ -603,8 +605,8 @@ class TileMarkerStrategyPresetEditor extends JPanel
 	{
 		for (int i = 0; i < strategyCombo.getItemCount(); i++)
 		{
-			StrategyOption item = strategyCombo.getItemAt(i);
-			if ((id == null && item.id == null) || (id != null && id.equals(item.id)))
+			BaPanelUi.ComboOption item = strategyCombo.getItemAt(i);
+			if ((id == null && item.getId() == null) || (id != null && id.equals(item.getId())))
 			{
 				strategyCombo.setSelectedIndex(i);
 				return;
@@ -672,21 +674,4 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		return value == null || value.trim().isEmpty();
 	}
 
-	private static class StrategyOption
-	{
-		private final String id;
-		private final String label;
-
-		private StrategyOption(String id, String label)
-		{
-			this.id = id;
-			this.label = label;
-		}
-
-		@Override
-		public String toString()
-		{
-			return label;
-		}
-	}
 }

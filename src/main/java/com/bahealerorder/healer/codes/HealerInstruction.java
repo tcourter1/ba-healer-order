@@ -5,9 +5,11 @@ import java.util.Objects;
 public class HealerInstruction
 {
 	private int targetFoodCount;
+	private int postRestockFoodCount;
 	private Integer afterSeconds;
 	private Integer beforeSeconds;
 	private Integer exactSeconds;
+	private boolean advanced;
 	private String raw;
 
 	public HealerInstruction()
@@ -36,6 +38,16 @@ public class HealerInstruction
 	public void setTargetFoodCount(int targetFoodCount)
 	{
 		this.targetFoodCount = Math.max(0, targetFoodCount);
+	}
+
+	public int getPostRestockFoodCount()
+	{
+		return postRestockFoodCount;
+	}
+
+	public void setPostRestockFoodCount(int postRestockFoodCount)
+	{
+		this.postRestockFoodCount = Math.max(0, postRestockFoodCount);
 	}
 
 	public Integer getAfterSeconds()
@@ -78,9 +90,29 @@ public class HealerInstruction
 		this.raw = raw;
 	}
 
+	public boolean isAdvanced()
+	{
+		return advanced;
+	}
+
+	public void setAdvanced(boolean advanced)
+	{
+		this.advanced = advanced;
+	}
+
 	public boolean hasTarget()
 	{
 		return targetFoodCount > 0;
+	}
+
+	public boolean hasPostRestockFoodCount()
+	{
+		return postRestockFoodCount > 0;
+	}
+
+	public int getTotalTargetFoodCount()
+	{
+		return targetFoodCount + postRestockFoodCount;
 	}
 
 	public boolean hasTiming()
@@ -125,6 +157,11 @@ public class HealerInstruction
 
 	public String formatTarget()
 	{
+		if (advanced && raw != null && !raw.trim().isEmpty())
+		{
+			return raw.trim();
+		}
+
 		if (!hasTarget())
 		{
 			return "";
@@ -132,6 +169,10 @@ public class HealerInstruction
 
 		StringBuilder builder = new StringBuilder();
 		builder.append(targetFoodCount);
+		if (postRestockFoodCount > 0)
+		{
+			builder.append(',').append(postRestockFoodCount);
+		}
 
 		if (afterSeconds != null)
 		{
@@ -153,7 +194,10 @@ public class HealerInstruction
 
 	public HealerInstruction copy()
 	{
-		return new HealerInstruction(targetFoodCount, afterSeconds, beforeSeconds, exactSeconds, raw);
+		HealerInstruction copy = new HealerInstruction(targetFoodCount, afterSeconds, beforeSeconds, exactSeconds, raw);
+		copy.setPostRestockFoodCount(postRestockFoodCount);
+		copy.setAdvanced(advanced);
+		return copy;
 	}
 
 	@Override
@@ -169,6 +213,8 @@ public class HealerInstruction
 		}
 		HealerInstruction that = (HealerInstruction) o;
 		return targetFoodCount == that.targetFoodCount
+				&& postRestockFoodCount == that.postRestockFoodCount
+				&& advanced == that.advanced
 				&& Objects.equals(afterSeconds, that.afterSeconds)
 				&& Objects.equals(beforeSeconds, that.beforeSeconds)
 				&& Objects.equals(exactSeconds, that.exactSeconds)
@@ -178,6 +224,6 @@ public class HealerInstruction
 	@Override
 	public int hashCode()
 	{
-		return Objects.hash(targetFoodCount, afterSeconds, beforeSeconds, exactSeconds, raw);
+		return Objects.hash(targetFoodCount, postRestockFoodCount, afterSeconds, beforeSeconds, exactSeconds, advanced, raw);
 	}
 }

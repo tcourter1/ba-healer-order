@@ -52,7 +52,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private final BaWaveOverviewStore store;
 	private final Runnable onSelectionChanged;
-	private final FixedPopupWidthComboBox<SelectorItem> runCombo = new FixedPopupWidthComboBox<>(RUN_DROPDOWN_POPUP_WIDTH);
+	private final JComboBox<SelectorItem> runCombo = BaPanelUi.fixedPopupWidthCombo(RUN_DROPDOWN_POPUP_WIDTH);
 	private final JComboBox<SelectorItem> waveCombo = new JComboBox<>();
 	private final JButton deleteRunButton = new JButton();
 
@@ -429,43 +429,6 @@ class WaveOverviewSelectorPanel extends JPanel
 		component.setMinimumSize(size);
 		component.setMaximumSize(size);
 		component.setAlignmentX(Component.LEFT_ALIGNMENT);
-	}
-
-	private static class FixedPopupWidthComboBox<T> extends JComboBox<T>
-	{
-		private final int popupWidth;
-		private boolean layingOut;
-
-		private FixedPopupWidthComboBox(int popupWidth)
-		{
-			this.popupWidth = popupWidth;
-		}
-
-		@Override
-		public void doLayout()
-		{
-			try
-			{
-				layingOut = true;
-				super.doLayout();
-			}
-			finally
-			{
-				layingOut = false;
-			}
-		}
-
-		@Override
-		public Dimension getSize()
-		{
-			Dimension size = super.getSize();
-			if (!layingOut)
-			{
-				size.width = Math.max(size.width, popupWidth);
-			}
-
-			return size;
-		}
 	}
 
 	private static class SelectorItemRenderer extends DefaultListCellRenderer

@@ -48,6 +48,7 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
+import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JMenuItem;
@@ -62,9 +63,11 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.SwingUtil;
 
 class HealerCodeEditor extends JPanel
@@ -76,11 +79,16 @@ class HealerCodeEditor extends JPanel
 	private static final int HEADER_HEIGHT = 60;
 	private static final int CELL_WIDTH = 106;
 	private static final int CELL_HEIGHT = 58;
+	private static final int FOOD_FIELD_WIDTH = 50;
 	private static final int TIME_FIELD_WIDTH = 64;
 	private static final int TIME_PAIR_FIELD_WIDTH = 44;
+	private static final int ADVANCED_FIELD_WIDTH = 60;
 	private static final int RESERVE_SPAWN_FIELD_WIDTH = 42;
 	private static final int DELETE_BUTTON_WIDTH = 24;
 	private static final int CODE_ACTION_BUTTON_WIDTH = 120;
+	private static final int CODE_POPUP_WIDTH = 195;
+	private static final int TEXT_CODE_AREA_HEIGHT = 300;
+	private static final int TEXT_HELP_WIDTH = EDITOR_WIDTH - 20;
 	private static final String AFTER_PLACEHOLDER = "At or after...";
 	private static final String BEFORE_PLACEHOLDER = "Before...";
 	private static final String EXACT_PLACEHOLDER = "Exactly...";
@@ -89,22 +97,25 @@ class HealerCodeEditor extends JPanel
 	private static final String EXACT_TOOLTIP = "The last food for this code must be used exactly at this time";
 	private static final ImageIcon HEALER_ICON = loadHealerIcon();
 	private static final String ADVANCED_CARD = "advanced";
-	private static final String LEGACY_CARD = "legacy";
+	private static final String TEXT_CARD = "text";
 
 	private final HealerCodeManager codeManager;
 	private final Runnable codesChanged;
-	private final JComboBox<CodeOption> codeCombo = new JComboBox<>();
+	private final JComboBox<CodeOption> codeCombo = BaPanelUi.fixedPopupWidthCombo(CODE_POPUP_WIDTH);
 	private final JComboBox<Integer> waveCombo = new JComboBox<>();
 	private final JTextField codeName = new JTextField();
-	private final JTextArea legacySource = new JTextArea();
+	private final JTextArea codeTextSource = new JTextArea();
 	private final JComboBox<HealerCodeOverstock> overstockCombo = new JComboBox<>(HealerCodeOverstock.values());
 	private final JCheckBox alchHorn = new JCheckBox();
 	private final JTextArea restockingInstructions = new JTextArea();
 	private final JTextArea additionalNotes = new JTextArea();
 	private final JButton codeActionButton = new JButton();
-	private final JButton legacyModeButton = BaPanelUi.action("Legacy Mode", this::toggleLegacyMode, 126, CONTROL_HEIGHT);
+	private final JButton helpButton = BaPanelUi.action("Show Help", this::toggleHelp, 96, CONTROL_HEIGHT);
+	private final JButton textViewButton = BaPanelUi.action("Text View", this::toggleTextView, 126, CONTROL_HEIGHT);
 	private final CardLayout modeLayout = new CardLayout();
 	private final JPanel modePanel = new JPanel(modeLayout);
+	private final JPanel helpPanel = BaPanelUi.verticalPanel(ColorScheme.DARK_GRAY_COLOR);
+	private final Component helpGap = Box.createVerticalStrut(10);
 	private final JPanel codeGridPanel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 	private final Map<CellKey, HealerInstruction> cellInstructions = new HashMap<>();
 	private final Map<CellKey, CellTimingOption> cellTimingOptions = new HashMap<>();
@@ -116,14 +127,15 @@ class HealerCodeEditor extends JPanel
 	private CellKey activeCell;
 	private JPanel activeEditorPanel;
 	private JSpinner activeFoodField;
+	private JTextField activeAdvancedField;
 	private CellTimingOption activeTimingOption = CellTimingOption.NONE;
 	private JTextField activeAfterField;
 	private JTextField activeBeforeField;
 	private JTextField activeExactField;
 	private String textSnapshot;
 	private boolean textChangedAfterSnapshot;
-	private boolean codeLegacyMode;
 	private boolean textMode;
+	private boolean helpVisible = true;
 	private boolean timingMenuOpen;
 	private boolean timingOptionApplied;
 	private long ignoreFocusCommitUntilMillis;
@@ -136,6 +148,7 @@ class HealerCodeEditor extends JPanel
 		this.codesChanged = codesChanged;
 		this.selectedWave = requireWave(initialWave);
 		this.visibleCallCount = defaultVisibleCallCountForWave(selectedWave);
+		this.helpVisible = codeManager.isCodeEditorHelpVisible();
 
 		setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		setBorder(new EmptyBorder(10, 10, 10, 10));
@@ -147,7 +160,7 @@ class HealerCodeEditor extends JPanel
 		add(createBody(), BorderLayout.CENTER);
 
 		BaPanelUi.addTextChangeListener(codeName, this::markDirty);
-		BaPanelUi.addTextChangeListener(legacySource, this::markDirty);
+		BaPanelUi.addTextChangeListener(codeTextSource, this::markDirty);
 		BaPanelUi.addTextChangeListener(restockingInstructions, this::markDirty);
 		BaPanelUi.addTextChangeListener(additionalNotes, this::markDirty);
 		overstockCombo.addActionListener(event -> markDirty());
@@ -210,13 +223,18 @@ class HealerCodeEditor extends JPanel
 		row.add(Box.createHorizontalStrut(6));
 		row.add(codeActionButton);
 		row.add(Box.createHorizontalGlue());
-		row.add(legacyModeButton);
+		row.add(helpButton);
+		row.add(Box.createHorizontalStrut(6));
+		row.add(textViewButton);
 		return row;
 	}
 
 	private JPanel createBody()
 	{
 		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		setupHelpPanel();
+		panel.add(helpPanel);
+		panel.add(helpGap);
 		panel.add(label("Name", true));
 		panel.add(Box.createVerticalStrut(6));
 		BaPanelUi.styleTextInput(codeName, EDITOR_WIDTH, CONTROL_HEIGHT);
@@ -225,7 +243,7 @@ class HealerCodeEditor extends JPanel
 		modePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		modePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		modePanel.add(createAdvancedBody(), ADVANCED_CARD);
-		modePanel.add(createLegacyBody(), LEGACY_CARD);
+		modePanel.add(createTextBody(), TEXT_CARD);
 		panel.add(modePanel);
 		panel.add(Box.createVerticalGlue());
 		panel.add(createActionRow());
@@ -243,15 +261,167 @@ class HealerCodeEditor extends JPanel
 		return panel;
 	}
 
-	private JPanel createLegacyBody()
+	private JPanel createTextBody()
 	{
-		BaPanelUi.styleTextArea(legacySource, 18);
+		BaPanelUi.styleTextArea(codeTextSource, 10);
 
 		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		panel.add(label("Code", true));
 		panel.add(Box.createVerticalStrut(6));
-		panel.add(BaPanelUi.wrapTextArea(legacySource, EDITOR_WIDTH, 520));
+		panel.add(BaPanelUi.wrapTextArea(codeTextSource, EDITOR_WIDTH, TEXT_CODE_AREA_HEIGHT));
 		return panel;
+	}
+
+	private void setupHelpPanel()
+	{
+		helpPanel.setBorder(new EmptyBorder(8, 10, 8, 10));
+		helpPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		helpPanel.setMaximumSize(new Dimension(EDITOR_WIDTH, Integer.MAX_VALUE));
+		refreshHelpPanel();
+	}
+
+	private void toggleHelp()
+	{
+		helpVisible = !helpVisible;
+		codeManager.setCodeEditorHelpVisible(helpVisible);
+		refreshHelpPanel();
+	}
+
+	private void refreshHelpPanel()
+	{
+		helpButton.setText(helpVisible ? "Hide Help" : "Show Help");
+		helpPanel.removeAll();
+		helpPanel.setVisible(helpVisible);
+		helpGap.setVisible(helpVisible);
+
+		if (helpVisible)
+		{
+			if (textMode)
+			{
+				addTextViewHelp();
+			}
+			else
+			{
+				addStructuredHelp();
+			}
+		}
+
+		helpPanel.revalidate();
+		helpPanel.repaint();
+	}
+
+	private void addStructuredHelp()
+	{
+		helpPanel.add(linkedHelpLine(
+				"To begin, select the " + helpEmphasis("wave")
+						+ " you'd like to create a code for. Simple codes can be created by adding "
+						+ helpEmphasis("food counts") + " and " + helpEmphasis("timings")
+						+ " to each healer in the table below. To paste in an existing code or type more advanced syntax, switch to the "
+						+ helpLink("text-view", "Text View") + "."
+		));
+	}
+
+	private void addTextViewHelp()
+	{
+		helpPanel.add(linkedHelpLine(
+				"Standard healer code notation is supported, plus some advanced features. Paste a code in the area below to automatically attempt to convert it to a format the plugin supports. Switch back to the "
+						+ helpLink("structured-editor", "Structured Editor") + " to ensure your code has been parsed properly."
+		));
+		helpPanel.add(Box.createVerticalStrut(8));
+		helpPanel.add(helpLine(
+				helpEmphasis("Numbers") + " separated by hyphens correspond to each healer as spawned, e.g. "
+						+ helpCode("1-2-3-4") + "."
+		));
+		helpPanel.add(Box.createVerticalStrut(6));
+		helpPanel.add(helpLine(
+				helpEmphasis("Backslashes") + " or " + helpEmphasis("newlines") + " indicate call changes."
+		));
+		helpPanel.add(Box.createVerticalStrut(6));
+		helpPanel.add(helpLine(
+				helpEmphasis("(Parentheses)") + " indicate that the last food must be used "
+						+ helpEmphasis("at") + " or " + helpEmphasis("after") + " this time, e.g. "
+						+ helpCode("6(18)") + "."
+		));
+		helpPanel.add(Box.createVerticalStrut(6));
+		helpPanel.add(helpLine(
+				helpEmphasis("[Square brackets]") + " indicate that the last food must be used "
+						+ helpEmphasis("before") + " this time, e.g. " + helpCode("1[45]") + "."
+		));
+		helpPanel.add(Box.createVerticalStrut(6));
+		helpPanel.add(helpLine(
+				"Food separated by a " + helpEmphasis("slash")
+						+ " indicates that either amount of food can be used, e.g. " + helpCode("1/2")
+						+ ". This impacts display only - code execution in-game only uses the first number."
+		));
+		helpPanel.add(Box.createVerticalStrut(6));
+		helpPanel.add(helpLine(
+				"Food separated by a " + helpEmphasis("comma")
+						+ " indicates food that should be used before and after a restock, during the same call, e.g. "
+						+ helpCode("6,2") + "."
+		));
+		helpPanel.add(Box.createVerticalStrut(6));
+		helpPanel.add(helpLine(
+				"Additional text and text preceded by " + helpEmphasis("// two slashes")
+						+ " are treated as additional notes."
+		));
+	}
+
+	private JLabel helpLine(String text)
+	{
+		JLabel label = label("<html><div width='" + TEXT_HELP_WIDTH + "'>" + text + "</div></html>", false);
+		label.setFont(FontManager.getRunescapeFont());
+		label.setMaximumSize(new Dimension(TEXT_HELP_WIDTH, Integer.MAX_VALUE));
+		return label;
+	}
+
+	private JEditorPane linkedHelpLine(String text)
+	{
+		JEditorPane pane = new JEditorPane("text/html",
+				"<html><body style='margin:0; padding:0; color:" + toHex(ColorScheme.TEXT_COLOR) + ";'>"
+						+ "<div width='" + TEXT_HELP_WIDTH + "'>" + text + "</div></body></html>");
+		pane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+		pane.setFont(FontManager.getRunescapeFont());
+		pane.setEditable(false);
+		pane.setOpaque(false);
+		pane.setBorder(BorderFactory.createEmptyBorder());
+		pane.setAlignmentX(Component.LEFT_ALIGNMENT);
+		pane.addHyperlinkListener(event ->
+		{
+			if (event.getEventType() != HyperlinkEvent.EventType.ACTIVATED)
+			{
+				return;
+			}
+
+			String action = event.getDescription();
+			if ("text-view".equals(action) && !textMode)
+			{
+				toggleTextView();
+			}
+			else if ("structured-editor".equals(action) && textMode)
+			{
+				toggleTextView();
+			}
+		});
+		pane.setSize(TEXT_HELP_WIDTH, Short.MAX_VALUE);
+		Dimension preferred = pane.getPreferredSize();
+		pane.setMaximumSize(new Dimension(TEXT_HELP_WIDTH, preferred.height));
+		return pane;
+	}
+
+	private String helpEmphasis(String text)
+	{
+		return "<b><font color='" + toHex(ColorScheme.BRAND_ORANGE) + "'>" + text + "</font></b>";
+	}
+
+	private String helpLink(String action, String text)
+	{
+		return "<a href='" + escapeHtml(action) + "'><b><font color='" + toHex(ColorScheme.BRAND_ORANGE) + "'>"
+				+ escapeHtml(text) + "</font></b></a>";
+	}
+
+	private String helpCode(String text)
+	{
+		return "<font color='" + toHex(BaPanelUi.ACTION_CONTROL_TEXT_COLOR) + "'><b>" + escapeHtml(text) + "</b></font>";
 	}
 
 	private JPanel createOptionsRow()
@@ -285,6 +455,7 @@ class HealerCodeEditor extends JPanel
 		Map<Integer, String> expectedTimeTextByOrder = currentExpectedTimeTextByOrder();
 		expectedTimeFields.clear();
 		activeFoodField = null;
+		activeAdvancedField = null;
 		activeAfterField = null;
 		activeBeforeField = null;
 		activeExactField = null;
@@ -488,10 +659,19 @@ class HealerCodeEditor extends JPanel
 		activeTimingOption = cellTimingOptions.getOrDefault(key, CellTimingOption.fromInstruction(instruction));
 
 		activeFoodField = null;
-		if (activeTimingOption != CellTimingOption.SPAM)
+		activeAdvancedField = null;
+		if (activeTimingOption == CellTimingOption.ADVANCED)
+		{
+			activeAdvancedField = new JTextField(advancedText(instruction));
+			BaPanelUi.styleTextInput(activeAdvancedField, ADVANCED_FIELD_WIDTH, CONTROL_HEIGHT);
+			activeAdvancedField.setHorizontalAlignment(SwingConstants.CENTER);
+			BaPanelUi.addTextChangeListener(activeAdvancedField, this::markDirty);
+			addCommitOnFocusLost(activeAdvancedField, key);
+		}
+		else if (activeTimingOption != CellTimingOption.SPAM)
 		{
 			activeFoodField = new JSpinner(new SpinnerNumberModel(instruction == null ? 0 : instruction.getTargetFoodCount(), 0, 99, 1));
-			BaPanelUi.styleSpinner(activeFoodField, 42, CONTROL_HEIGHT);
+			BaPanelUi.styleSpinner(activeFoodField, FOOD_FIELD_WIDTH, CONTROL_HEIGHT);
 			activeFoodField.addChangeListener(event -> markDirty());
 			addCommitOnFocusLost(activeFoodField, key);
 			if (activeFoodField.getEditor() instanceof JSpinner.DefaultEditor)
@@ -513,7 +693,11 @@ class HealerCodeEditor extends JPanel
 
 		JPanel topRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
 		topRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		if (activeTimingOption == CellTimingOption.SPAM)
+		if (activeTimingOption == CellTimingOption.ADVANCED)
+		{
+			topRow.add(activeAdvancedField);
+		}
+		else if (activeTimingOption == CellTimingOption.SPAM)
 		{
 			JLabel spamLabel = new JLabel("X");
 			spamLabel.setForeground(ColorScheme.TEXT_COLOR);
@@ -551,7 +735,9 @@ class HealerCodeEditor extends JPanel
 		activeBeforeField = null;
 		activeExactField = null;
 
-		if (activeTimingOption == CellTimingOption.NONE || activeTimingOption == CellTimingOption.SPAM)
+		if (activeTimingOption == CellTimingOption.NONE
+				|| activeTimingOption == CellTimingOption.ADVANCED
+				|| activeTimingOption == CellTimingOption.SPAM)
 		{
 			return null;
 		}
@@ -654,12 +840,18 @@ class HealerCodeEditor extends JPanel
 
 	private void applyTimingOption(CellKey key, CellTimingOption option)
 	{
-		HealerInstruction current = activeCell != null && activeCell.equals(key) && activeFoodField != null
+		HealerInstruction current = activeCell != null && activeCell.equals(key)
 				? activeInstructionFromEditor()
 				: instructionForCell(key).copy();
 		Integer reusableSeconds = current.getTimingSeconds();
 		HealerInstruction updated;
-		if (option == CellTimingOption.SPAM)
+		if (option == CellTimingOption.ADVANCED)
+		{
+			updated = current.copy();
+			updated.setAdvanced(true);
+			updated.setRaw(advancedText(current));
+		}
+		else if (option == CellTimingOption.SPAM)
 		{
 			updated = new HealerInstruction(0, null, null, null, "X");
 		}
@@ -735,7 +927,11 @@ class HealerCodeEditor extends JPanel
 
 	private void requestActiveEditorFocus()
 	{
-		if (activeAfterField != null)
+		if (activeAdvancedField != null)
+		{
+			activeAdvancedField.requestFocusInWindow();
+		}
+		else if (activeAfterField != null)
 		{
 			activeAfterField.requestFocusInWindow();
 		}
@@ -763,10 +959,7 @@ class HealerCodeEditor extends JPanel
 		commitActiveCell();
 		activeCell = key;
 		rebuildCodeGrid();
-		if (activeFoodField != null)
-		{
-			activeFoodField.requestFocusInWindow();
-		}
+		requestActiveEditorFocus();
 	}
 
 	private void commitActiveCell()
@@ -781,6 +974,7 @@ class HealerCodeEditor extends JPanel
 		activeCell = null;
 		activeEditorPanel = null;
 		activeFoodField = null;
+		activeAdvancedField = null;
 		activeAfterField = null;
 		activeBeforeField = null;
 		activeExactField = null;
@@ -788,6 +982,15 @@ class HealerCodeEditor extends JPanel
 
 	private HealerInstruction activeInstructionFromEditor()
 	{
+		if (activeTimingOption == CellTimingOption.ADVANCED)
+		{
+			String text = activeAdvancedField == null ? "" : activeAdvancedField.getText();
+			HealerInstruction instruction = HealerCodeParser.parseInstruction(text);
+			instruction.setAdvanced(true);
+			instruction.setRaw(text == null ? "" : text.trim());
+			return instruction;
+		}
+
 		if (activeTimingOption == CellTimingOption.SPAM)
 		{
 			return new HealerInstruction(0, null, null, null, "X");
@@ -822,26 +1025,12 @@ class HealerCodeEditor extends JPanel
 
 	private static String formatCellInstruction(HealerInstruction instruction)
 	{
-		if (instruction != null && !instruction.hasTarget() && instruction.getRaw() != null && !instruction.getRaw().trim().isEmpty())
-		{
-			return instruction.getRaw().trim();
-		}
+		return HealerCodeFormatter.formatInstruction(instruction);
+	}
 
-		int food = instruction == null ? 0 : instruction.getTargetFoodCount();
-		StringBuilder builder = new StringBuilder(String.valueOf(food));
-		if (instruction != null && instruction.getAfterSeconds() != null)
-		{
-			builder.append('(').append(instruction.getAfterSeconds()).append(')');
-		}
-		if (instruction != null && instruction.getBeforeSeconds() != null)
-		{
-			builder.append('[').append(instruction.getBeforeSeconds()).append(']');
-		}
-		if (instruction != null && instruction.getExactSeconds() != null)
-		{
-			builder.append('{').append(instruction.getExactSeconds()).append('}');
-		}
-		return builder.toString();
+	private static String advancedText(HealerInstruction instruction)
+	{
+		return HealerCodeFormatter.formatInstruction(instruction);
 	}
 
 	private JPanel createTextAreas()
@@ -941,10 +1130,9 @@ class HealerCodeEditor extends JPanel
 			selectedCodeId = code.getId();
 			selectedWave = code.getWave();
 			selectWaveComboValue();
-			codeLegacyMode = code.isLegacyMode();
-			textMode = codeLegacyMode;
-			legacySource.setText(code.getSourceText());
-			textSnapshot = legacySource.getText();
+			textMode = false;
+			codeTextSource.setText(code.getSourceText());
+			textSnapshot = codeTextSource.getText();
 			textChangedAfterSnapshot = false;
 			loadAdvancedFields(code);
 			updateModeView();
@@ -964,9 +1152,8 @@ class HealerCodeEditor extends JPanel
 		{
 			selectedCodeId = null;
 			codeName.setText("");
-			codeLegacyMode = false;
 			textMode = false;
-			legacySource.setText("");
+			codeTextSource.setText("");
 			visibleCallCount = defaultVisibleCallCountForWave(selectedWave);
 			activeCell = null;
 			activeEditorPanel = null;
@@ -1027,21 +1214,21 @@ class HealerCodeEditor extends JPanel
 		loadExpectedTimes(code);
 	}
 
-	private void toggleLegacyMode()
+	private void toggleTextView()
 	{
 		refreshing = true;
 		try
 		{
 			if (textMode)
 			{
-				if (codeLegacyMode || textChangedAfterSnapshot)
+				if (textChangedAfterSnapshot)
 				{
 					WaveCode parsed = HealerCodeParser.parseWaveCode(
 							selectedCodeId,
 							codeName.getText() == null ? "" : codeName.getText().trim(),
 							selectedWave,
 							false,
-							legacySource.getText()
+							codeTextSource.getText()
 					);
 					loadAdvancedFields(parsed);
 				}
@@ -1050,8 +1237,8 @@ class HealerCodeEditor extends JPanel
 			else
 			{
 				WaveCode code = advancedDraft(false);
-				legacySource.setText(code.getSourceText());
-				textSnapshot = legacySource.getText();
+				codeTextSource.setText(code.getSourceText());
+				textSnapshot = codeTextSource.getText();
 				textChangedAfterSnapshot = false;
 				textMode = true;
 			}
@@ -1065,9 +1252,10 @@ class HealerCodeEditor extends JPanel
 
 	private void updateModeView()
 	{
-		modeLayout.show(modePanel, textMode ? LEGACY_CARD : ADVANCED_CARD);
-		legacyModeButton.setText(textMode ? "Structured Editor" : "Text View");
-		legacyModeButton.setToolTipText(codeLegacyMode && !textMode ? "View the original legacy text" : "View editable code text");
+		modeLayout.show(modePanel, textMode ? TEXT_CARD : ADVANCED_CARD);
+		textViewButton.setText(textMode ? "Structured Editor" : "Text View");
+		textViewButton.setToolTipText("View editable code text");
+		refreshHelpPanel();
 		modePanel.revalidate();
 		modePanel.repaint();
 	}
@@ -1204,13 +1392,7 @@ class HealerCodeEditor extends JPanel
 
 		if (textMode)
 		{
-			WaveCode code = HealerCodeParser.parseWaveCode(selectedCodeId, name, selectedWave, false, legacySource.getText());
-			if (codeLegacyMode)
-			{
-				code.setLegacyMode(true);
-				code.setLegacySourceText(legacySource.getText());
-			}
-			return code;
+			return HealerCodeParser.parseWaveCode(selectedCodeId, name, selectedWave, false, codeTextSource.getText());
 		}
 
 		return advancedDraft(true);
@@ -1450,7 +1632,7 @@ class HealerCodeEditor extends JPanel
 		if (!refreshing)
 		{
 			dirty = true;
-			if (textMode && textSnapshot != null && !textSnapshot.equals(legacySource.getText()))
+			if (textMode && textSnapshot != null && !textSnapshot.equals(codeTextSource.getText()))
 			{
 				textChangedAfterSnapshot = true;
 			}
@@ -1506,6 +1688,18 @@ class HealerCodeEditor extends JPanel
 		JLabel label = BaPanelUi.label(text, bold);
 		label.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return label;
+	}
+
+	private static String toHex(Color color)
+	{
+		return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+	}
+
+	private static String escapeHtml(String text)
+	{
+		return text.replace("&", "&amp;")
+				.replace("<", "&lt;")
+				.replace(">", "&gt;");
 	}
 
 	private static String labelForHealer(List<String> labels, int healerOrder)
@@ -1631,7 +1825,8 @@ class HealerCodeEditor extends JPanel
 		BEFORE("Before", BEFORE_TOOLTIP),
 		EXACT("Exactly", EXACT_TOOLTIP),
 		WINDOW("Time Range", "The last food for this code must be used at or after the first time and before the second time"),
-		SPAM("Spam", "Spam this healer until it dies");
+		SPAM("Spam", "Spam this healer until it dies"),
+		ADVANCED("Advanced", "Use custom healer code text for this cell");
 
 		private final String label;
 		private final String tooltip;
@@ -1644,12 +1839,16 @@ class HealerCodeEditor extends JPanel
 
 		private static CellTimingOption fromInstruction(HealerInstruction instruction)
 		{
+			if (isSpamInstruction(instruction))
+			{
+				return SPAM;
+			}
+			if (instruction != null && instruction.isAdvanced())
+			{
+				return ADVANCED;
+			}
 			if (instruction == null || !instruction.hasTiming())
 			{
-				if (isSpamInstruction(instruction))
-				{
-					return SPAM;
-				}
 				return NONE;
 			}
 			if (instruction.getAfterSeconds() != null && instruction.getBeforeSeconds() != null)

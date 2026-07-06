@@ -72,8 +72,7 @@ public final class HealerCodeStoreNormalizer
 		code.setRestockingInstructions(parsed.getRestockingInstructions());
 		code.setAdditionalNotes(parsed.getAdditionalNotes());
 		code.setExpectedTimesSeconds(parsed.getExpectedTimesSeconds());
-		code.setLegacyMode(true);
-		code.setLegacySourceText(source);
+		code.clearStoredSourceText();
 		return true;
 	}
 

@@ -2,15 +2,16 @@ package com.bahealerorder.sidepanel.healercodes;
 
 import com.bahealerorder.common.BaClipboard;
 import com.bahealerorder.common.BaIcons;
+import com.bahealerorder.common.BaRoleColors;
 import com.bahealerorder.healer.HealerCodeManager;
 import com.bahealerorder.healer.codes.HealerCodeExportResult;
+import com.bahealerorder.healer.codes.HealerCodeFormatter;
 import com.bahealerorder.healer.codes.RunPreset;
 import com.bahealerorder.healer.codes.WaveCode;
+import com.bahealerorder.sidepanel.BaNotesPreviewPanel;
 import com.bahealerorder.sidepanel.BaPanelUi;
 import com.bahealerorder.sidepanel.BaTransferDialog;
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.Window;
@@ -20,13 +21,11 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -46,23 +45,31 @@ public class HealerCodePanel extends JPanel
 	private static final String EMPTY_WAVE_SELECTION_LABEL = " ";
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
+	private static final int PRESET_TO_WAVES_GAP = 26;
+	private static final int PRESET_SECTION_BOTTOM_PADDING = 8;
 	private static final int WAVE_ROW_GAP = 8;
 	private static final int WAVE_ROW_HORIZONTAL_PADDING = 8;
 	private static final int WAVE_ROW_CONTROL_WIDTH = CONTENT_WIDTH - WAVE_ROW_HORIZONTAL_PADDING * 2;
 	private static final int WAVE_LABEL_WIDTH = 54;
+	private static final int WAVE_LABEL_LEFT_PADDING = 2;
 	private static final int WAVE_MENU_BUTTON_WIDTH = 24;
 	private static final int WAVE_COMBO_WIDTH = WAVE_ROW_CONTROL_WIDTH - WAVE_LABEL_WIDTH - WAVE_MENU_BUTTON_WIDTH - 12;
 	private static final int PRESET_CONTROL_WIDTH = CONTENT_WIDTH - 16;
+	private static final int PRESET_POPUP_WIDTH = 188;
+	private static final int WAVE_CODE_POPUP_WIDTH = 165;
 	private static final int ACTION_ROW_GAP = 6;
 	private static final int ACTION_BUTTON_WIDTH = (PRESET_CONTROL_WIDTH - ACTION_ROW_GAP) / 2;
 
 	private final HealerCodeManager codeManager;
 	private final JPanel contentPanel = new JPanel();
 	private final JPanel waveRowsPanel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-	private final JComboBox<PresetOption> presetCombo = new JComboBox<>();
+	private final JPanel wavePreviewSection = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+	private final JComboBox<BaPanelUi.ComboOption> presetCombo = BaPanelUi.fixedPopupWidthCombo(PRESET_POPUP_WIDTH);
 
 	private JDialog editorDialog;
 	private HealerCodeEditor editorPanel;
+	private int previewWave = -1;
+	private String previewCodeId;
 	private boolean refreshing;
 
 	@Inject
@@ -94,6 +101,7 @@ public class HealerCodePanel extends JPanel
 		{
 			refreshPresetCombo();
 			refreshWaveRows();
+			refreshWavePreview();
 		}
 		finally
 		{
@@ -119,9 +127,14 @@ public class HealerCodePanel extends JPanel
 	private JPanel createPresetSection()
 	{
 		JPanel section = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		section.setBorder(new EmptyBorder(8, 8, 8, 8));
+		section.setBorder(new EmptyBorder(0, 0, PRESET_SECTION_BOTTOM_PADDING, 0));
 		section.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
 		section.setAlignmentX(LEFT_ALIGNMENT);
+
+		JPanel controls = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		controls.setBorder(new EmptyBorder(8, 8, 0, 8));
+		controls.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
+		controls.setAlignmentX(LEFT_ALIGNMENT);
 
 		JLabel title = BaPanelUi.label("Healer Codes", true);
 		title.setHorizontalAlignment(SwingConstants.CENTER);
@@ -129,10 +142,11 @@ public class HealerCodePanel extends JPanel
 		titleRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		BaPanelUi.fixedSize(titleRow, PRESET_CONTROL_WIDTH, CONTROL_HEIGHT);
 		titleRow.add(title, BorderLayout.CENTER);
-		section.add(titleRow);
-		section.add(Box.createVerticalStrut(6));
+		controls.add(titleRow);
+		controls.add(Box.createVerticalStrut(6));
 
 		BaPanelUi.styleCombo(presetCombo, PRESET_CONTROL_WIDTH, CONTROL_HEIGHT);
+		presetCombo.setRenderer(BaPanelUi.comboOptionRenderer(CONTROL_HEIGHT));
 		presetCombo.addActionListener(event ->
 		{
 			if (refreshing)
@@ -140,36 +154,43 @@ public class HealerCodePanel extends JPanel
 				return;
 			}
 
-			PresetOption item = (PresetOption) presetCombo.getSelectedItem();
-			if (item == null || item.id == null)
+			BaPanelUi.ComboOption item = (BaPanelUi.ComboOption) presetCombo.getSelectedItem();
+			if (item == null || item.getId() == null)
 			{
 				codeManager.clearActiveSelections();
+				clearWavePreview();
 			}
 			else
 			{
-				codeManager.applyRunPreset(item.id);
+				codeManager.applyRunPreset(item.getId());
+				clearWavePreview();
 			}
 			refreshAll();
 		});
-		section.add(presetCombo);
-		section.add(Box.createVerticalStrut(6));
-		section.add(BaPanelUi.action("Save Current Selections", this::saveCurrentPreset, PRESET_CONTROL_WIDTH, CONTROL_HEIGHT));
-		section.add(Box.createVerticalStrut(5));
+		controls.add(presetCombo);
+		controls.add(Box.createVerticalStrut(6));
+		controls.add(BaPanelUi.action("Save Current Selections", this::saveCurrentPreset, PRESET_CONTROL_WIDTH, CONTROL_HEIGHT));
+		controls.add(Box.createVerticalStrut(5));
 
 		JPanel presetActionRow = BaPanelUi.horizontalActionRow(PRESET_CONTROL_WIDTH, CONTROL_HEIGHT);
 		presetActionRow.add(BaPanelUi.action("Delete", this::deleteSelectedPreset, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT));
 		presetActionRow.add(BaPanelUi.action("Clear", this::clearSelections, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT));
-		section.add(presetActionRow);
-		section.add(Box.createVerticalStrut(5));
+		controls.add(presetActionRow);
+		controls.add(Box.createVerticalStrut(5));
 
 		JPanel transferRow = BaPanelUi.horizontalActionRow(PRESET_CONTROL_WIDTH, CONTROL_HEIGHT);
 		transferRow.add(BaPanelUi.action("Import", this::importFromClipboard, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT));
 		transferRow.add(BaPanelUi.action("Export", this::exportSelectedPresetToClipboard, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT));
-		section.add(transferRow);
-		section.add(Box.createVerticalStrut(26));
+		controls.add(transferRow);
+		section.add(controls);
+		section.add(Box.createVerticalStrut(PRESET_TO_WAVES_GAP));
 
 		waveRowsPanel.setAlignmentX(LEFT_ALIGNMENT);
 		section.add(waveRowsPanel);
+		wavePreviewSection.setAlignmentX(LEFT_ALIGNMENT);
+		wavePreviewSection.setBorder(new EmptyBorder(0, WAVE_ROW_HORIZONTAL_PADDING, 0, WAVE_ROW_HORIZONTAL_PADDING));
+		wavePreviewSection.setVisible(false);
+		section.add(wavePreviewSection);
 		return section;
 	}
 
@@ -181,14 +202,18 @@ public class HealerCodePanel extends JPanel
 		{
 			String activePresetId = codeManager.getActiveRunPresetId();
 			presetCombo.removeAllItems();
-			presetCombo.addItem(new PresetOption(null, "Select a preset..."));
+			presetCombo.addItem(new BaPanelUi.ComboOption(null, "Select a preset..."));
 
 			for (RunPreset preset : codeManager.getRunPresets())
 			{
-				presetCombo.addItem(new PresetOption(preset.getId(), HealerCodeManager.runPresetDisplayName(preset)));
+				presetCombo.addItem(new BaPanelUi.ComboOption(
+						preset.getId(),
+						HealerCodeManager.runPresetDisplayName(preset),
+						preset.isBuiltIn()
+				));
 			}
 
-			selectPresetComboValue(activePresetId);
+			BaPanelUi.selectComboValue(presetCombo, activePresetId);
 		}
 		finally
 		{
@@ -217,10 +242,11 @@ public class HealerCodePanel extends JPanel
 	{
 		JLabel waveLabel = new JLabel("Wave " + wave);
 		waveLabel.setForeground(ColorScheme.TEXT_COLOR);
+		waveLabel.setBorder(new EmptyBorder(0, WAVE_LABEL_LEFT_PADDING, 0, 0));
 		BaPanelUi.fixedSize(waveLabel, WAVE_LABEL_WIDTH, CONTROL_HEIGHT);
 
-		JComboBox<WaveCodeOption> comboBox = new JComboBox<>();
-		comboBox.setRenderer(new WaveCodeOptionRenderer());
+		JComboBox<BaPanelUi.ComboOption> comboBox = BaPanelUi.fixedPopupWidthCombo(WAVE_CODE_POPUP_WIDTH);
+		comboBox.setRenderer(BaPanelUi.comboOptionRenderer(CONTROL_HEIGHT));
 		BaPanelUi.styleCombo(comboBox, WAVE_COMBO_WIDTH, CONTROL_HEIGHT);
 		populateWaveCombo(comboBox, wave, codeManager.getActiveWaveCodeId(wave));
 		comboBox.addActionListener(event ->
@@ -230,8 +256,9 @@ public class HealerCodePanel extends JPanel
 				return;
 			}
 
-			WaveCodeOption option = (WaveCodeOption) comboBox.getSelectedItem();
-			codeManager.setActiveWaveCodeId(wave, option == null ? null : option.id);
+			String selectedCodeId = BaPanelUi.selectedId(comboBox);
+			codeManager.setActiveWaveCodeId(wave, selectedCodeId);
+			showWavePreview(wave, selectedCodeId);
 			refreshPresetCombo();
 		});
 		JPanel row = new JPanel(new BorderLayout(6, 0));
@@ -244,7 +271,7 @@ public class HealerCodePanel extends JPanel
 		return row;
 	}
 
-	private JButton createWaveMenuButton(int wave, JComboBox<WaveCodeOption> comboBox)
+	private JButton createWaveMenuButton(int wave, JComboBox<BaPanelUi.ComboOption> comboBox)
 	{
 		JButton button = new JButton(BaIcons.verticalEllipsisIcon());
 		button.addActionListener(event -> createWaveActionMenu(wave, comboBox).show(button, 0, button.getHeight()));
@@ -253,7 +280,7 @@ public class HealerCodePanel extends JPanel
 		return button;
 	}
 
-	private JPopupMenu createWaveActionMenu(int wave, JComboBox<WaveCodeOption> comboBox)
+	private JPopupMenu createWaveActionMenu(int wave, JComboBox<BaPanelUi.ComboOption> comboBox)
 	{
 		JPopupMenu menu = new JPopupMenu();
 		menu.add(menuItem("Add", BaIcons.plusIcon(), () -> openEditorDialog(wave, null)));
@@ -279,6 +306,7 @@ public class HealerCodePanel extends JPanel
 		}
 		menu.add(menuItem("Import", BaIcons.importIcon(), () -> importWaveCodeFromClipboard(wave)));
 		menu.add(menuItem("Export", BaIcons.exportIcon(), () -> exportWaveCodeToClipboard(wave)));
+		menu.add(menuItem("Preview", BaIcons.eyeIcon(), () -> previewSelectedWaveCode(wave, comboBox)));
 		return menu;
 	}
 
@@ -291,15 +319,69 @@ public class HealerCodePanel extends JPanel
 		return item;
 	}
 
-	private void populateWaveCombo(JComboBox<WaveCodeOption> comboBox, int wave, String selectedCodeId)
+	private void populateWaveCombo(JComboBox<BaPanelUi.ComboOption> comboBox, int wave, String selectedCodeId)
 	{
 		comboBox.removeAllItems();
-		comboBox.addItem(WaveCodeOption.blank());
+		comboBox.addItem(new BaPanelUi.ComboOption(null, EMPTY_WAVE_SELECTION_LABEL));
 		for (WaveCode code : codeManager.getWaveCodesForWave(wave))
 		{
-			comboBox.addItem(WaveCodeOption.code(code));
+			comboBox.addItem(new BaPanelUi.ComboOption(code.getId(), code.getName(), code.isBuiltIn()));
 		}
-		selectWaveComboValue(comboBox, selectedCodeId);
+		BaPanelUi.selectComboValue(comboBox, selectedCodeId);
+	}
+
+	private void previewSelectedWaveCode(int wave, JComboBox<BaPanelUi.ComboOption> comboBox)
+	{
+		String codeId = selectedWaveCodeId(comboBox);
+		if (codeId == null)
+		{
+			Toolkit.getDefaultToolkit().beep();
+			return;
+		}
+
+		showWavePreview(wave, codeId);
+	}
+
+	private void showWavePreview(int wave, String codeId)
+	{
+		if (codeId == null)
+		{
+			clearWavePreview();
+			return;
+		}
+
+		previewWave = wave;
+		previewCodeId = codeId;
+		refreshWavePreview();
+	}
+
+	private void clearWavePreview()
+	{
+		previewWave = -1;
+		previewCodeId = null;
+		refreshWavePreview();
+	}
+
+	private void refreshWavePreview()
+	{
+		wavePreviewSection.removeAll();
+		WaveCode code = codeManager.findWaveCode(previewCodeId);
+		String previewText = code == null ? "" : HealerCodeFormatter.formatDisplay(code).trim();
+
+		if (code == null || code.getWave() != previewWave || isBlank(previewText))
+		{
+			wavePreviewSection.setVisible(false);
+			wavePreviewSection.revalidate();
+			wavePreviewSection.repaint();
+			return;
+		}
+
+		String heading = isBlank(code.getName()) ? "Wave " + code.getWave() : code.getName().trim();
+		wavePreviewSection.add(Box.createVerticalStrut(12));
+		wavePreviewSection.add(BaNotesPreviewPanel.create(heading, previewText, BaRoleColors.HEALER, PRESET_CONTROL_WIDTH, 0));
+		wavePreviewSection.setVisible(true);
+		wavePreviewSection.revalidate();
+		wavePreviewSection.repaint();
 	}
 
 	private void openDefaultEditorDialog()
@@ -345,15 +427,15 @@ public class HealerCodePanel extends JPanel
 
 	private void saveCurrentPreset()
 	{
-		PresetOption selectedPreset = (PresetOption) presetCombo.getSelectedItem();
-		RunPreset currentPreset = selectedPreset == null ? null : codeManager.findRunPreset(selectedPreset.id);
+		BaPanelUi.ComboOption selectedPreset = (BaPanelUi.ComboOption) presetCombo.getSelectedItem();
+		RunPreset currentPreset = selectedPreset == null ? null : codeManager.findRunPreset(selectedPreset.getId());
 		String name = promptName("Preset name", currentPreset == null ? "" : currentPreset.getName());
 		if (name == null)
 		{
 			return;
 		}
 
-		if (currentPreset == null || !name.equalsIgnoreCase(currentPreset.getName()))
+		if (currentPreset == null || currentPreset.isBuiltIn() || !name.equalsIgnoreCase(currentPreset.getName()))
 		{
 			codeManager.createUserPresetFromActive(name);
 		}
@@ -367,9 +449,16 @@ public class HealerCodePanel extends JPanel
 
 	private void deleteSelectedPreset()
 	{
-		PresetOption item = (PresetOption) presetCombo.getSelectedItem();
-		if (item == null || item.id == null)
+		BaPanelUi.ComboOption item = (BaPanelUi.ComboOption) presetCombo.getSelectedItem();
+		if (item == null || item.getId() == null)
 		{
+			return;
+		}
+
+		RunPreset currentPreset = codeManager.findRunPreset(item.getId());
+		if (currentPreset == null || currentPreset.isBuiltIn())
+		{
+			Toolkit.getDefaultToolkit().beep();
 			return;
 		}
 
@@ -379,7 +468,7 @@ public class HealerCodePanel extends JPanel
 			return;
 		}
 
-		codeManager.deleteUserPreset(item.id);
+		codeManager.deleteUserPreset(item.getId());
 		refreshAll();
 	}
 
@@ -423,6 +512,7 @@ public class HealerCodePanel extends JPanel
 	private void clearSelections()
 	{
 		codeManager.clearActiveSelections();
+		clearWavePreview();
 		refreshAll();
 	}
 
@@ -499,10 +589,14 @@ public class HealerCodePanel extends JPanel
 		BaTransferDialog.show(this, "Import Wave", "Imported and selected " + result.getTypedName() + ".", "Import", result.getSummaryLines());
 	}
 
-	private String selectedWaveCodeId(JComboBox<WaveCodeOption> comboBox)
+	private String selectedWaveCodeId(JComboBox<BaPanelUi.ComboOption> comboBox)
 	{
-		WaveCodeOption option = (WaveCodeOption) comboBox.getSelectedItem();
-		return option == null ? null : option.id;
+		return BaPanelUi.selectedId(comboBox);
+	}
+
+	private static boolean isBlank(String value)
+	{
+		return value == null || value.trim().isEmpty();
 	}
 
 	private String promptName(String title, String defaultValue)
@@ -517,109 +611,4 @@ public class HealerCodePanel extends JPanel
 		return field.getText().trim();
 	}
 
-	private void selectPresetComboValue(String id)
-	{
-		for (int i = 0; i < presetCombo.getItemCount(); i++)
-		{
-			PresetOption item = presetCombo.getItemAt(i);
-			if ((id == null && item.id == null) || (id != null && id.equals(item.id)))
-			{
-				presetCombo.setSelectedIndex(i);
-				return;
-			}
-		}
-
-		if (presetCombo.getItemCount() > 0)
-		{
-			presetCombo.setSelectedIndex(0);
-		}
-	}
-
-	private void selectWaveComboValue(JComboBox<WaveCodeOption> comboBox, String id)
-	{
-		for (int i = 0; i < comboBox.getItemCount(); i++)
-		{
-			WaveCodeOption item = comboBox.getItemAt(i);
-			if ((id == null && item.id == null) || (id != null && id.equals(item.id)))
-			{
-				comboBox.setSelectedIndex(i);
-				return;
-			}
-		}
-
-		if (comboBox.getItemCount() > 0)
-		{
-			comboBox.setSelectedIndex(0);
-		}
-	}
-
-	private static class PresetOption
-	{
-		private final String id;
-		private final String label;
-
-		private PresetOption(String id, String label)
-		{
-			this.id = id;
-			this.label = label;
-		}
-
-		@Override
-		public String toString()
-		{
-			return label;
-		}
-	}
-
-	private static class WaveCodeOption
-	{
-		private final String id;
-		private final String label;
-		private final boolean builtIn;
-
-		private WaveCodeOption(String id, String label, boolean builtIn)
-		{
-			this.id = id;
-			this.label = label;
-			this.builtIn = builtIn;
-		}
-
-		private static WaveCodeOption blank()
-		{
-			return new WaveCodeOption(null, EMPTY_WAVE_SELECTION_LABEL, false);
-		}
-
-		private static WaveCodeOption code(WaveCode code)
-		{
-			return new WaveCodeOption(code.getId(), code.getName(), code.isBuiltIn());
-		}
-
-		@Override
-		public String toString()
-		{
-			return label;
-		}
-	}
-
-	private static class WaveCodeOptionRenderer extends DefaultListCellRenderer
-	{
-		@Override
-		public Component getListCellRendererComponent(
-				JList<?> list,
-				Object value,
-				int index,
-				boolean isSelected,
-				boolean cellHasFocus)
-		{
-			JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-			label.setPreferredSize(new Dimension(label.getPreferredSize().width, CONTROL_HEIGHT));
-			if (!isSelected)
-			{
-				label.setForeground(value instanceof WaveCodeOption && ((WaveCodeOption) value).builtIn
-						? new Color(120, 120, 120)
-						: BaPanelUi.ACTION_CONTROL_TEXT_COLOR);
-			}
-			return label;
-		}
-	}
 }

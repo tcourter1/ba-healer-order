@@ -14,9 +14,8 @@ import com.bahealerorder.common.BaWaveOverviewStore;
 import com.bahealerorder.healer.HealerCodeManager;
 import com.bahealerorder.healer.codes.HealerCodeFormatter;
 import com.bahealerorder.healer.codes.WaveCode;
+import com.bahealerorder.sidepanel.BaNotesPreviewPanel;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
-import com.bahealerorder.tilemarkers.TimedStrategyNote;
-import com.bahealerorder.tilemarkers.TimedStrategyNotes;
 import com.bahealerorder.tilemarkers.TileMarkerRoleContext;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
@@ -48,7 +47,6 @@ import javax.swing.JTextPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
-import javax.swing.text.BadLocationException;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
@@ -78,7 +76,6 @@ public class WaveOverviewPanel extends JPanel
 	private static final int OVERVIEW_COLUMN_GAP = 4;
 	private static final String OVERVIEW_ICON_RESOURCE_PATH = "/com/bahealerorder/overview/";
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
-	private static final Font NOTES_FONT = FontManager.getRunescapeFont();
 	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
 	private static final BaOverviewNpcType[] COLUMNS = {
 			BaOverviewNpcType.RANGER,
@@ -709,72 +706,7 @@ public class WaveOverviewPanel extends JPanel
 
 	private JPanel createNotesPanel(String headingText, String notes, Color headingColor, int currentWaveTick)
 	{
-		int notesHeight = getMessageHeight(notes);
-		int width = CONTENT_WIDTH - 16;
-		int height = notesHeight + CONTROL_HEIGHT + 6;
-		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setPreferredSize(new Dimension(width, height));
-		panel.setMinimumSize(new Dimension(width, height));
-		panel.setMaximumSize(new Dimension(width, height));
-		panel.setAlignmentX(LEFT_ALIGNMENT);
-
-		panel.add(notesHeadingRow(headingText, headingColor, width));
-		panel.add(Box.createVerticalStrut(4));
-		JTextPane notesText = createNotesText(notes, currentWaveTick);
-		fixedSize(notesText, width, notesHeight);
-		panel.add(notesText);
-		return panel;
-	}
-
-	private JPanel notesHeadingRow(String headingText, Color headingColor, int width)
-	{
-		JLabel heading = label(headingText, true);
-		heading.setForeground(headingColor);
-
-		JPanel row = new JPanel(new BorderLayout());
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(row, width, CONTROL_HEIGHT);
-		heading.setHorizontalAlignment(SwingConstants.CENTER);
-		row.add(heading, BorderLayout.CENTER);
-		return row;
-	}
-
-	private JTextPane createNotesText(String notes, int currentWaveTick)
-	{
-		JTextPane text = new JTextPane();
-		text.setFont(NOTES_FONT);
-		text.setEditable(false);
-		text.setFocusable(false);
-		text.setOpaque(false);
-		text.setAlignmentX(LEFT_ALIGNMENT);
-
-		StyledDocument document = text.getStyledDocument();
-		List<TimedStrategyNote> timedNotes = TimedStrategyNotes.parse(notes);
-		int activeIndex = TimedStrategyNotes.getActiveTimedIndex(timedNotes, currentWaveTick);
-
-		for (int i = 0; i < timedNotes.size(); i++)
-		{
-			TimedStrategyNote note = timedNotes.get(i);
-			Color color = TimedStrategyNotes.colorFor(note, i, activeIndex, currentWaveTick, ColorScheme.TEXT_COLOR, Color.GRAY);
-			appendStyledLine(document, note.getText().isEmpty() ? " " : note.getText(), color, i < timedNotes.size() - 1);
-		}
-
-		return text;
-	}
-
-	private void appendStyledLine(StyledDocument document, String line, Color color, boolean addNewline)
-	{
-		SimpleAttributeSet attributes = new SimpleAttributeSet();
-		StyleConstants.setForeground(attributes, color);
-
-		try
-		{
-			document.insertString(document.getLength(), line + (addNewline ? "\n" : ""), attributes);
-		}
-		catch (BadLocationException ignored)
-		{
-			// JTextPane document positions are internal; failing here should not break the overview panel.
-		}
+		return BaNotesPreviewPanel.create(headingText, notes, headingColor, CONTENT_WIDTH - 16, currentWaveTick);
 	}
 
 	private JPanel createRunMetadataPanel(BaWaveOverviewRun run, boolean showMissingDuration)

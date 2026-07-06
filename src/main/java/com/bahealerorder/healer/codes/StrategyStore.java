@@ -10,6 +10,7 @@ public class StrategyStore
 {
 	private int version;
 	private String activeRunPresetId;
+	private Boolean codeEditorHelpVisible = true;
 	private Map<Integer, String> activeWaveCodeIds = new HashMap<>();
 	private List<RunPreset> runPresets = new ArrayList<>();
 	private List<WaveCode> waveCodes = new ArrayList<>();
@@ -32,6 +33,16 @@ public class StrategyStore
 	public void setActiveRunPresetId(String activeRunPresetId)
 	{
 		this.activeRunPresetId = activeRunPresetId;
+	}
+
+	public boolean isCodeEditorHelpVisible()
+	{
+		return codeEditorHelpVisible == null || codeEditorHelpVisible;
+	}
+
+	public void setCodeEditorHelpVisible(boolean codeEditorHelpVisible)
+	{
+		this.codeEditorHelpVisible = codeEditorHelpVisible;
 	}
 
 	public Map<Integer, String> getActiveWaveCodeIds()

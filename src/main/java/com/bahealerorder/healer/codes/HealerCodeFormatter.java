@@ -25,11 +25,6 @@ public final class HealerCodeFormatter
 			return "";
 		}
 
-		if (code.isLegacyMode())
-		{
-			return stripDisplayOnlyLines(code.getSourceText(), code.getName(), code.getWave());
-		}
-
 		return stripDisplayOnlyLines(format(code, false), code.getName(), code.getWave());
 	}
 
@@ -92,7 +87,19 @@ public final class HealerCodeFormatter
 
 	private static boolean hasCallText(CallCode call)
 	{
-		return call != null && !call.getHealerInstructions().isEmpty();
+		if (call == null)
+		{
+			return false;
+		}
+
+		for (HealerInstruction instruction : call.getHealerInstructions())
+		{
+			if (hasMeaningfulInstruction(instruction))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public static String formatCall(CallCode call)
@@ -166,9 +173,58 @@ public final class HealerCodeFormatter
 			{
 				continue;
 			}
+			if (isAllZeroCallLine(line))
+			{
+				continue;
+			}
 			lines.add(rawLine);
 		}
 		return String.join("\n", lines).trim();
+	}
+
+	private static boolean isAllZeroCallLine(String line)
+	{
+		String text = stripInlineComment(line).trim();
+		if (text.isEmpty())
+		{
+			return false;
+		}
+
+		List<HealerInstruction> instructions = HealerCodeParser.parseCodeLine(text);
+		if (instructions.isEmpty())
+		{
+			return false;
+		}
+
+		for (HealerInstruction instruction : instructions)
+		{
+			if (hasMeaningfulInstruction(instruction))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static boolean hasMeaningfulInstruction(HealerInstruction instruction)
+	{
+		if (instruction == null)
+		{
+			return false;
+		}
+		if (instruction.hasTarget() || instruction.hasPostRestockFoodCount())
+		{
+			return true;
+		}
+
+		String raw = instruction.getRaw();
+		return !isBlank(raw) && !raw.trim().matches("0+");
+	}
+
+	private static String stripInlineComment(String line)
+	{
+		int commentIndex = line == null ? -1 : line.indexOf("//");
+		return commentIndex >= 0 ? line.substring(0, commentIndex) : line == null ? "" : line;
 	}
 
 	private static boolean isCodeNameLine(String line, String codeName, int wave)

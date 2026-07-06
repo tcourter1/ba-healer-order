@@ -101,19 +101,37 @@ public class HealerCodeManagerTest
 	}
 
 	@Test
-	public void savesLegacyWaveCodeWithRawSourceText()
+	public void exposesAndAppliesBuiltInRunPresets()
 	{
 		StrategyStore store = new StrategyStore();
 		HealerCodeManager manager = new HealerCodeManager(store, new Gson());
-		WaveCode legacy = HealerCodeParser.parseWaveCode(null, "Legacy", 5, false, "1-2-3");
-		legacy.setLegacyMode(true);
-		legacy.setLegacySourceText("1-2-3");
 
-		WaveCode saved = manager.saveWaveCode(null, legacy);
+		RunPreset builtInPreset = firstBuiltInPreset(manager);
+
+		assertNotNull(builtInPreset);
+
+		manager.applyRunPreset(builtInPreset.getId());
+
+		assertEquals(builtInPreset.getId(), manager.getActiveRunPresetId());
+		assertEquals(builtInPreset.getWaveCodeIds(), manager.getActiveWaveCodeIds());
+	}
+
+	@Test
+	public void savingPresetWithBuiltInNameCreatesUserCopy()
+	{
+		StrategyStore store = new StrategyStore();
+		HealerCodeManager manager = new HealerCodeManager(store, new Gson());
+		RunPreset builtInPreset = firstBuiltInPreset(manager);
+		assertNotNull(builtInPreset);
+		manager.applyRunPreset(builtInPreset.getId());
+
+		RunPreset saved = manager.createUserPresetFromActive(builtInPreset.getName());
 
 		assertNotNull(saved);
-		assertEquals(true, saved.isLegacyMode());
-		assertEquals("1-2-3", saved.getSourceText());
+		assertEquals(false, saved.isBuiltIn());
+		assertEquals(false, builtInPreset.getId().equals(saved.getId()));
+		assertEquals(1, store.getRunPresets().size());
+		assertEquals(saved.getId(), manager.getActiveRunPresetId());
 	}
 
 	@Test
@@ -164,7 +182,6 @@ public class HealerCodeManagerTest
 		assertEquals("user:wave:1-regular", store.getRunPresets().get(0).getWaveCodeId(1));
 		assertEquals("builtin:w4:regular", store.getRunPresets().get(0).getWaveCodeId(4));
 		assertEquals(2, store.getWaveCodes().size());
-		assertEquals(true, store.getWaveCodes().get(0).isLegacyMode());
 		assertEquals("1-1", store.getWaveCodes().get(0).getSourceText());
 
 		HealerCodeManager manager = new HealerCodeManager(store, new Gson());
@@ -177,5 +194,17 @@ public class HealerCodeManagerTest
 			}
 		}
 		assertEquals(1, builtInCount);
+	}
+
+	private static RunPreset firstBuiltInPreset(HealerCodeManager manager)
+	{
+		for (RunPreset preset : manager.getRunPresets())
+		{
+			if (preset.isBuiltIn())
+			{
+				return preset;
+			}
+		}
+		return null;
 	}
 }

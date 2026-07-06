@@ -10,10 +10,12 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
@@ -139,6 +141,16 @@ public final class BaPanelUi
 		fixedSize(comboBox, width, height);
 	}
 
+	public static <T> JComboBox<T> fixedPopupWidthCombo(int popupWidth)
+	{
+		return new FixedPopupWidthComboBox<>(popupWidth);
+	}
+
+	public static DefaultListCellRenderer comboOptionRenderer(int controlHeight)
+	{
+		return new ComboOptionRenderer(controlHeight);
+	}
+
 	public static void styleTextInput(JTextComponent component, int width, int height)
 	{
 		component.setForeground(ACTION_CONTROL_TEXT_COLOR);
@@ -239,11 +251,18 @@ public final class BaPanelUi
 	{
 		private final String id;
 		private final String label;
+		private final boolean builtIn;
 
 		public ComboOption(String id, String label)
 		{
+			this(id, label, false);
+		}
+
+		public ComboOption(String id, String label, boolean builtIn)
+		{
 			this.id = id;
 			this.label = label;
+			this.builtIn = builtIn;
 		}
 
 		public String getId()
@@ -251,10 +270,86 @@ public final class BaPanelUi
 			return id;
 		}
 
+		public boolean isBuiltIn()
+		{
+			return builtIn;
+		}
+
 		@Override
 		public String toString()
 		{
 			return label;
+		}
+	}
+
+	private static class ComboOptionRenderer extends DefaultListCellRenderer
+	{
+		private final int controlHeight;
+
+		private ComboOptionRenderer(int controlHeight)
+		{
+			this.controlHeight = controlHeight;
+		}
+
+		@Override
+		public Component getListCellRendererComponent(
+				JList<?> list,
+				Object value,
+				int index,
+				boolean isSelected,
+				boolean cellHasFocus)
+		{
+			JLabel label = (JLabel) super.getListCellRendererComponent(
+					list,
+					value,
+					index,
+					isSelected,
+					cellHasFocus
+			);
+			label.setPreferredSize(new Dimension(label.getPreferredSize().width, controlHeight));
+			if (!isSelected)
+			{
+				label.setForeground(value instanceof ComboOption && ((ComboOption) value).isBuiltIn()
+						? new Color(120, 120, 120)
+						: ACTION_CONTROL_TEXT_COLOR);
+			}
+			return label;
+		}
+	}
+
+	private static class FixedPopupWidthComboBox<T> extends JComboBox<T>
+	{
+		private final int popupWidth;
+		private boolean layingOut;
+
+		private FixedPopupWidthComboBox(int popupWidth)
+		{
+			this.popupWidth = popupWidth;
+		}
+
+		@Override
+		public void doLayout()
+		{
+			try
+			{
+				layingOut = true;
+				super.doLayout();
+			}
+			finally
+			{
+				layingOut = false;
+			}
+		}
+
+		@Override
+		public Dimension getSize()
+		{
+			Dimension size = super.getSize();
+			if (!layingOut)
+			{
+				size.width = Math.max(size.width, popupWidth);
+			}
+			return size;
 		}
 	}
 }

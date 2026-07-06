@@ -16,8 +16,6 @@ public class WaveCode
 	private boolean alchHorn;
 	private String restockingInstructions;
 	private String additionalNotes;
-	private boolean legacyMode;
-	private String legacySourceText;
 	private String sourceText;
 	private Map<Integer, Integer> expectedTimesSeconds = new HashMap<>();
 	private List<CallCode> calls = new ArrayList<>();
@@ -115,37 +113,14 @@ public class WaveCode
 		this.additionalNotes = additionalNotes;
 	}
 
-	public boolean isLegacyMode()
-	{
-		return legacyMode;
-	}
-
-	public void setLegacyMode(boolean legacyMode)
-	{
-		this.legacyMode = legacyMode;
-	}
-
-	public String getLegacySourceText()
-	{
-		return legacySourceText == null ? "" : legacySourceText;
-	}
-
-	public void setLegacySourceText(String legacySourceText)
-	{
-		this.legacySourceText = legacySourceText;
-		this.sourceText = null;
-	}
-
-	public String getStoredSourceText()
+	String getStoredSourceText()
 	{
 		return sourceText;
 	}
 
-	public void setSourceText(String sourceText)
+	void clearStoredSourceText()
 	{
-		this.sourceText = sourceText;
-		this.legacySourceText = sourceText;
-		this.legacyMode = true;
+		this.sourceText = null;
 	}
 
 	public Map<Integer, Integer> getExpectedTimesSeconds()
@@ -181,11 +156,6 @@ public class WaveCode
 
 	public String getSourceText()
 	{
-		if (legacyMode)
-		{
-			return legacySourceText != null ? legacySourceText : sourceText == null ? "" : sourceText;
-		}
-
 		return HealerCodeFormatter.format(this);
 	}
 

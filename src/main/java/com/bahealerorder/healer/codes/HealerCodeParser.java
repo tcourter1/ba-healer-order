@@ -10,7 +10,9 @@ import java.util.regex.Pattern;
 public final class HealerCodeParser
 {
 	private static final Pattern COUNT_PATTERN = Pattern.compile("^\\s*(\\d+)");
-	private static final Pattern AFTER_PATTERN = Pattern.compile("\\((\\d+)\\)");
+	private static final Pattern VARIABLE_COUNT_PATTERN = Pattern.compile("^\\s*\\d+\\s*/\\s*\\d+");
+	private static final Pattern RESTOCK_COUNT_PATTERN = Pattern.compile("^\\s*\\d+\\s*,\\s*(\\d+)");
+	private static final Pattern AFTER_PATTERN = Pattern.compile("\\((\\d+)(?:\\s*-\\s*\\d+)?\\)");
 	private static final Pattern BEFORE_PATTERN = Pattern.compile("\\[(\\d+)]");
 	private static final Pattern EXACT_PATTERN = Pattern.compile("\\{(\\d+)}");
 	private static final Pattern EXPECTED_TIME_PATTERN = Pattern.compile("#(\\d+)\\s*=\\s*(\\d+)s?", Pattern.CASE_INSENSITIVE);
@@ -34,12 +36,15 @@ public final class HealerCodeParser
 
 			for (String rawLine : sourceText.split("\\\\|\\r?\\n"))
 			{
-				String line = stripComment(rawLine).trim();
+				CommentSplit split = splitComment(rawLine);
+				String line = split.code.trim();
+				if (!split.comment.isEmpty())
+				{
+					notes.add(split.comment);
+				}
 				String lower = line.toLowerCase();
 				HealerCodeOverstock lineOverstock = overstockFromHeader(line);
 
-				// Descriptive lines and commented alternates stay in the source text for
-				// display, but only code-looking lines become sequential BA call entries.
 				if (isMetadataLine(lower, lineOverstock) || !looksLikeCodeLine(line))
 				{
 					if (!line.isEmpty())
@@ -104,7 +109,7 @@ public final class HealerCodeParser
 			return instructions;
 		}
 
-		for (String rawPart : line.split("\\s*[-,]\\s*"))
+		for (String rawPart : splitInstructionParts(line))
 		{
 			String part = rawPart.trim();
 
@@ -141,6 +146,7 @@ public final class HealerCodeParser
 
 		Matcher countMatcher = COUNT_PATTERN.matcher(part);
 		int count = 0;
+		int postRestockCount = 0;
 
 		if (countMatcher.find())
 		{
@@ -154,24 +160,44 @@ public final class HealerCodeParser
 			}
 		}
 
-		return new HealerInstruction(
+		Matcher restockMatcher = RESTOCK_COUNT_PATTERN.matcher(part);
+		if (restockMatcher.find())
+		{
+			try
+			{
+				postRestockCount = Integer.parseInt(restockMatcher.group(1));
+			}
+			catch (NumberFormatException ignored)
+			{
+				postRestockCount = 0;
+			}
+		}
+
+		HealerInstruction instruction = new HealerInstruction(
 				count,
 				firstInt(AFTER_PATTERN, part),
 				firstInt(BEFORE_PATTERN, part),
 				firstInt(EXACT_PATTERN, part),
 				part
 		);
+		instruction.setPostRestockFoodCount(postRestockCount);
+		instruction.setAdvanced(postRestockCount > 0 || VARIABLE_COUNT_PATTERN.matcher(part).find());
+		return instruction;
 	}
 
-	private static String stripComment(String rawLine)
+	private static CommentSplit splitComment(String rawLine)
 	{
 		if (rawLine == null)
 		{
-			return "";
+			return new CommentSplit("", "");
 		}
 
 		int commentIndex = rawLine.indexOf("//");
-		return commentIndex >= 0 ? rawLine.substring(0, commentIndex) : rawLine;
+		if (commentIndex < 0)
+		{
+			return new CommentSplit(rawLine, "");
+		}
+		return new CommentSplit(rawLine.substring(0, commentIndex), rawLine.substring(commentIndex + 2).trim());
 	}
 
 	private static boolean looksLikeCodeLine(String line)
@@ -181,10 +207,43 @@ public final class HealerCodeParser
 			return false;
 		}
 
-		String firstToken = line.split("\\s*[-,]\\s*", 2)[0].trim();
+		List<String> parts = splitInstructionParts(line);
+		String firstToken = parts.isEmpty() ? "" : parts.get(0).trim();
 		return firstToken.equalsIgnoreCase("x")
 				|| firstToken.toLowerCase().contains("spam")
 				|| COUNT_PATTERN.matcher(firstToken).find();
+	}
+
+	private static List<String> splitInstructionParts(String line)
+	{
+		List<String> parts = new ArrayList<>();
+		StringBuilder part = new StringBuilder();
+		int parenDepth = 0;
+
+		for (int i = 0; i < line.length(); i++)
+		{
+			char character = line.charAt(i);
+			if (character == '(')
+			{
+				parenDepth++;
+			}
+			else if (character == ')' && parenDepth > 0)
+			{
+				parenDepth--;
+			}
+
+			if (character == '-' && parenDepth == 0)
+			{
+				parts.add(part.toString().trim());
+				part.setLength(0);
+				continue;
+			}
+
+			part.append(character);
+		}
+
+		parts.add(part.toString().trim());
+		return parts;
 	}
 
 	private static Integer firstInt(Pattern pattern, String value)
@@ -255,6 +314,18 @@ public final class HealerCodeParser
 			{
 				// Ignore invalid fragments in an otherwise parseable text representation.
 			}
+		}
+	}
+
+	private static class CommentSplit
+	{
+		private final String code;
+		private final String comment;
+
+		private CommentSplit(String code, String comment)
+		{
+			this.code = code == null ? "" : code;
+			this.comment = comment == null ? "" : comment;
 		}
 	}
 }
