@@ -7,6 +7,7 @@ import com.bahealerorder.common.BaHealerSyncMessage;
 import com.bahealerorder.common.BaPartySyncService;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.BaRoleDetector;
+import com.bahealerorder.common.BaScrollerController;
 import com.bahealerorder.common.BaWaveLifecycleService;
 import com.bahealerorder.common.BaWaveLifecycleService.WaveStart;
 import com.bahealerorder.common.BaWaveOverviewService;
@@ -15,6 +16,7 @@ import com.bahealerorder.defender.DefenderController;
 import com.bahealerorder.healer.HealerController;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerController;
 import com.google.inject.Provides;
+import java.util.Locale;
 import javax.inject.Inject;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -35,6 +37,7 @@ import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.PostMenuSort;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.config.ConfigManager;
@@ -82,10 +85,14 @@ public class BaHealerOrderPlugin extends Plugin
 	@Inject
 	private BaWaveLifecycleService waveLifecycleService;
 
+	@Inject
+	private BaScrollerController scrollerController;
+
 	@Override
 	protected void startUp()
 	{
 		partySyncService.startUp();
+		scrollerController.startUp();
 		attackerController.startUp();
 		defenderController.startUp();
 		generalTileMarkerController.startUp();
@@ -99,12 +106,14 @@ public class BaHealerOrderPlugin extends Plugin
 		generalTileMarkerController.shutDown();
 		defenderController.shutDown();
 		attackerController.shutDown();
+		scrollerController.shutDown();
 		partySyncService.shutDown();
 	}
 
 	@Subscribe
 	public void onNpcSpawned(NpcSpawned event)
 	{
+		scrollerController.onNpcSpawned(event);
 		attackerController.onNpcSpawned(event);
 		defenderController.onNpcSpawned(event);
 		healerController.onNpcSpawned(event);
@@ -113,6 +122,7 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onNpcDespawned(NpcDespawned event)
 	{
+		scrollerController.onNpcDespawned(event);
 		attackerController.onNpcDespawned(event);
 		defenderController.onNpcDespawned(event);
 		healerController.onNpcDespawned(event);
@@ -137,9 +147,16 @@ public class BaHealerOrderPlugin extends Plugin
 	}
 
 	@Subscribe
+	public void onVarbitChanged(VarbitChanged event)
+	{
+		scrollerController.onVarbitChanged(event);
+	}
+
+	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
 		partySyncService.onMenuOptionClicked(event);
+		scrollerController.onMenuOptionClicked(event);
 		attackerController.onMenuOptionClicked(event);
 		healerController.onMenuOptionClicked(event);
 	}
@@ -192,6 +209,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		roleDetector.onGameTick(event);
 		partySyncService.onGameTick(event);
+		scrollerController.onGameTick(event);
 		defenderController.onGameTick(event);
 		healerController.onGameTick(event);
 		waveOverviewService.onGameTick();
@@ -255,6 +273,7 @@ public class BaHealerOrderPlugin extends Plugin
 		roleDetector.onGameStateChanged(event);
 		waveOverviewService.onGameStateChanged(event);
 		partySyncService.onGameStateChanged(event);
+		scrollerController.onGameStateChanged(event);
 		attackerController.onGameStateChanged(event);
 		defenderController.onGameStateChanged(event);
 		healerController.onGameStateChanged(event);
@@ -313,6 +332,7 @@ public class BaHealerOrderPlugin extends Plugin
 		partySyncService.onWaveEnded(wave);
 		attackerController.onWaveEnded();
 		defenderController.onWaveEnded();
+		scrollerController.onWaveEnded();
 		healerController.onWaveEnded();
 	}
 
@@ -320,7 +340,7 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		if (arguments.length < 1)
 		{
-			addChatMessage("Usage: ::bawave <0-10> [role]");
+			addBaWaveUsage();
 			return;
 		}
 
@@ -331,7 +351,7 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 		catch (NumberFormatException ex)
 		{
-			addChatMessage("Usage: ::bawave <0-10> [role]");
+			addBaWaveUsage();
 			return;
 		}
 
@@ -344,16 +364,48 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		BaRole role = null;
-		if (arguments.length >= 2)
+		boolean scroller = false;
+		boolean queenSpawned = false;
+		boolean omegaLoaded = false;
+
+		for (int i = 1; i < arguments.length; i++)
 		{
-			role = parseBaWaveRole(arguments[1]);
-			if (role == null)
+			String option = arguments[i] == null ? "" : arguments[i].trim().toLowerCase(Locale.ROOT);
+			if (option.isEmpty())
 			{
-				addChatMessage("Unknown BA role: " + arguments[1]);
+				continue;
+			}
+
+			if ("queen".equals(option))
+			{
+				queenSpawned = true;
+				continue;
+			}
+
+			if ("omega".equals(option))
+			{
+				omegaLoaded = true;
+				continue;
+			}
+
+			if ("scroller".equals(option))
+			{
+				scroller = true;
+				continue;
+			}
+
+			BaRole parsedRole = parseBaWaveRole(option);
+			if (parsedRole == null)
+			{
+				addChatMessage("Unknown ::bawave option: " + arguments[i]);
+				addBaWaveUsage();
 				return;
 			}
+
+			role = parsedRole;
 		}
-		else
+
+		if (role == null)
 		{
 			role = roleDetector.getCurrentRole();
 			if (role == null)
@@ -370,9 +422,17 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		roleDetector.setDevRoleOverride(role);
+		scrollerController.setDevOverrides(scroller, queenSpawned, omegaLoaded);
 		startWave(waveStart);
 
-		addChatMessage("BA Utilities dev wave " + wave + " started as " + role.getDisplayName() + ".");
+		addChatMessage("BA Utilities dev wave " + wave + " started as "
+				+ (scroller ? "Scroller" : role.getDisplayName()) + ".");
+	}
+
+	private void addBaWaveUsage()
+	{
+		addChatMessage("Usage: ::bawave wave role [queen] [omega]");
+		addChatMessage("Roles: attacker, collector, defender, healer, scroller. Use wave 0 to clear.");
 	}
 
 	private BaRole parseBaWaveRole(String rawRole)
