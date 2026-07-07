@@ -106,6 +106,28 @@ public class HealerCodeParserTest
 	}
 
 	@Test
+	public void parsesCustomOverstockAndExpectedWaveEnd()
+	{
+		WaveCode code = HealerCodeParser.parseWaveCode(
+				null,
+				"Practice",
+				9,
+				false,
+				"Alch horn\nOverstock: ladder left then extra red\n2(18)-4-1-1\nExpected Wave End: 69s\nExpected: #7=48s"
+		);
+
+		assertEquals(true, code.isAlchHorn());
+		assertEquals(HealerCodeOverstock.CUSTOM, code.getOverstock());
+		assertEquals("ladder left then extra red", code.getCustomOverstockInstructions());
+		assertEquals(Integer.valueOf(69), code.getExpectedWaveEndSeconds());
+		assertEquals(Integer.valueOf(48), code.getExpectedTimeSeconds(7));
+		assertEquals(
+				"Alch horn\nOverstock: ladder left then extra red\n2(18)-4-1-1\nExpected Wave End: 69s\nExpected: #7=48s",
+				code.getSourceText()
+		);
+	}
+
+	@Test
 	public void parsesCommentsIntoAdditionalNotes()
 	{
 		WaveCode code = HealerCodeParser.parseWaveCode(
@@ -132,6 +154,20 @@ public class HealerCodeParserTest
 		);
 
 		assertEquals("2-2", HealerCodeFormatter.formatDisplay(code));
+	}
+
+	@Test
+	public void displayTextShowsCustomOverstockInstructions()
+	{
+		WaveCode code = HealerCodeParser.parseWaveCode(
+				null,
+				"Practice",
+				5,
+				false,
+				"Overstock: take two from dispenser\n2-2\nExpected Wave End: 54s\nExpected: #5=48s"
+		);
+
+		assertEquals("take two from dispenser\n2-2", HealerCodeFormatter.formatDisplay(code));
 	}
 
 }

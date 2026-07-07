@@ -6,6 +6,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Insets;
 import java.util.List;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -31,14 +32,24 @@ public final class BaNotesPreviewPanel
 
 	public static JPanel create(String headingText, String notes, Color headingColor, int width, int currentWaveTick)
 	{
-		int notesHeight = getMessageHeight(notes);
+		return create(headingText, notes, headingColor, width, currentWaveTick, 0, 0, CONTROL_HEIGHT);
+	}
+
+	public static JPanel create(String headingText, String notes, Color headingColor, int width, int currentWaveTick, int textTopPadding, int textBottomPadding)
+	{
+		return create(headingText, notes, headingColor, width, currentWaveTick, textTopPadding, textBottomPadding, 17);
+	}
+
+	private static JPanel create(String headingText, String notes, Color headingColor, int width, int currentWaveTick, int textTopPadding, int textBottomPadding, int lineHeight)
+	{
+		int notesHeight = getMessageHeight(notes, textTopPadding, textBottomPadding, lineHeight);
 		int height = notesHeight + CONTROL_HEIGHT + 6;
 		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		fixedSize(panel, width, height);
 
 		panel.add(notesHeadingRow(headingText, headingColor, width));
 		panel.add(Box.createVerticalStrut(4));
-		JTextPane notesText = createNotesText(notes, currentWaveTick);
+		JTextPane notesText = createNotesText(notes, currentWaveTick, textTopPadding, textBottomPadding);
 		fixedSize(notesText, width, notesHeight);
 		panel.add(notesText);
 		return panel;
@@ -58,7 +69,7 @@ public final class BaNotesPreviewPanel
 		return row;
 	}
 
-	private static JTextPane createNotesText(String notes, int currentWaveTick)
+	private static JTextPane createNotesText(String notes, int currentWaveTick, int textTopPadding, int textBottomPadding)
 	{
 		JTextPane text = new JTextPane();
 		text.setFont(FontManager.getRunescapeFont());
@@ -66,6 +77,7 @@ public final class BaNotesPreviewPanel
 		text.setFocusable(false);
 		text.setOpaque(false);
 		text.setAlignmentX(Component.LEFT_ALIGNMENT);
+		text.setMargin(new Insets(textTopPadding, 0, textBottomPadding, 0));
 
 		StyledDocument document = text.getStyledDocument();
 		List<TimedStrategyNote> timedNotes = TimedStrategyNotes.parse(notes);
@@ -96,10 +108,10 @@ public final class BaNotesPreviewPanel
 		}
 	}
 
-	private static int getMessageHeight(String text)
+	private static int getMessageHeight(String text, int textTopPadding, int textBottomPadding, int lineHeight)
 	{
 		int lines = text == null || text.isEmpty() ? 1 : text.split("\\R", -1).length;
-		return Math.max(CONTROL_HEIGHT * 2, CONTROL_HEIGHT * lines);
+		return Math.max(CONTROL_HEIGHT * 2, textTopPadding + textBottomPadding + lineHeight * lines);
 	}
 
 	private static JPanel verticalPanel(Color background)

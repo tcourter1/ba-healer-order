@@ -947,6 +947,8 @@ public class HealerCodeManager
 		);
 		copy.setOverstock(source.getOverstock());
 		copy.setAlchHorn(source.isAlchHorn());
+		copy.setCustomOverstockInstructions(source.getCustomOverstockInstructions());
+		copy.setExpectedWaveEndSeconds(source.getExpectedWaveEndSeconds());
 		copy.setRestockingInstructions(source.getRestockingInstructions());
 		copy.setAdditionalNotes(source.getAdditionalNotes());
 		copy.setExpectedTimesSeconds(source.getExpectedTimesSeconds());
@@ -1051,6 +1053,8 @@ public class HealerCodeManager
 				&& sameText(first.getName(), second.getName())
 				&& first.getOverstock() == second.getOverstock()
 				&& first.isAlchHorn() == second.isAlchHorn()
+				&& sameText(first.getCustomOverstockInstructions(), second.getCustomOverstockInstructions())
+				&& sameInteger(first.getExpectedWaveEndSeconds(), second.getExpectedWaveEndSeconds())
 				&& sameText(first.getRestockingInstructions(), second.getRestockingInstructions())
 				&& sameText(first.getAdditionalNotes(), second.getAdditionalNotes())
 				&& first.getExpectedTimesSeconds().equals(second.getExpectedTimesSeconds())

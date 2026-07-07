@@ -89,6 +89,8 @@ class HealerCodeEditor extends JPanel
 	private static final int CODE_ACTION_BUTTON_WIDTH = 120;
 	private static final int CODE_POPUP_WIDTH = 195;
 	private static final int NAME_FIELD_WIDTH = 360;
+	private static final int CUSTOM_OVERSTOCK_FIELD_WIDTH = 220;
+	private static final int EXPECTED_WAVE_END_FIELD_WIDTH = 54;
 	private static final int TEXT_CODE_AREA_HEIGHT = 300;
 	private static final int TEXT_HELP_WIDTH = EDITOR_WIDTH - 20;
 	private static final int WAVE_TO_CODE_GAP = 54;
@@ -112,7 +114,9 @@ class HealerCodeEditor extends JPanel
 	private final JTextField codeName = new JTextField();
 	private final JTextArea codeTextSource = new JTextArea();
 	private final JComboBox<HealerCodeOverstock> overstockCombo = new JComboBox<>(HealerCodeOverstock.values());
+	private final JTextField customOverstockInstructions = new PlaceholderTextField("", "Custom instructions...");
 	private final JCheckBox alchHorn = new JCheckBox();
+	private final JTextField expectedWaveEnd = new JTextField();
 	private final JTextArea restockingInstructions = new JTextArea();
 	private final JTextArea additionalNotes = new JTextArea();
 	private final JButton codeActionButton = new JButton();
@@ -167,9 +171,15 @@ class HealerCodeEditor extends JPanel
 
 		BaPanelUi.addTextChangeListener(codeName, this::markDirty);
 		BaPanelUi.addTextChangeListener(codeTextSource, this::markDirty);
+		BaPanelUi.addTextChangeListener(customOverstockInstructions, this::markDirty);
+		BaPanelUi.addTextChangeListener(expectedWaveEnd, this::markDirty);
 		BaPanelUi.addTextChangeListener(restockingInstructions, this::markDirty);
 		BaPanelUi.addTextChangeListener(additionalNotes, this::markDirty);
-		overstockCombo.addActionListener(event -> markDirty());
+		overstockCombo.addActionListener(event ->
+		{
+			updateCustomOverstockVisibility();
+			markDirty();
+		});
 		alchHorn.addActionListener(event -> markDirty());
 
 		refreshCodeCombo(initialCodeId);
@@ -449,6 +459,8 @@ class HealerCodeEditor extends JPanel
 	private JPanel createOptionsRow()
 	{
 		BaPanelUi.styleCombo(overstockCombo, 160, CONTROL_HEIGHT);
+		BaPanelUi.styleTextInput(customOverstockInstructions, CUSTOM_OVERSTOCK_FIELD_WIDTH, CONTROL_HEIGHT);
+		customOverstockInstructions.setToolTipText("Custom overstock instructions");
 		alchHorn.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		alchHorn.setForeground(ColorScheme.TEXT_COLOR);
 		alchHorn.setBorder(BorderFactory.createLineBorder(BaPanelUi.ACTION_CONTROL_BORDER_COLOR));
@@ -456,6 +468,10 @@ class HealerCodeEditor extends JPanel
 		alchHorn.setFocusPainted(false);
 		alchHorn.setMargin(new Insets(0, 0, 0, 0));
 		BaPanelUi.fixedSize(alchHorn, CONTROL_HEIGHT, CONTROL_HEIGHT);
+		BaPanelUi.styleTextInput(expectedWaveEnd, EXPECTED_WAVE_END_FIELD_WIDTH, CONTROL_HEIGHT);
+		expectedWaveEnd.setHorizontalAlignment(SwingConstants.CENTER);
+		expectedWaveEnd.setToolTipText("Expected wave end time");
+		updateCustomOverstockVisibility();
 
 		JPanel row = new JPanel();
 		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
@@ -464,12 +480,33 @@ class HealerCodeEditor extends JPanel
 		row.add(label("Overstock", true));
 		row.add(Box.createHorizontalStrut(8));
 		row.add(overstockCombo);
+		row.add(Box.createHorizontalStrut(6));
+		row.add(customOverstockInstructions);
 		row.add(Box.createHorizontalStrut(22));
 		row.add(label("Alch Horn", true));
 		row.add(Box.createHorizontalStrut(4));
 		row.add(alchHorn);
+		row.add(Box.createHorizontalStrut(22));
+		row.add(label("Expected Wave End", true));
+		row.add(Box.createHorizontalStrut(4));
+		row.add(expectedWaveEnd);
 		row.add(Box.createHorizontalGlue());
 		return row;
+	}
+
+	private void updateCustomOverstockVisibility()
+	{
+		boolean custom = overstockCombo.getSelectedItem() == HealerCodeOverstock.CUSTOM;
+		customOverstockInstructions.setVisible(custom);
+		customOverstockInstructions.setEnabled(custom);
+		if (customOverstockInstructions.getParent() instanceof JPanel)
+		{
+			JPanel parent = (JPanel) customOverstockInstructions.getParent();
+			parent.revalidate();
+			parent.repaint();
+		}
+		revalidate();
+		repaint();
 	}
 
 	private void rebuildCodeGrid()
@@ -1202,7 +1239,10 @@ class HealerCodeEditor extends JPanel
 			textSnapshot = null;
 			textChangedAfterSnapshot = false;
 			overstockCombo.setSelectedItem(HealerCodeOverstock.REGULAR);
+			customOverstockInstructions.setText("");
+			updateCustomOverstockVisibility();
 			alchHorn.setSelected(false);
+			expectedWaveEnd.setText("");
 			restockingInstructions.setText("");
 			additionalNotes.setText("");
 			rebuildCodeGrid();
@@ -1241,7 +1281,10 @@ class HealerCodeEditor extends JPanel
 	{
 		codeName.setText(code.getName() == null ? "" : code.getName());
 		overstockCombo.setSelectedItem(code.getOverstock());
+		customOverstockInstructions.setText(code.getCustomOverstockInstructions() == null ? "" : code.getCustomOverstockInstructions());
+		updateCustomOverstockVisibility();
 		alchHorn.setSelected(code.isAlchHorn());
+		expectedWaveEnd.setText(code.getExpectedWaveEndSeconds() == null ? "" : String.valueOf(code.getExpectedWaveEndSeconds()));
 		restockingInstructions.setText(code.getRestockingInstructions() == null ? "" : code.getRestockingInstructions());
 		additionalNotes.setText(code.getAdditionalNotes() == null ? "" : code.getAdditionalNotes());
 		visibleCallCount = visibleCallCountForCode(code);
@@ -1448,8 +1491,11 @@ class HealerCodeEditor extends JPanel
 		}
 
 		WaveCode code = new WaveCode(selectedCodeId, name, selectedWave, false, collectCalls());
-		code.setOverstock((HealerCodeOverstock) overstockCombo.getSelectedItem());
+		HealerCodeOverstock overstock = (HealerCodeOverstock) overstockCombo.getSelectedItem();
+		code.setOverstock(overstock);
+		code.setCustomOverstockInstructions(overstock == HealerCodeOverstock.CUSTOM ? customOverstockInstructions.getText() : null);
 		code.setAlchHorn(alchHorn.isSelected());
+		code.setExpectedWaveEndSeconds(readOptionalSeconds(expectedWaveEnd));
 		code.setRestockingInstructions(restockingInstructions.getText());
 		code.setAdditionalNotes(additionalNotes.getText());
 		for (Map.Entry<Integer, JTextField> entry : expectedTimeFields.entrySet())

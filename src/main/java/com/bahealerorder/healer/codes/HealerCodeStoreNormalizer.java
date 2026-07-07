@@ -69,6 +69,8 @@ public final class HealerCodeStoreNormalizer
 		code.setCalls(parsed.getCalls());
 		code.setOverstock(parsed.getOverstock());
 		code.setAlchHorn(parsed.isAlchHorn());
+		code.setCustomOverstockInstructions(parsed.getCustomOverstockInstructions());
+		code.setExpectedWaveEndSeconds(parsed.getExpectedWaveEndSeconds());
 		code.setRestockingInstructions(parsed.getRestockingInstructions());
 		code.setAdditionalNotes(parsed.getAdditionalNotes());
 		code.setExpectedTimesSeconds(parsed.getExpectedTimesSeconds());

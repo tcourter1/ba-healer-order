@@ -7,7 +7,8 @@ public enum HealerCodeOverstock
 	TWO_X("2x"),
 	THREE_X("3x"),
 	FOUR_X("4x"),
-	FIVE_X("5x");
+	FIVE_X("5x"),
+	CUSTOM("Custom");
 
 	private final String label;
 

@@ -14,6 +14,8 @@ public class WaveCode
 	private boolean builtIn;
 	private HealerCodeOverstock overstock = HealerCodeOverstock.REGULAR;
 	private boolean alchHorn;
+	private String customOverstockInstructions;
+	private Integer expectedWaveEndSeconds;
 	private String restockingInstructions;
 	private String additionalNotes;
 	private String sourceText;
@@ -91,6 +93,26 @@ public class WaveCode
 	public void setAlchHorn(boolean alchHorn)
 	{
 		this.alchHorn = alchHorn;
+	}
+
+	public String getCustomOverstockInstructions()
+	{
+		return customOverstockInstructions;
+	}
+
+	public void setCustomOverstockInstructions(String customOverstockInstructions)
+	{
+		this.customOverstockInstructions = customOverstockInstructions;
+	}
+
+	public Integer getExpectedWaveEndSeconds()
+	{
+		return expectedWaveEndSeconds;
+	}
+
+	public void setExpectedWaveEndSeconds(Integer expectedWaveEndSeconds)
+	{
+		this.expectedWaveEndSeconds = expectedWaveEndSeconds == null ? null : Math.max(0, expectedWaveEndSeconds);
 	}
 
 	public String getRestockingInstructions()

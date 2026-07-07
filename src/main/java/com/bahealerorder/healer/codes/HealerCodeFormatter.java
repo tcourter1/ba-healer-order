@@ -44,7 +44,7 @@ public final class HealerCodeFormatter
 		}
 
 		HealerCodeOverstock overstock = HealerCodeOverstock.valueOrRegular(code.getOverstock());
-		if (overstock != HealerCodeOverstock.REGULAR)
+		if (overstock != HealerCodeOverstock.REGULAR && overstock != HealerCodeOverstock.CUSTOM)
 		{
 			headerParts.add(overstock + " OS");
 		}
@@ -54,6 +54,11 @@ public final class HealerCodeFormatter
 			lines.add(String.join(", ", headerParts));
 		}
 
+		if (overstock == HealerCodeOverstock.CUSTOM && !isBlank(code.getCustomOverstockInstructions()))
+		{
+			lines.add("Overstock: " + code.getCustomOverstockInstructions().trim());
+		}
+
 		for (int callIndex = 0; callIndex < CALL_COUNT; callIndex++)
 		{
 			CallCode call = code.getCall(callIndex);
@@ -61,6 +66,11 @@ public final class HealerCodeFormatter
 			{
 				lines.add(formatCall(call));
 			}
+		}
+
+		if (includeExpectedTimes && code.getExpectedWaveEndSeconds() != null)
+		{
+			lines.add("Expected Wave End: " + code.getExpectedWaveEndSeconds() + "s");
 		}
 
 		String times = includeExpectedTimes ? formatExpectedTimes(code) : "";
@@ -169,12 +179,21 @@ public final class HealerCodeFormatter
 			{
 				continue;
 			}
+			if (line.toLowerCase().startsWith("expected wave end:"))
+			{
+				continue;
+			}
 			if (isCodeNameLine(line, codeName, wave))
 			{
 				continue;
 			}
 			if (isAllZeroCallLine(line))
 			{
+				continue;
+			}
+			if (line.toLowerCase().startsWith("overstock:"))
+			{
+				lines.add(stripMetadataPrefix(line, "overstock:"));
 				continue;
 			}
 			lines.add(rawLine);
@@ -269,5 +288,12 @@ public final class HealerCodeFormatter
 			value = value.substring(1).trim();
 		}
 		return value;
+	}
+
+	private static String stripMetadataPrefix(String value, String prefix)
+	{
+		return value == null || value.length() < prefix.length()
+				? ""
+				: value.substring(prefix.length()).trim();
 	}
 }

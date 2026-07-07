@@ -16,6 +16,7 @@ public final class HealerCodeParser
 	private static final Pattern BEFORE_PATTERN = Pattern.compile("\\[(\\d+)]");
 	private static final Pattern EXACT_PATTERN = Pattern.compile("\\{(\\d+)}");
 	private static final Pattern EXPECTED_TIME_PATTERN = Pattern.compile("#(\\d+)\\s*=\\s*(\\d+)s?", Pattern.CASE_INSENSITIVE);
+	private static final Pattern EXPECTED_WAVE_END_PATTERN = Pattern.compile("^expected\\s+wave\\s+end\\s*:?\\s*(\\d+)s?$", Pattern.CASE_INSENSITIVE);
 
 	private HealerCodeParser()
 	{
@@ -30,6 +31,8 @@ public final class HealerCodeParser
 			int callIndex = 0;
 			List<String> notes = new ArrayList<>();
 			String restockingInstructions = null;
+			String customOverstockInstructions = null;
+			Integer expectedWaveEndSeconds = null;
 			boolean alchHorn = false;
 			HealerCodeOverstock overstock = overstockFromText(name);
 			Map<Integer, Integer> expectedTimes = new HashMap<>();
@@ -57,6 +60,15 @@ public final class HealerCodeParser
 						if (lower.startsWith("restock"))
 						{
 							restockingInstructions = line.replaceFirst("(?i)^restock\\s*:?", "").trim();
+						}
+						else if (lower.startsWith("overstock"))
+						{
+							overstock = HealerCodeOverstock.CUSTOM;
+							customOverstockInstructions = line.replaceFirst("(?i)^overstock\\s*:?", "").trim();
+						}
+						else if (lower.startsWith("expected wave end"))
+						{
+							expectedWaveEndSeconds = parseExpectedWaveEnd(line);
 						}
 						else if (lower.startsWith("expected"))
 						{
@@ -86,6 +98,8 @@ public final class HealerCodeParser
 			WaveCode code = new WaveCode(id, name, wave, builtIn, calls);
 			code.setAlchHorn(alchHorn);
 			code.setOverstock(overstock);
+			code.setCustomOverstockInstructions(customOverstockInstructions);
+			code.setExpectedWaveEndSeconds(expectedWaveEndSeconds);
 			code.setRestockingInstructions(restockingInstructions);
 			code.setAdditionalNotes(String.join("\n", notes));
 			code.setExpectedTimesSeconds(expectedTimes);
@@ -128,6 +142,7 @@ public final class HealerCodeParser
 	{
 		return lower.contains("alch horn")
 				|| lower.startsWith("restock")
+				|| lower.startsWith("overstock")
 				|| lower.startsWith("expected")
 				|| overstock != HealerCodeOverstock.REGULAR;
 	}
@@ -314,6 +329,24 @@ public final class HealerCodeParser
 			{
 				// Ignore invalid fragments in an otherwise parseable text representation.
 			}
+		}
+	}
+
+	private static Integer parseExpectedWaveEnd(String line)
+	{
+		Matcher matcher = EXPECTED_WAVE_END_PATTERN.matcher(line == null ? "" : line.trim());
+		if (!matcher.find())
+		{
+			return null;
+		}
+
+		try
+		{
+			return Integer.parseInt(matcher.group(1));
+		}
+		catch (NumberFormatException ignored)
+		{
+			return null;
 		}
 	}
 

@@ -54,6 +54,9 @@ public class HealerCodePanel extends JPanel
 	private static final int PRESET_SECTION_BOTTOM_PADDING = 8;
 	private static final int WAVE_ROW_GAP = 8;
 	private static final int WAVE_ROW_HORIZONTAL_PADDING = 8;
+	private static final int WAVE_PREVIEW_TOP_GAP = 20;
+	private static final int WAVE_PREVIEW_TEXT_TOP_PADDING = 3;
+	private static final int WAVE_PREVIEW_TEXT_BOTTOM_PADDING = 2;
 	private static final int WAVE_ROW_CONTROL_WIDTH = CONTENT_WIDTH - WAVE_ROW_HORIZONTAL_PADDING * 2;
 	private static final int WAVE_LABEL_WIDTH = 54;
 	private static final int WAVE_LABEL_LEFT_PADDING = 2;
@@ -425,8 +428,16 @@ public class HealerCodePanel extends JPanel
 		}
 
 		String heading = isBlank(code.getName()) ? "Wave " + code.getWave() : code.getName().trim();
-		wavePreviewSection.add(Box.createVerticalStrut(12));
-		wavePreviewSection.add(BaNotesPreviewPanel.create(heading, previewText, BaRoleColors.HEALER, PRESET_CONTROL_WIDTH, 0));
+		wavePreviewSection.add(Box.createVerticalStrut(WAVE_PREVIEW_TOP_GAP));
+		wavePreviewSection.add(BaNotesPreviewPanel.create(
+				heading,
+				previewText,
+				BaRoleColors.HEALER,
+				PRESET_CONTROL_WIDTH,
+				0,
+				WAVE_PREVIEW_TEXT_TOP_PADDING,
+				WAVE_PREVIEW_TEXT_BOTTOM_PADDING
+		));
 		wavePreviewSection.setVisible(true);
 		wavePreviewSection.revalidate();
 		wavePreviewSection.repaint();
