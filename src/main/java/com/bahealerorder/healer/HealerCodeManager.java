@@ -3,6 +3,7 @@ package com.bahealerorder.healer;
 import com.bahealerorder.healer.codes.BuiltInStrategyLibrary;
 import com.bahealerorder.healer.codes.CallCode;
 import com.bahealerorder.healer.codes.FeedEvent;
+import com.bahealerorder.healer.codes.HealerCodeDefaultRole;
 import com.bahealerorder.healer.codes.HealerCodeExport;
 import com.bahealerorder.healer.codes.HealerCodeExportResult;
 import com.bahealerorder.healer.codes.HealerCodeExportType;
@@ -354,6 +355,69 @@ public class HealerCodeManager
 		return findRunPreset(getActiveRunPresetId());
 	}
 
+	public String getDefaultRunPresetId(HealerCodeDefaultRole role)
+	{
+		String runPresetId = userStore.getDefaultRunPresetId(role);
+		return role == getDefaultRoleForPreset(runPresetId) ? runPresetId : null;
+	}
+
+	public HealerCodeDefaultRole getDefaultRoleForPreset(String runPresetId)
+	{
+		if (isBlank(runPresetId))
+		{
+			return null;
+		}
+
+		for (HealerCodeDefaultRole role : HealerCodeDefaultRole.values())
+		{
+			if (runPresetId.equals(userStore.getDefaultRunPresetId(role)))
+			{
+				return role;
+			}
+		}
+		return null;
+	}
+
+	public boolean setDefaultRunPresetId(HealerCodeDefaultRole role, String runPresetId)
+	{
+		if (role == null || findRunPreset(runPresetId) == null)
+		{
+			return false;
+		}
+
+		clearDefaultRunPresetIdsForPreset(runPresetId);
+		userStore.setDefaultRunPresetId(role, runPresetId);
+		save();
+		return true;
+	}
+
+	public boolean clearDefaultRunPresetIdsForPreset(String runPresetId)
+	{
+		if (isBlank(runPresetId))
+		{
+			return false;
+		}
+
+		boolean removed = userStore.getDefaultRunPresetIds().values().removeIf(runPresetId::equals);
+		if (removed)
+		{
+			save();
+		}
+		return removed;
+	}
+
+	public boolean applyDefaultRunPreset(HealerCodeDefaultRole role)
+	{
+		String presetId = getDefaultRunPresetId(role);
+		if (findRunPreset(presetId) == null)
+		{
+			return false;
+		}
+
+		applyRunPreset(presetId);
+		return true;
+	}
+
 	public RunPreset findMatchingRunPreset()
 	{
 		Map<Integer, String> activeWaveCodes = userStore.getActiveWaveCodeIds();
@@ -584,6 +648,7 @@ public class HealerCodeManager
 			userStore.setActiveRunPresetId(null);
 			userStore.getActiveWaveCodeIds().clear();
 		}
+		userStore.getDefaultRunPresetIds().values().removeIf(id::equals);
 
 		save();
 		return true;

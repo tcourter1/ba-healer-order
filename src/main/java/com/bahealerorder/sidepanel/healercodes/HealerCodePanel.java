@@ -4,6 +4,7 @@ import com.bahealerorder.common.BaClipboard;
 import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.common.BaRoleColors;
 import com.bahealerorder.healer.HealerCodeManager;
+import com.bahealerorder.healer.codes.HealerCodeDefaultRole;
 import com.bahealerorder.healer.codes.HealerCodeExportResult;
 import com.bahealerorder.healer.codes.HealerCodeFormatter;
 import com.bahealerorder.healer.codes.RunPreset;
@@ -23,6 +24,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -42,6 +44,9 @@ import net.runelite.client.util.SwingUtil;
 @Singleton
 public class HealerCodePanel extends JPanel
 {
+	private static final String HTML_TEXT_COLOR = "#d2d2d2";
+	private static final String HTML_BUILT_IN_TEXT_COLOR = "#787878";
+	private static final String HTML_DEFAULT_BADGE_COLOR = "#7ed484";
 	private static final String EMPTY_WAVE_SELECTION_LABEL = " ";
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
@@ -65,6 +70,7 @@ public class HealerCodePanel extends JPanel
 	private final JPanel waveRowsPanel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 	private final JPanel wavePreviewSection = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 	private final JComboBox<BaPanelUi.ComboOption> presetCombo = BaPanelUi.fixedPopupWidthCombo(PRESET_POPUP_WIDTH);
+	private JButton setDefaultButton;
 
 	private JDialog editorDialog;
 	private HealerCodeEditor editorPanel;
@@ -174,7 +180,7 @@ public class HealerCodePanel extends JPanel
 
 		JPanel presetActionRow = BaPanelUi.horizontalActionRow(PRESET_CONTROL_WIDTH, CONTROL_HEIGHT);
 		presetActionRow.add(BaPanelUi.action("Delete", this::deleteSelectedPreset, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT));
-		presetActionRow.add(BaPanelUi.action("Clear", this::clearSelections, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT));
+		presetActionRow.add(createSetDefaultButton());
 		controls.add(presetActionRow);
 		controls.add(Box.createVerticalStrut(5));
 
@@ -206,14 +212,11 @@ public class HealerCodePanel extends JPanel
 
 			for (RunPreset preset : codeManager.getRunPresets())
 			{
-				presetCombo.addItem(new BaPanelUi.ComboOption(
-						preset.getId(),
-						HealerCodeManager.runPresetDisplayName(preset),
-						preset.isBuiltIn()
-				));
+				presetCombo.addItem(presetComboOption(preset));
 			}
 
 			BaPanelUi.selectComboValue(presetCombo, activePresetId);
+			refreshSetDefaultButton();
 		}
 		finally
 		{
@@ -319,6 +322,51 @@ public class HealerCodePanel extends JPanel
 		return item;
 	}
 
+	private JButton createSetDefaultButton()
+	{
+		setDefaultButton = new JButton("Set as Default");
+		BaPanelUi.styleActionButton(setDefaultButton, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT);
+		setDefaultButton.addActionListener(event -> createDefaultPresetMenu().show(setDefaultButton, 0, setDefaultButton.getHeight()));
+		refreshSetDefaultButton();
+		return setDefaultButton;
+	}
+
+	private JPopupMenu createDefaultPresetMenu()
+	{
+		JPopupMenu menu = new JPopupMenu();
+		menu.add(defaultPresetMenuItem("Solo Healer", HealerCodeDefaultRole.SOLO_HEALER));
+		menu.add(defaultPresetMenuItem("DH Spam (Main)", HealerCodeDefaultRole.DH_SPAM_MAIN));
+		menu.add(defaultPresetMenuItem("DH Tag (2nd)", HealerCodeDefaultRole.DH_TAG_SECOND));
+		menu.add(defaultPresetNoneMenuItem());
+		return menu;
+	}
+
+	private JMenuItem defaultPresetMenuItem(String text, HealerCodeDefaultRole role)
+	{
+		String presetId = selectedPresetId();
+		boolean selected = role == codeManager.getDefaultRoleForPreset(presetId);
+		JCheckBoxMenuItem item = new JCheckBoxMenuItem(text, selected);
+		if (selected)
+		{
+			item.setForeground(new java.awt.Color(126, 212, 132));
+		}
+		item.addActionListener(event -> setSelectedPresetAsDefault(role));
+		return item;
+	}
+
+	private JMenuItem defaultPresetNoneMenuItem()
+	{
+		String presetId = selectedPresetId();
+		boolean selected = presetId != null && !selectedPresetHasDefaultRole(presetId);
+		JCheckBoxMenuItem item = new JCheckBoxMenuItem("None", selected);
+		if (selected)
+		{
+			item.setForeground(new java.awt.Color(126, 212, 132));
+		}
+		item.addActionListener(event -> clearSelectedPresetDefaults());
+		return item;
+	}
+
 	private void populateWaveCombo(JComboBox<BaPanelUi.ComboOption> comboBox, int wave, String selectedCodeId)
 	{
 		comboBox.removeAllItems();
@@ -420,7 +468,7 @@ public class HealerCodePanel extends JPanel
 		});
 		editorDialog.setContentPane(editor);
 		editorDialog.pack();
-		editorDialog.setMinimumSize(new Dimension(980, 760));
+		editorDialog.setMinimumSize(new Dimension(980, 720));
 		editorDialog.setLocationRelativeTo(null);
 		editorDialog.setVisible(true);
 	}
@@ -509,13 +557,6 @@ public class HealerCodePanel extends JPanel
 		refreshAll();
 	}
 
-	private void clearSelections()
-	{
-		codeManager.clearActiveSelections();
-		clearWavePreview();
-		refreshAll();
-	}
-
 	private void exportSelectedPresetToClipboard()
 	{
 		RunPreset activePreset = codeManager.findRunPreset(codeManager.getActiveRunPresetId());
@@ -592,6 +633,78 @@ public class HealerCodePanel extends JPanel
 	private String selectedWaveCodeId(JComboBox<BaPanelUi.ComboOption> comboBox)
 	{
 		return BaPanelUi.selectedId(comboBox);
+	}
+
+	private void setSelectedPresetAsDefault(HealerCodeDefaultRole role)
+	{
+		String presetId = selectedPresetId();
+		if (!codeManager.setDefaultRunPresetId(role, presetId))
+		{
+			Toolkit.getDefaultToolkit().beep();
+		}
+		refreshPresetCombo();
+	}
+
+	private void clearSelectedPresetDefaults()
+	{
+		String presetId = selectedPresetId();
+		if (presetId != null)
+		{
+			codeManager.clearDefaultRunPresetIdsForPreset(presetId);
+			refreshPresetCombo();
+		}
+	}
+
+	private void refreshSetDefaultButton()
+	{
+		if (setDefaultButton != null)
+		{
+			setDefaultButton.setEnabled(selectedPresetId() != null);
+		}
+	}
+
+	private String selectedPresetId()
+	{
+		return BaPanelUi.selectedId(presetCombo);
+	}
+
+	private boolean selectedPresetHasDefaultRole(String presetId)
+	{
+		return codeManager.getDefaultRoleForPreset(presetId) != null;
+	}
+
+	private BaPanelUi.ComboOption presetComboOption(RunPreset preset)
+	{
+		return new BaPanelUi.ComboOption(
+				preset.getId(),
+				presetComboLabel(preset),
+				preset.isBuiltIn()
+		);
+	}
+
+	private String presetComboLabel(RunPreset preset)
+	{
+		String name = escapeHtml(HealerCodeManager.runPresetDisplayName(preset));
+		HealerCodeDefaultRole defaultRole = codeManager.getDefaultRoleForPreset(preset.getId());
+		if (defaultRole == null)
+		{
+			return name;
+		}
+
+		String textColor = preset.isBuiltIn() ? HTML_BUILT_IN_TEXT_COLOR : HTML_TEXT_COLOR;
+		return "<html><span style='color:" + textColor + "'>"
+				+ name
+				+ "</span> <span style='color:" + HTML_DEFAULT_BADGE_COLOR + "'>("
+				+ defaultRole.getPresetBadge()
+				+ ")</span></html>";
+	}
+
+	private static String escapeHtml(String value)
+	{
+		return value
+				.replace("&", "&amp;")
+				.replace("<", "&lt;")
+				.replace(">", "&gt;");
 	}
 
 	private static boolean isBlank(String value)

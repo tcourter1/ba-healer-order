@@ -35,6 +35,7 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -74,7 +75,7 @@ class HealerCodeEditor extends JPanel
 {
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int EDITOR_WIDTH = 960;
-	private static final int EDITOR_HEIGHT = 720;
+	private static final int EDITOR_HEIGHT = 680;
 	private static final int ROW_LABEL_WIDTH = 58;
 	private static final int HEADER_HEIGHT = 60;
 	private static final int CELL_WIDTH = 106;
@@ -87,8 +88,13 @@ class HealerCodeEditor extends JPanel
 	private static final int DELETE_BUTTON_WIDTH = 24;
 	private static final int CODE_ACTION_BUTTON_WIDTH = 120;
 	private static final int CODE_POPUP_WIDTH = 195;
+	private static final int NAME_FIELD_WIDTH = 360;
 	private static final int TEXT_CODE_AREA_HEIGHT = 300;
 	private static final int TEXT_HELP_WIDTH = EDITOR_WIDTH - 20;
+	private static final int WAVE_TO_CODE_GAP = 54;
+	private static final int OPTIONS_TO_TABLE_GAP = 30;
+	private static final int TABLE_TO_TEXT_AREAS_GAP = 40;
+	private static final int TEXT_AREAS_TO_ACTIONS_GAP = 0;
 	private static final String AFTER_PLACEHOLDER = "At or after...";
 	private static final String BEFORE_PLACEHOLDER = "Before...";
 	private static final String EXACT_PLACEHOLDER = "Exactly...";
@@ -216,7 +222,7 @@ class HealerCodeEditor extends JPanel
 		row.add(label("Wave", true));
 		row.add(Box.createHorizontalStrut(6));
 		row.add(waveCombo);
-		row.add(Box.createHorizontalStrut(10));
+		row.add(Box.createHorizontalStrut(WAVE_TO_CODE_GAP));
 		row.add(label("Code", true));
 		row.add(Box.createHorizontalStrut(6));
 		row.add(codeCombo);
@@ -235,28 +241,40 @@ class HealerCodeEditor extends JPanel
 		setupHelpPanel();
 		panel.add(helpPanel);
 		panel.add(helpGap);
-		panel.add(label("Name", true));
-		panel.add(Box.createVerticalStrut(6));
-		BaPanelUi.styleTextInput(codeName, EDITOR_WIDTH, CONTROL_HEIGHT);
-		panel.add(codeName);
+		panel.add(createNameRow());
 		panel.add(Box.createVerticalStrut(14));
 		modePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		modePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		modePanel.add(createAdvancedBody(), ADVANCED_CARD);
 		modePanel.add(createTextBody(), TEXT_CARD);
 		panel.add(modePanel);
-		panel.add(Box.createVerticalGlue());
+		panel.add(Box.createVerticalStrut(TEXT_AREAS_TO_ACTIONS_GAP));
 		panel.add(createActionRow());
 		return panel;
+	}
+
+	private JPanel createNameRow()
+	{
+		BaPanelUi.styleTextInput(codeName, NAME_FIELD_WIDTH, CONTROL_HEIGHT);
+
+		JPanel row = new JPanel();
+		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		BaPanelUi.fixedSize(row, EDITOR_WIDTH, CONTROL_HEIGHT);
+		row.add(label("Name", true));
+		row.add(Box.createHorizontalStrut(8));
+		row.add(codeName);
+		row.add(Box.createHorizontalGlue());
+		return row;
 	}
 
 	private JPanel createAdvancedBody()
 	{
 		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		panel.add(createOptionsRow());
-		panel.add(Box.createVerticalStrut(18));
+		panel.add(Box.createVerticalStrut(OPTIONS_TO_TABLE_GAP));
 		panel.add(codeGridPanel);
-		panel.add(Box.createVerticalStrut(16));
+		panel.add(Box.createVerticalStrut(TABLE_TO_TEXT_AREAS_GAP));
 		panel.add(createTextAreas());
 		return panel;
 	}
@@ -306,6 +324,8 @@ class HealerCodeEditor extends JPanel
 			}
 		}
 
+		Dimension preferred = helpPanel.getPreferredSize();
+		helpPanel.setMaximumSize(new Dimension(EDITOR_WIDTH, helpVisible ? preferred.height : 0));
 		helpPanel.revalidate();
 		helpPanel.repaint();
 	}
@@ -402,8 +422,10 @@ class HealerCodeEditor extends JPanel
 				toggleTextView();
 			}
 		});
-		pane.setSize(TEXT_HELP_WIDTH, Short.MAX_VALUE);
+		pane.setSize(TEXT_HELP_WIDTH, 1);
 		Dimension preferred = pane.getPreferredSize();
+		pane.setPreferredSize(new Dimension(TEXT_HELP_WIDTH, preferred.height));
+		pane.setMinimumSize(new Dimension(TEXT_HELP_WIDTH, preferred.height));
 		pane.setMaximumSize(new Dimension(TEXT_HELP_WIDTH, preferred.height));
 		return pane;
 	}
@@ -996,7 +1018,7 @@ class HealerCodeEditor extends JPanel
 			return new HealerInstruction(0, null, null, null, "X");
 		}
 
-		int food = activeFoodField == null ? 0 : (Integer) activeFoodField.getValue();
+		int food = activeFoodCount();
 		Integer after = activeTimingOption == CellTimingOption.AT_OR_AFTER || activeTimingOption == CellTimingOption.WINDOW
 				? readOptionalSeconds(activeAfterField)
 				: null;
@@ -1015,6 +1037,24 @@ class HealerCodeEditor extends JPanel
 				? existing.getRaw()
 				: null;
 		return new HealerInstruction(food, after, before, exact, raw);
+	}
+
+	private int activeFoodCount()
+	{
+		if (activeFoodField == null)
+		{
+			return 0;
+		}
+
+		try
+		{
+			activeFoodField.commitEdit();
+		}
+		catch (ParseException ignored)
+		{
+			// Keep the last valid spinner value when the editor text is invalid.
+		}
+		return (Integer) activeFoodField.getValue();
 	}
 
 	private HealerInstruction instructionForCell(CellKey key)

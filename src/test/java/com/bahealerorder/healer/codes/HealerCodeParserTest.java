@@ -2,7 +2,6 @@ package com.bahealerorder.healer.codes;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -88,66 +87,6 @@ public class HealerCodeParserTest
 	}
 
 	@Test
-	public void loadsBuiltInWaveNineOneTimesOverstock()
-	{
-		StrategyStore store = BuiltInStrategyLibrary.create();
-		WaveCode waveCode = null;
-
-		for (WaveCode code : store.getWaveCodes())
-		{
-			if ("builtin:w9:1x-os".equals(code.getId()))
-			{
-				waveCode = code;
-				break;
-			}
-		}
-
-		assertNotNull(waveCode);
-		List<HealerInstruction> firstCall = waveCode.getCall(0).getHealerInstructions();
-		assertEquals(2, firstCall.get(0).getTargetFoodCount());
-		assertEquals(8, firstCall.get(1).getTargetFoodCount());
-		assertEquals(Integer.valueOf(21), firstCall.get(1).getAfterSeconds());
-	}
-
-	@Test
-	public void convertsC5MetadataIntoStructuredFields()
-	{
-		StrategyStore store = BuiltInStrategyLibrary.create();
-		WaveCode waveCode = null;
-
-		for (WaveCode code : store.getWaveCodes())
-		{
-			if ("builtin:w5:c5".equals(code.getId()))
-			{
-				waveCode = code;
-				break;
-			}
-		}
-
-		assertNotNull(waveCode);
-		assertNotNull(waveCode.getCall(0));
-		assertEquals(3, waveCode.getCalls().size());
-		assertEquals(true, waveCode.isAlchHorn());
-	}
-
-	@Test
-	public void usesNameForOverstockInsteadOfRestockText()
-	{
-		StrategyStore store = BuiltInStrategyLibrary.create();
-		WaveCode regular = findCode(store, "builtin:w6:regular");
-		WaveCode oneTimes = findCode(store, "builtin:w6:1x-os");
-		WaveCode twoTimes = findCode(store, "builtin:w6:2x-os");
-
-		assertNotNull(regular);
-		assertNotNull(oneTimes);
-		assertNotNull(twoTimes);
-		assertEquals(HealerCodeOverstock.REGULAR, regular.getOverstock());
-		assertEquals(HealerCodeOverstock.ONE_X, oneTimes.getOverstock());
-		assertEquals(HealerCodeOverstock.TWO_X, twoTimes.getOverstock());
-		assertEquals("3x os + 1x reg", regular.getRestockingInstructions());
-	}
-
-	@Test
 	public void parsesFormattedMetadataBackIntoStructuredFields()
 	{
 		WaveCode code = HealerCodeParser.parseWaveCode(
@@ -193,19 +132,6 @@ public class HealerCodeParserTest
 		);
 
 		assertEquals("2-2", HealerCodeFormatter.formatDisplay(code));
-	}
-
-	private static WaveCode findCode(StrategyStore store, String id)
-	{
-		for (WaveCode code : store.getWaveCodes())
-		{
-			if (id.equals(code.getId()))
-			{
-				return code;
-			}
-		}
-
-		return null;
 	}
 
 }

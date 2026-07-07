@@ -12,7 +12,10 @@ import com.bahealerorder.common.BaWaveLifecycleService.WaveStart;
 import com.bahealerorder.common.BaWaveOverviewService;
 import com.bahealerorder.common.BaWaveOverviewSyncMessage;
 import com.bahealerorder.defender.DefenderController;
+import com.bahealerorder.healer.HealerCodeDefaultResolver;
 import com.bahealerorder.healer.HealerController;
+import com.bahealerorder.healer.HealerCodeManager;
+import com.bahealerorder.healer.codes.HealerCodeDefaultRole;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerController;
 import com.google.inject.Provides;
 import javax.inject.Inject;
@@ -64,6 +67,9 @@ public class BaHealerOrderPlugin extends Plugin
 
 	@Inject
 	private HealerController healerController;
+
+	@Inject
+	private HealerCodeManager healerCodeManager;
 
 	@Inject
 	private DefenderController defenderController;
@@ -304,10 +310,30 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private void startWave(WaveStart waveStart)
 	{
+		applyDefaultHealerCodePreset(waveStart);
 		waveOverviewService.onWaveStarted(waveStart.getWave());
 		attackerController.onWaveStarted(waveStart.getWave());
 		defenderController.onWaveStarted();
 		healerController.onWaveStarted(waveStart);
+	}
+
+	private void applyDefaultHealerCodePreset(WaveStart waveStart)
+	{
+		if (waveStart.getWave() != 1 || !"wave chat".equals(waveStart.getSource()))
+		{
+			return;
+		}
+
+		HealerCodeDefaultRole defaultRole = HealerCodeDefaultResolver.resolve(
+				roleDetector.getCurrentRole(),
+				client.getLocalPlayer() == null ? null : client.getLocalPlayer().getName(),
+				partySyncService.getBaPartySyncTeamMembers()
+		);
+
+		if (defaultRole != null)
+		{
+			healerCodeManager.applyDefaultRunPreset(defaultRole);
+		}
 	}
 
 	private void endWave(int wave)

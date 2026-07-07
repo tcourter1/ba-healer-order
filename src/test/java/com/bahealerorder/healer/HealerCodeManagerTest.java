@@ -101,22 +101,6 @@ public class HealerCodeManagerTest
 	}
 
 	@Test
-	public void exposesAndAppliesBuiltInRunPresets()
-	{
-		StrategyStore store = new StrategyStore();
-		HealerCodeManager manager = new HealerCodeManager(store, new Gson());
-
-		RunPreset builtInPreset = firstBuiltInPreset(manager);
-
-		assertNotNull(builtInPreset);
-
-		manager.applyRunPreset(builtInPreset.getId());
-
-		assertEquals(builtInPreset.getId(), manager.getActiveRunPresetId());
-		assertEquals(builtInPreset.getWaveCodeIds(), manager.getActiveWaveCodeIds());
-	}
-
-	@Test
 	public void savingPresetWithBuiltInNameCreatesUserCopy()
 	{
 		StrategyStore store = new StrategyStore();

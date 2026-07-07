@@ -12,6 +12,7 @@ public class StrategyStore
 	private String activeRunPresetId;
 	private Boolean codeEditorHelpVisible = true;
 	private Map<Integer, String> activeWaveCodeIds = new HashMap<>();
+	private Map<HealerCodeDefaultRole, String> defaultRunPresetIds = new HashMap<>();
 	private List<RunPreset> runPresets = new ArrayList<>();
 	private List<WaveCode> waveCodes = new ArrayList<>();
 
@@ -58,6 +59,43 @@ public class StrategyStore
 	public void setActiveWaveCodeIds(Map<Integer, String> activeWaveCodeIds)
 	{
 		this.activeWaveCodeIds = activeWaveCodeIds == null ? new HashMap<>() : new HashMap<>(activeWaveCodeIds);
+	}
+
+	public String getDefaultRunPresetId(HealerCodeDefaultRole role)
+	{
+		return getDefaultRunPresetIds().get(role);
+	}
+
+	public void setDefaultRunPresetId(HealerCodeDefaultRole role, String runPresetId)
+	{
+		if (role == null)
+		{
+			return;
+		}
+
+		if (runPresetId == null || runPresetId.trim().isEmpty())
+		{
+			getDefaultRunPresetIds().remove(role);
+		}
+		else
+		{
+			getDefaultRunPresetIds().put(role, runPresetId);
+		}
+	}
+
+	public Map<HealerCodeDefaultRole, String> getDefaultRunPresetIds()
+	{
+		if (defaultRunPresetIds == null)
+		{
+			defaultRunPresetIds = new HashMap<>();
+		}
+
+		return defaultRunPresetIds;
+	}
+
+	public void setDefaultRunPresetIds(Map<HealerCodeDefaultRole, String> defaultRunPresetIds)
+	{
+		this.defaultRunPresetIds = defaultRunPresetIds == null ? new HashMap<>() : new HashMap<>(defaultRunPresetIds);
 	}
 
 	public List<RunPreset> getRunPresets()
