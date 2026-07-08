@@ -4,6 +4,7 @@ import com.bahealerorder.attacker.AttackerController;
 import com.bahealerorder.common.BaDispenserMenuService;
 import com.bahealerorder.common.BaHealerFoodCountMessage;
 import com.bahealerorder.common.BaHealerSyncMessage;
+import com.bahealerorder.common.BaPartyChatMessage;
 import com.bahealerorder.common.BaPartySyncService;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.BaRoleDetector;
@@ -266,6 +267,8 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		partySyncService.onChatMessage(event);
+
 		WaveStart waveStart = waveLifecycleService.onChatMessage(event);
 		if (waveStart != null)
 		{
@@ -317,6 +320,12 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onBaWaveOverviewSyncMessage(BaWaveOverviewSyncMessage event)
 	{
 		clientThread.invokeLater(() -> waveOverviewService.onBaWaveOverviewSyncMessage(event));
+	}
+
+	@Subscribe
+	public void onBaPartyChatMessage(BaPartyChatMessage event)
+	{
+		partySyncService.onBaPartyChatMessage(event);
 	}
 
 	@Subscribe

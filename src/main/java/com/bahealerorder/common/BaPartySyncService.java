@@ -15,20 +15,26 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.MessageNode;
 import net.runelite.api.MenuAction;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.chat.ChatMessageBuilder;
+import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.party.PartyMember;
 import net.runelite.client.party.PartyService;
 import net.runelite.client.party.WSClient;
-import net.runelite.client.party.PartyMember;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
@@ -45,6 +51,8 @@ public class BaPartySyncService
 	private static final int BA_WAVE_DOOR_EXIT_CONFIRM_TICKS = 10;
 	private static final int BA_LOBBY_REGION_ID = 10322;
 	private static final int BA_TEAM_GROUP_ID = InterfaceID.BARBASSAULT_OVER_RECRUIT_PLAYER_NAMES;
+	private static final int MAX_PARTY_CHAT_MESSAGE_LENGTH = 150;
+	private static final String BA_PARTY_CHAT_SENDER = "BA Party Chat";
 	private static final int BA_TEAM_PLAYER1_NAME_CHILD_ID =
 			InterfaceID.BarbassaultOverRecruitPlayerNames.BARBASSAULT_LEADER_NAME & 0xFFFF;
 	private static final int BA_TEAM_PLAYER1_ROLE_CHILD_ID =
@@ -71,6 +79,7 @@ public class BaPartySyncService
 	private final PartyService partyService;
 	private final PluginManager pluginManager;
 	private final WSClient wsClient;
+	private final ChatMessageManager chatMessageManager;
 	private final BaUtilitiesConfig config;
 	private final BaUtilitiesPanel panel;
 	private final BaWaveLifecycleService waveLifecycleService;
@@ -94,6 +103,7 @@ public class BaPartySyncService
 			PartyService partyService,
 			PluginManager pluginManager,
 			WSClient wsClient,
+			ChatMessageManager chatMessageManager,
 			BaUtilitiesConfig config,
 			BaUtilitiesPanel panel,
 			BaWaveLifecycleService waveLifecycleService)
@@ -102,6 +112,7 @@ public class BaPartySyncService
 		this.partyService = partyService;
 		this.pluginManager = pluginManager;
 		this.wsClient = wsClient;
+		this.chatMessageManager = chatMessageManager;
 		this.config = config;
 		this.panel = panel;
 		this.waveLifecycleService = waveLifecycleService;
@@ -117,6 +128,7 @@ public class BaPartySyncService
 		wsClient.registerMessage(BaHealerSyncMessage.class);
 		wsClient.registerMessage(BaHealerFoodCountMessage.class);
 		wsClient.registerMessage(BaWaveOverviewSyncMessage.class);
+		wsClient.registerMessage(BaPartyChatMessage.class);
 		updateBaPartySyncPanelStatus();
 	}
 
@@ -126,6 +138,7 @@ public class BaPartySyncService
 		wsClient.unregisterMessage(BaHealerSyncMessage.class);
 		wsClient.unregisterMessage(BaHealerFoodCountMessage.class);
 		wsClient.unregisterMessage(BaWaveOverviewSyncMessage.class);
+		wsClient.unregisterMessage(BaPartyChatMessage.class);
 	}
 
 	public boolean isBaPartySyncConnected()
@@ -297,6 +310,52 @@ public class BaPartySyncService
 		{
 			updateBaPartySyncPanelStatus();
 		}
+	}
+
+	public void onChatMessage(ChatMessage event)
+	{
+		if (event == null || !isPartyChatEnabled() || !isRealWaveActive()) return;
+		if (!isPublicChatType(event.getType())) return;
+
+		String playerName = client.getLocalPlayer() == null ? null : client.getLocalPlayer().getName();
+		if (playerName == null || playerName.isEmpty() || !samePlayerName(event.getName(), playerName)) return;
+
+		String message = cleanPartyChatMessage(event.getMessage());
+		if (message.isEmpty()) return;
+
+		try
+		{
+			partyService.send(new BaPartyChatMessage(client.getWorld(), message));
+		}
+		catch (RuntimeException ex)
+		{
+			log.debug("Failed to send BA party chat message", ex);
+		}
+	}
+
+	public void onBaPartyChatMessage(BaPartyChatMessage event)
+	{
+		if (event == null || !isPartyChatEnabled() || !isRealWaveActive()) return;
+		if (isLocalPartyMember(event.getMemberId())) return;
+		if (event.getWorld() != client.getWorld()) return;
+
+		PartyMember member = partyService.getMemberById(event.getMemberId());
+		if (member == null || !member.isLoggedIn()) return;
+
+		String senderName = member.getDisplayName();
+		if (senderName == null || senderName.isEmpty() || !isBaTeamMember(senderName)) return;
+
+		String message = cleanPartyChatMessage(event.getMessage());
+		if (message.isEmpty()) return;
+
+		if (hasNativePublicChatMessage(client.getMessages(), senderName, message)) return;
+
+		chatMessageManager.queue(QueuedMessage.builder()
+				.type(ChatMessageType.PUBLICCHAT)
+				.name(senderName)
+				.runeLiteFormattedMessage(new ChatMessageBuilder().append(message).build())
+				.sender(BA_PARTY_CHAT_SENDER)
+				.build());
 	}
 
 	public void onGameTick(GameTick event)
@@ -838,6 +897,26 @@ public class BaPartySyncService
 		baPartySyncTeamNames = new ArrayList<>(roster.names);
 	}
 
+	private boolean isPartyChatEnabled()
+	{
+		return config.enablePartyChat() && isBaPartySyncConnected();
+	}
+
+	private boolean isBaTeamMember(String playerName)
+	{
+		String normalizedPlayerName = normalizePlayerName(playerName);
+
+		for (String teamName : baPartySyncTeamNames)
+		{
+			if (normalizePlayerName(teamName).equals(normalizedPlayerName))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	private BaTeamMember getBaPartySyncTeamMember(String name)
 	{
 		for (BaTeamMember member : baPartySyncTeamMembers)
@@ -859,6 +938,56 @@ public class BaPartySyncService
 	static boolean isRealWaveActive(BaWaveLifecycleService waveLifecycleService)
 	{
 		return waveLifecycleService.isWaveActive() && !waveLifecycleService.isDevWaveActive();
+	}
+
+	static boolean hasNativePublicChatMessage(Iterable<MessageNode> messages, String senderName, String message)
+	{
+		if (messages == null) return false;
+
+		for (MessageNode messageNode : messages)
+		{
+			if (isMatchingNativePublicChatMessage(messageNode, senderName, message))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	static boolean isMatchingNativePublicChatMessage(MessageNode messageNode, String senderName, String message)
+	{
+		if (messageNode == null || !isPublicChatType(messageNode.getType())) return false;
+		if (BA_PARTY_CHAT_SENDER.equals(messageNode.getSender())) return false;
+		return samePlayerName(messageNode.getName(), senderName)
+				&& normalizeChatMessage(messageNode.getValue()).equals(normalizeChatMessage(message));
+	}
+
+	static String cleanPartyChatMessage(String message)
+	{
+		String cleanMessage = Text.JAGEX_PRINTABLE_CHAR_MATCHER.retainFrom(message == null ? "" : message)
+				.replaceAll("<img=[^>]*>", "")
+				.trim();
+		return cleanMessage.length() <= MAX_PARTY_CHAT_MESSAGE_LENGTH
+				? cleanMessage
+				: cleanMessage.substring(0, MAX_PARTY_CHAT_MESSAGE_LENGTH);
+	}
+
+	private static boolean isPublicChatType(ChatMessageType type)
+	{
+		return type == ChatMessageType.PUBLICCHAT || type == ChatMessageType.MODCHAT;
+	}
+
+	private static boolean samePlayerName(String left, String right)
+	{
+		return normalizePlayerName(left).equals(normalizePlayerName(right));
+	}
+
+	private static String normalizeChatMessage(String message)
+	{
+		return Text.removeFormattingTags(message == null ? "" : message)
+				.replace('\u00A0', ' ')
+				.trim();
 	}
 
 	private static class BaTeamRoster

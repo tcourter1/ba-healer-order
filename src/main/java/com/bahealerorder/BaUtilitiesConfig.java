@@ -585,7 +585,7 @@ public interface BaUtilitiesConfig extends Config
 	@ConfigItem(
 			keyName = "enableBaPartySync",
 			name = "Enable BA Party Sync",
-			description = "Automatically joins a temporary RuneLite Party with your current Barbarian Assault team while in the BA lobby. The plugin leaves the sync party after each wave.",
+			description = "Automatically joins a temporary RuneLite Party with your current Barbarian Assault team while in the BA lobby.",
 			section = generalSection,
 			position = 1
 	)
@@ -595,11 +595,23 @@ public interface BaUtilitiesConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "enablePartyChat",
+			name = "Enable Party Chat",
+			description = "When in a BA Party, enable public chat in the entire BA arena between party members.",
+			section = generalSection,
+			position = 2
+	)
+	default boolean enablePartyChat()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 			keyName = "hideSidePanelButton",
 			name = "Hide Side Panel Button",
 			description = "Allows you to hide the side panel button to reduce clutter when not changing codes frequently",
 			section = generalSection,
-			position = 2
+			position = 3
 	)
 	default boolean hideSidePanelButton()
 	{
@@ -611,7 +623,7 @@ public interface BaUtilitiesConfig extends Config
 			name = "Deprioritize Other Dispensers",
 			description = "Removes interaction options from dispensers that do not match your current BA role",
 			section = generalSection,
-			position = 3
+			position = 4
 	)
 	default boolean deprioritizeOtherDispensers()
 	{
