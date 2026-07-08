@@ -1,6 +1,5 @@
-package com.bahealerorder.sidepanel.tilemarkers;
+package com.bahealerorder.sidepanel;
 
-import com.bahealerorder.sidepanel.BaPanelUi;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Cursor;
@@ -12,24 +11,24 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.HyperlinkEvent;
 import net.runelite.client.ui.ColorScheme;
 
-final class TileMarkerTransferDialog
+public final class BaTransferDialog
 {
 	private static final int WIDTH = 285;
 
-	private TileMarkerTransferDialog()
+	private BaTransferDialog()
 	{
 	}
 
-	static void show(Component parent, String title, String message, String action, List<String> summaryLines)
+	public static void show(Component parent, String title, String message, String action, List<String> summaryLines)
 	{
 		if (summaryLines == null || summaryLines.isEmpty())
 		{
@@ -42,9 +41,6 @@ final class TileMarkerTransferDialog
 		JPanel panel = new JPanel(new BorderLayout(0, 10));
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		panel.setBorder(new EmptyBorder(12, 12, 12, 12));
-
-		JPanel top = new JPanel(new BorderLayout());
-		top.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
 		JTextArea summary = new JTextArea(summaryText(summaryLines));
 		summary.setEditable(false);
@@ -78,16 +74,16 @@ final class TileMarkerTransferDialog
 			dialog.pack();
 			dialog.setLocationRelativeTo(parent);
 		});
-		top.add(messagePane, BorderLayout.CENTER);
 
 		JButton ok = new JButton("OK");
 		BaPanelUi.styleActionButton(ok);
 		ok.addActionListener(event -> dialog.dispose());
+
 		JPanel bottom = new JPanel(new BorderLayout());
 		bottom.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		bottom.add(ok, BorderLayout.EAST);
 
-		panel.add(top, BorderLayout.NORTH);
+		panel.add(messagePane, BorderLayout.NORTH);
 		panel.add(scrollPane, BorderLayout.CENTER);
 		panel.add(bottom, BorderLayout.SOUTH);
 		dialog.setContentPane(panel);

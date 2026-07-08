@@ -2,7 +2,9 @@ package com.bahealerorder.healer.codes;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class WaveCode
 {
@@ -10,20 +12,26 @@ public class WaveCode
 	private String name;
 	private int wave;
 	private boolean builtIn;
+	private HealerCodeOverstock overstock = HealerCodeOverstock.REGULAR;
+	private boolean alchHorn;
+	private String customOverstockInstructions;
+	private Integer expectedWaveEndSeconds;
+	private String restockingInstructions;
+	private String additionalNotes;
 	private String sourceText;
+	private Map<Integer, Integer> expectedTimesSeconds = new HashMap<>();
 	private List<CallCode> calls = new ArrayList<>();
 
 	public WaveCode()
 	{
 	}
 
-	public WaveCode(String id, String name, int wave, boolean builtIn, String sourceText, List<CallCode> calls)
+	public WaveCode(String id, String name, int wave, boolean builtIn, List<CallCode> calls)
 	{
 		this.id = id;
 		this.name = name;
 		this.wave = wave;
 		this.builtIn = builtIn;
-		this.sourceText = sourceText;
 		this.calls = calls == null ? new ArrayList<>() : new ArrayList<>(calls);
 	}
 
@@ -67,14 +75,110 @@ public class WaveCode
 		this.builtIn = builtIn;
 	}
 
-	public String getSourceText()
+	public HealerCodeOverstock getOverstock()
+	{
+		return HealerCodeOverstock.valueOrRegular(overstock);
+	}
+
+	public void setOverstock(HealerCodeOverstock overstock)
+	{
+		this.overstock = HealerCodeOverstock.valueOrRegular(overstock);
+	}
+
+	public boolean isAlchHorn()
+	{
+		return alchHorn;
+	}
+
+	public void setAlchHorn(boolean alchHorn)
+	{
+		this.alchHorn = alchHorn;
+	}
+
+	public String getCustomOverstockInstructions()
+	{
+		return customOverstockInstructions;
+	}
+
+	public void setCustomOverstockInstructions(String customOverstockInstructions)
+	{
+		this.customOverstockInstructions = customOverstockInstructions;
+	}
+
+	public Integer getExpectedWaveEndSeconds()
+	{
+		return expectedWaveEndSeconds;
+	}
+
+	public void setExpectedWaveEndSeconds(Integer expectedWaveEndSeconds)
+	{
+		this.expectedWaveEndSeconds = expectedWaveEndSeconds == null ? null : Math.max(0, expectedWaveEndSeconds);
+	}
+
+	public String getRestockingInstructions()
+	{
+		return restockingInstructions;
+	}
+
+	public void setRestockingInstructions(String restockingInstructions)
+	{
+		this.restockingInstructions = restockingInstructions;
+	}
+
+	public String getAdditionalNotes()
+	{
+		return additionalNotes;
+	}
+
+	public void setAdditionalNotes(String additionalNotes)
+	{
+		this.additionalNotes = additionalNotes;
+	}
+
+	String getStoredSourceText()
 	{
 		return sourceText;
 	}
 
-	public void setSourceText(String sourceText)
+	void clearStoredSourceText()
 	{
-		this.sourceText = sourceText;
+		this.sourceText = null;
+	}
+
+	public Map<Integer, Integer> getExpectedTimesSeconds()
+	{
+		if (expectedTimesSeconds == null)
+		{
+			expectedTimesSeconds = new HashMap<>();
+		}
+
+		return expectedTimesSeconds;
+	}
+
+	public void setExpectedTimesSeconds(Map<Integer, Integer> expectedTimesSeconds)
+	{
+		this.expectedTimesSeconds = expectedTimesSeconds == null ? new HashMap<>() : new HashMap<>(expectedTimesSeconds);
+	}
+
+	public Integer getExpectedTimeSeconds(int healerOrder)
+	{
+		return getExpectedTimesSeconds().get(healerOrder);
+	}
+
+	public void setExpectedTimeSeconds(int healerOrder, Integer seconds)
+	{
+		if (seconds == null)
+		{
+			getExpectedTimesSeconds().remove(healerOrder);
+			return;
+		}
+
+		getExpectedTimesSeconds().put(healerOrder, seconds);
+	}
+
+	public String getSourceText()
+	{
+		return HealerCodeFormatter.format(this);
 	}
 
 	public List<CallCode> getCalls()

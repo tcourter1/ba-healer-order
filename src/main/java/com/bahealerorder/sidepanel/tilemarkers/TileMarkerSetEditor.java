@@ -3,6 +3,7 @@ package com.bahealerorder.sidepanel.tilemarkers;
 import com.bahealerorder.common.BaClipboard;
 import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.sidepanel.BaPanelUi;
+import com.bahealerorder.sidepanel.BaTransferDialog;
 import com.bahealerorder.common.TileMarkerStyle;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import com.bahealerorder.tilemarkers.TileMarker;
@@ -810,7 +811,7 @@ public class TileMarkerSetEditor extends JPanel
 		}
 
 		BaClipboard.copyText(result.getJson());
-		TileMarkerTransferDialog.show(
+		BaTransferDialog.show(
 				this,
 				"Export Marker Set",
 				"Exported tile set " + result.getName() + " with " + result.getMarkerCount() + " tile markers.",
@@ -854,7 +855,7 @@ public class TileMarkerSetEditor extends JPanel
 		{
 			setsChanged.run();
 		}
-		TileMarkerTransferDialog.show(this, "Import Marker Set", markerSetImportMessage(result), "Import", result.getSummaryLines());
+		BaTransferDialog.show(this, "Import Marker Set", markerSetImportMessage(result), "Import", result.getSummaryLines());
 	}
 
 	private String markerSetImportMessage(TileMarkerExportResult result)

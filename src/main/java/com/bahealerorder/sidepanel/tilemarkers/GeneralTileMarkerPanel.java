@@ -3,6 +3,7 @@ package com.bahealerorder.sidepanel.tilemarkers;
 import com.bahealerorder.common.BaClipboard;
 import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.sidepanel.BaPanelUi;
+import com.bahealerorder.sidepanel.BaTransferDialog;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import com.bahealerorder.tilemarkers.TileMarkerAssignmentPreset;
@@ -13,7 +14,6 @@ import com.bahealerorder.tilemarkers.TileMarkerStrategyPreset;
 import com.bahealerorder.tilemarkers.TileMarkerWaveMap;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.Toolkit;
@@ -28,14 +28,12 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLayeredPane;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -58,6 +56,7 @@ import net.runelite.client.util.SwingUtil;
 @Singleton
 public class GeneralTileMarkerPanel extends JPanel
 {
+	private static final String EMPTY_WAVE_SELECTION_LABEL = " ";
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
 	private static final int ROLE_ICON_SIZE = 18;
@@ -72,6 +71,8 @@ public class GeneralTileMarkerPanel extends JPanel
 	private static final int WAVE_MENU_BUTTON_WIDTH = 24;
 	private static final int WAVE_COMBO_WIDTH = WAVE_ROW_CONTROL_WIDTH - WAVE_LABEL_WIDTH - WAVE_MENU_BUTTON_WIDTH - 12;
 	private static final int ASSIGNMENT_CONTROL_WIDTH = CONTENT_WIDTH - 16;
+	private static final int ASSIGNMENT_PRESET_POPUP_WIDTH = 188;
+	private static final int WAVE_STRATEGY_POPUP_WIDTH = 165;
 	private static final int ACTION_ROW_GAP = 6;
 	private static final int ACTION_BUTTON_WIDTH = (ASSIGNMENT_CONTROL_WIDTH - ACTION_ROW_GAP) / 2;
 
@@ -84,7 +85,8 @@ public class GeneralTileMarkerPanel extends JPanel
 	private final MaterialTabGroup roleTabGroup = new MaterialTabGroup();
 	private final Map<TileMarkerRoleContext, MaterialTab> roleTabs = new EnumMap<>(TileMarkerRoleContext.class);
 	private final JLabel strategyTitle = new JLabel();
-	private final JComboBox<BaPanelUi.ComboOption> assignmentPresetCombo = new JComboBox<>();
+	private final JComboBox<BaPanelUi.ComboOption> assignmentPresetCombo =
+			BaPanelUi.fixedPopupWidthCombo(ASSIGNMENT_PRESET_POPUP_WIDTH);
 
 	private TileMarkerRoleContext selectedContext = TileMarkerRoleContext.DEFENDER;
 	private JDialog markerEditorDialog;
@@ -261,8 +263,8 @@ public class GeneralTileMarkerPanel extends JPanel
 		waveLabel.setForeground(ColorScheme.TEXT_COLOR);
 		waveLabel.setBorder(new EmptyBorder(0, WAVE_LABEL_LEFT_PADDING, 0, 0));
 
-		JComboBox<WaveSelectionOption> comboBox = new JComboBox<>();
-		comboBox.setRenderer(new WaveSelectionRenderer());
+		JComboBox<BaPanelUi.ComboOption> comboBox = BaPanelUi.fixedPopupWidthCombo(WAVE_STRATEGY_POPUP_WIDTH);
+		comboBox.setRenderer(BaPanelUi.comboOptionRenderer(CONTROL_HEIGHT));
 		BaPanelUi.styleCombo(comboBox, WAVE_COMBO_WIDTH, CONTROL_HEIGHT);
 		populateWaveSelectionCombo(comboBox, wave, strategyManager.getWaveSelectionStrategyId(selectedContext, wave));
 		comboBox.addActionListener(event ->
@@ -272,8 +274,7 @@ public class GeneralTileMarkerPanel extends JPanel
 				return;
 			}
 
-			WaveSelectionOption option = (WaveSelectionOption) comboBox.getSelectedItem();
-			strategyManager.setWaveSelectionStrategyId(selectedContext, wave, option == null ? null : option.getStrategyId());
+			strategyManager.setWaveSelectionStrategyId(selectedContext, wave, BaPanelUi.selectedId(comboBox));
 			refreshAssignmentPresetCombo();
 		});
 
@@ -289,7 +290,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		return row;
 	}
 
-	private JButton createWaveMenuButton(int wave, JComboBox<WaveSelectionOption> comboBox)
+	private JButton createWaveMenuButton(int wave, JComboBox<BaPanelUi.ComboOption> comboBox)
 	{
 		JButton button = new JButton(BaIcons.verticalEllipsisIcon());
 		button.addActionListener(event -> createWaveActionMenu(wave, comboBox).show(button, 0, button.getHeight()));
@@ -298,7 +299,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		return button;
 	}
 
-	private JPopupMenu createWaveActionMenu(int wave, JComboBox<WaveSelectionOption> comboBox)
+	private JPopupMenu createWaveActionMenu(int wave, JComboBox<BaPanelUi.ComboOption> comboBox)
 	{
 		JPopupMenu menu = new JPopupMenu();
 		menu.add(menuItem("Add", BaIcons.plusIcon(), () -> openStrategyEditorDialog(wave, null)));
@@ -307,6 +308,7 @@ public class GeneralTileMarkerPanel extends JPanel
 			String strategyId = selectedWaveStrategyId(comboBox);
 			openStrategyEditorDialog(wave, strategyId);
 		}));
+		menu.add(menuItem("Delete", BaIcons.trashIcon(), () -> deleteSelectedWaveStrategy(comboBox)));
 		menu.add(menuItem("Import", BaIcons.importIcon(), () -> importWaveSelectionFromClipboard(wave)));
 		menu.add(menuItem("Export", BaIcons.exportIcon(), () -> exportWaveSelectionToClipboard(wave)));
 		menu.add(menuItem("Preview", BaIcons.eyeIcon(), () -> openPreviewDialog(wave)));
@@ -334,6 +336,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		panel.add(createBeginnerPromptPanel());
 		BaPanelUi.styleCombo(assignmentPresetCombo, ASSIGNMENT_CONTROL_WIDTH, CONTROL_HEIGHT);
+		assignmentPresetCombo.setRenderer(BaPanelUi.comboOptionRenderer(CONTROL_HEIGHT));
 		assignmentPresetCombo.addActionListener(event ->
 		{
 			if (refreshing)
@@ -431,7 +434,7 @@ public class GeneralTileMarkerPanel extends JPanel
 			assignmentPresetCombo.addItem(new BaPanelUi.ComboOption(null, "Select a preset..."));
 			for (TileMarkerAssignmentPreset preset : strategyManager.getAssignmentPresets(selectedContext))
 			{
-				assignmentPresetCombo.addItem(new BaPanelUi.ComboOption(preset.getId(), preset.toString()));
+				assignmentPresetCombo.addItem(new BaPanelUi.ComboOption(preset.getId(), preset.toString(), preset.isBuiltIn()));
 			}
 			BaPanelUi.selectComboValue(assignmentPresetCombo, strategyManager.getActiveAssignmentPresetId(selectedContext));
 			beginnerPromptPanel.setVisible(
@@ -488,7 +491,9 @@ public class GeneralTileMarkerPanel extends JPanel
 			return;
 		}
 
-		String id = activePreset != null && name.equalsIgnoreCase(activePreset.getName()) ? activePreset.getId() : null;
+		String id = activePreset != null && !activePreset.isBuiltIn() && name.equalsIgnoreCase(activePreset.getName())
+				? activePreset.getId()
+				: null;
 		strategyManager.saveAssignmentPreset(selectedContext, id, name, strategyManager.getWaveSelections(selectedContext));
 		refreshAll();
 	}
@@ -515,6 +520,32 @@ public class GeneralTileMarkerPanel extends JPanel
 		}
 
 		strategyManager.deleteAssignmentPreset(id);
+		refreshAll();
+	}
+
+	private void deleteSelectedWaveStrategy(JComboBox<BaPanelUi.ComboOption> comboBox)
+	{
+		String strategyId = selectedWaveStrategyId(comboBox);
+		if (isBlank(strategyId))
+		{
+			Toolkit.getDefaultToolkit().beep();
+			return;
+		}
+
+		TileMarkerStrategyPreset preset = strategyManager.findStrategyPreset(strategyId);
+		if (preset == null || preset.isBuiltIn())
+		{
+			Toolkit.getDefaultToolkit().beep();
+			return;
+		}
+
+		int result = JOptionPane.showConfirmDialog(this, "Delete this wave strategy?", "Delete Strategy", JOptionPane.OK_CANCEL_OPTION);
+		if (result != JOptionPane.OK_OPTION)
+		{
+			return;
+		}
+
+		strategyManager.deleteStrategyPreset(strategyId);
 		refreshAll();
 	}
 
@@ -647,24 +678,24 @@ public class GeneralTileMarkerPanel extends JPanel
 	}
 
 	private void populateWaveSelectionCombo(
-			JComboBox<WaveSelectionOption> comboBox,
+			JComboBox<BaPanelUi.ComboOption> comboBox,
 			int wave,
 			String selectedStrategyId)
 	{
 		comboBox.removeAllItems();
-		comboBox.addItem(WaveSelectionOption.blank());
+		comboBox.addItem(new BaPanelUi.ComboOption(null, EMPTY_WAVE_SELECTION_LABEL));
 		TileMarkerWaveMap waveMap = TileMarkerWaveMap.fromWave(wave);
 
 		for (TileMarkerStrategyPreset preset : strategyManager.getUserStrategyPresets(waveMap))
 		{
-			comboBox.addItem(WaveSelectionOption.strategy(preset));
+			comboBox.addItem(new BaPanelUi.ComboOption(preset.getId(), preset.toString(), preset.isBuiltIn()));
 		}
 
 		for (TileMarkerStrategyPreset preset : strategyManager.getBuiltInStrategyPresets(waveMap))
 		{
-			comboBox.addItem(WaveSelectionOption.strategy(preset));
+			comboBox.addItem(new BaPanelUi.ComboOption(preset.getId(), preset.toString(), preset.isBuiltIn()));
 		}
-		selectWaveSelectionComboValue(comboBox, selectedStrategyId);
+		BaPanelUi.selectComboValue(comboBox, selectedStrategyId);
 	}
 
 	private String promptName(String title, String defaultValue)
@@ -681,7 +712,7 @@ public class GeneralTileMarkerPanel extends JPanel
 
 	private void showTransferDialog(String title, String message, String action, TileMarkerExportResult result)
 	{
-		TileMarkerTransferDialog.show(this, title, message, action, result.getSummaryLines());
+		BaTransferDialog.show(this, title, message, action, result.getSummaryLines());
 	}
 
 	private String exportMessage(TileMarkerExportResult result)
@@ -803,40 +834,9 @@ public class GeneralTileMarkerPanel extends JPanel
 		previewDialog.setVisible(true);
 	}
 
-	private String selectedWaveStrategyId(JComboBox<WaveSelectionOption> comboBox)
+	private String selectedWaveStrategyId(JComboBox<BaPanelUi.ComboOption> comboBox)
 	{
-		WaveSelectionOption option = (WaveSelectionOption) comboBox.getSelectedItem();
-		return option == null ? null : option.getStrategyId();
-	}
-
-	private void selectWaveSelectionComboValue(
-			JComboBox<WaveSelectionOption> comboBox,
-			String selectedStrategyId)
-	{
-		for (int i = 0; i < comboBox.getItemCount(); i++)
-		{
-			WaveSelectionOption option = comboBox.getItemAt(i);
-			if (sameStrategyId(option.getStrategyId(), selectedStrategyId))
-			{
-				comboBox.setSelectedIndex(i);
-				return;
-			}
-		}
-
-		if (comboBox.getItemCount() > 0)
-		{
-			comboBox.setSelectedIndex(0);
-		}
-	}
-
-	private static boolean sameStrategyId(String first, String second)
-	{
-		if (isBlank(first) && isBlank(second))
-		{
-			return true;
-		}
-
-		return first != null && first.equals(second);
+		return BaPanelUi.selectedId(comboBox);
 	}
 
 	private static boolean isBlank(String value)
@@ -847,82 +847,6 @@ public class GeneralTileMarkerPanel extends JPanel
 	private ImageIcon scaledRoleIcon(BufferedImage image)
 	{
 		return new ImageIcon(image.getScaledInstance(ROLE_ICON_SIZE, ROLE_ICON_SIZE, Image.SCALE_SMOOTH));
-	}
-
-	private static class WaveSelectionOption
-	{
-		private final String label;
-		private final String strategyId;
-		private final boolean builtIn;
-
-		private WaveSelectionOption(String label, String strategyId, boolean builtIn)
-		{
-			this.label = label;
-			this.strategyId = strategyId;
-			this.builtIn = builtIn;
-		}
-
-		private static WaveSelectionOption blank()
-		{
-			return new WaveSelectionOption("", null, false);
-		}
-
-		private static WaveSelectionOption strategy(TileMarkerStrategyPreset preset)
-		{
-			return new WaveSelectionOption(
-					preset.toString(),
-					preset.getId(),
-					preset.isBuiltIn()
-			);
-		}
-
-		private String getStrategyId()
-		{
-			return strategyId;
-		}
-
-		private boolean isBuiltIn()
-		{
-			return builtIn;
-		}
-
-		@Override
-		public String toString()
-		{
-			return label;
-		}
-
-	}
-
-	private static class WaveSelectionRenderer extends DefaultListCellRenderer
-	{
-		@Override
-		public Component getListCellRendererComponent(
-				JList<?> list,
-				Object value,
-				int index,
-				boolean isSelected,
-				boolean cellHasFocus)
-		{
-			JLabel label = (JLabel) super.getListCellRendererComponent(
-					list,
-					value,
-					index,
-					isSelected,
-					cellHasFocus
-			);
-			if (!(value instanceof WaveSelectionOption))
-			{
-				return label;
-			}
-
-			WaveSelectionOption option = (WaveSelectionOption) value;
-			if (option.isBuiltIn())
-			{
-				label.setForeground(new Color(120, 120, 120));
-			}
-			return label;
-		}
 	}
 
 }

@@ -60,21 +60,15 @@ _NPC columns can be removed to clean up the display and only track relevant NPCs
 
 BA Utilities includes a healer-code system for managing expected food counts and healer targets across Barbarian Assault waves.
 
-From this tab, users can select wave-specific codes, save custom presets, clear current selections, and manage their active healer-code setup.
+From this tab, users can edit healer codes, select wave-specific codes, save custom presets, and manage their active healer-code setup. Healer codes can be pasted in and parsed automatically, as well as customized manually in a user-friendly editor.
+
+<img width="976" height="676" alt="image" src="https://github.com/user-attachments/assets/ecc0fd07-3131-4909-b3d9-4363887379b2" />
 
 The plugin also supports importing and exporting healer-code presets as JSON. This makes it easier to share code setups with teammates or back up custom configurations.
 
 Pre-loaded presets are available for waves 4 through 10, giving users a ready-to-use starting point for common healer-code setups.
 
 Healer-code entries can include time-based progression. Additional lines represent later wave timing increments, allowing the plugin to update expected food counts as the wave progresses.
-
-Target labels can be included in healer-code entries using parentheses. When present, the plugin can display the active target label above the healer.
-
-<img width="237" height="534" alt="image" src="https://github.com/user-attachments/assets/27866011-b816-40d2-b968-93f83c3465bb" /> <img width="218" height="394" alt="image" src="https://github.com/user-attachments/assets/d686fb70-9243-4f35-8344-c0e85fd3aa5c" />
-
-The active code can also be displayed in the Penance Healers' right-click menu.
-
-<img width="413" height="249" alt="image" src="https://github.com/user-attachments/assets/4f12e807-1992-4530-b050-381c0448e283" />
 
 ### Tile Markers and Strategies
 
@@ -109,9 +103,9 @@ Time-based labels display healers using common BA timing labels, such as:
 6, 12, 18, 24, R1, R2...
 ```
 
-Healer labels can also be displayed in the right-click menu.
+Healer labels and codes can also be displayed in the right-click menu.
 
-<img width="517" height="271" alt="image" src="https://github.com/user-attachments/assets/8663be8f-923b-408e-a0db-32232083a0ad" />
+<img width="413" height="249" alt="image" src="https://github.com/user-attachments/assets/4f12e807-1992-4530-b050-381c0448e283" />
 
 Labels can also be disabled entirely.
 
@@ -219,6 +213,12 @@ BA Utilities does not automate gameplay. It provides visual tracking, menu organ
 
 <details>
 <summary>Show version history</summary>
+
+### 2.3.0
+* Added user-friendly healer code editor
+* Enhanced healer code models, parser and import/export flow
+* Added Scroller options for highlighting ladder and omega dupe items
+* Fixed bug where renamed NPCs caused issues
 
 ### 2.2.0
 * Added options for customizing overlay panel

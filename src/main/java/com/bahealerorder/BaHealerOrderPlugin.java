@@ -12,7 +12,12 @@ import com.bahealerorder.common.BaWaveLifecycleService.WaveStart;
 import com.bahealerorder.common.BaWaveOverviewService;
 import com.bahealerorder.common.BaWaveOverviewSyncMessage;
 import com.bahealerorder.defender.DefenderController;
+import com.bahealerorder.healer.HealerCodeDefaultResolver;
 import com.bahealerorder.healer.HealerController;
+import com.bahealerorder.healer.HealerCodeManager;
+import com.bahealerorder.healer.codes.HealerCodeDefaultRole;
+import com.bahealerorder.healer.codes.RunPreset;
+import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerController;
 import com.google.inject.Provides;
 import javax.inject.Inject;
@@ -37,6 +42,7 @@ import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.PostMenuSort;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -56,10 +62,19 @@ public class BaHealerOrderPlugin extends Plugin
 	private Client client;
 
 	@Inject
+	private ClientThread clientThread;
+
+	@Inject
 	private AttackerController attackerController;
 
 	@Inject
 	private HealerController healerController;
+
+	@Inject
+	private HealerCodeManager healerCodeManager;
+
+	@Inject
+	private BaUtilitiesPanel panel;
 
 	@Inject
 	private DefenderController defenderController;
@@ -270,19 +285,19 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onBaHealerSyncMessage(BaHealerSyncMessage event)
 	{
-		healerController.onBaHealerSyncMessage(event);
+		clientThread.invokeLater(() -> healerController.onBaHealerSyncMessage(event));
 	}
 
 	@Subscribe
 	public void onBaHealerFoodCountMessage(BaHealerFoodCountMessage event)
 	{
-		partySyncService.onBaHealerFoodCountMessage(event);
+		clientThread.invokeLater(() -> partySyncService.onBaHealerFoodCountMessage(event));
 	}
 
 	@Subscribe
 	public void onBaWaveOverviewSyncMessage(BaWaveOverviewSyncMessage event)
 	{
-		waveOverviewService.onBaWaveOverviewSyncMessage(event);
+		clientThread.invokeLater(() -> waveOverviewService.onBaWaveOverviewSyncMessage(event));
 	}
 
 	@Subscribe
@@ -300,10 +315,39 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private void startWave(WaveStart waveStart)
 	{
+		applyDefaultHealerCodePreset(waveStart);
 		waveOverviewService.onWaveStarted(waveStart.getWave());
 		attackerController.onWaveStarted(waveStart.getWave());
 		defenderController.onWaveStarted();
 		healerController.onWaveStarted(waveStart);
+	}
+
+	private void applyDefaultHealerCodePreset(WaveStart waveStart)
+	{
+		if (waveStart.getWave() != 1 || !"wave chat".equals(waveStart.getSource()))
+		{
+			return;
+		}
+
+		HealerCodeDefaultRole defaultRole = HealerCodeDefaultResolver.resolve(
+				roleDetector.getCurrentRole(),
+				client.getLocalPlayer() == null ? null : client.getLocalPlayer().getName(),
+				partySyncService.getBaPartySyncTeamMembers()
+		);
+
+		if (defaultRole != null)
+		{
+			RunPreset preset = healerCodeManager.applyDefaultRunPreset(defaultRole);
+			if (preset != null)
+			{
+				panel.refreshLater();
+				addChatMessage("BA Utilities swapping to "
+						+ HealerCodeManager.runPresetDisplayName(preset)
+						+ " because it is marked as the default for "
+						+ defaultRole.getDisplayName()
+						+ ".");
+			}
+		}
 	}
 
 	private void endWave(int wave)

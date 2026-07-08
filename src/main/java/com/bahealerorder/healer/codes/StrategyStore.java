@@ -8,10 +8,23 @@ import java.util.Map;
 
 public class StrategyStore
 {
+	private int version;
 	private String activeRunPresetId;
+	private Boolean codeEditorHelpVisible = true;
 	private Map<Integer, String> activeWaveCodeIds = new HashMap<>();
+	private Map<HealerCodeDefaultRole, String> defaultRunPresetIds = new HashMap<>();
 	private List<RunPreset> runPresets = new ArrayList<>();
 	private List<WaveCode> waveCodes = new ArrayList<>();
+
+	public int getVersion()
+	{
+		return version;
+	}
+
+	public void setVersion(int version)
+	{
+		this.version = version;
+	}
 
 	public String getActiveRunPresetId()
 	{
@@ -21,6 +34,16 @@ public class StrategyStore
 	public void setActiveRunPresetId(String activeRunPresetId)
 	{
 		this.activeRunPresetId = activeRunPresetId;
+	}
+
+	public boolean isCodeEditorHelpVisible()
+	{
+		return codeEditorHelpVisible == null || codeEditorHelpVisible;
+	}
+
+	public void setCodeEditorHelpVisible(boolean codeEditorHelpVisible)
+	{
+		this.codeEditorHelpVisible = codeEditorHelpVisible;
 	}
 
 	public Map<Integer, String> getActiveWaveCodeIds()
@@ -36,6 +59,43 @@ public class StrategyStore
 	public void setActiveWaveCodeIds(Map<Integer, String> activeWaveCodeIds)
 	{
 		this.activeWaveCodeIds = activeWaveCodeIds == null ? new HashMap<>() : new HashMap<>(activeWaveCodeIds);
+	}
+
+	public String getDefaultRunPresetId(HealerCodeDefaultRole role)
+	{
+		return getDefaultRunPresetIds().get(role);
+	}
+
+	public void setDefaultRunPresetId(HealerCodeDefaultRole role, String runPresetId)
+	{
+		if (role == null)
+		{
+			return;
+		}
+
+		if (runPresetId == null || runPresetId.trim().isEmpty())
+		{
+			getDefaultRunPresetIds().remove(role);
+		}
+		else
+		{
+			getDefaultRunPresetIds().put(role, runPresetId);
+		}
+	}
+
+	public Map<HealerCodeDefaultRole, String> getDefaultRunPresetIds()
+	{
+		if (defaultRunPresetIds == null)
+		{
+			defaultRunPresetIds = new HashMap<>();
+		}
+
+		return defaultRunPresetIds;
+	}
+
+	public void setDefaultRunPresetIds(Map<HealerCodeDefaultRole, String> defaultRunPresetIds)
+	{
+		this.defaultRunPresetIds = defaultRunPresetIds == null ? new HashMap<>() : new HashMap<>(defaultRunPresetIds);
 	}
 
 	public List<RunPreset> getRunPresets()

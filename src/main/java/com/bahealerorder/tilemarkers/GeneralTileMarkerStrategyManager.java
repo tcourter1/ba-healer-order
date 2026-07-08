@@ -249,25 +249,8 @@ public class GeneralTileMarkerStrategyManager
 
 	public List<TileMarkerStrategyPreset> getStrategyPresets(TileMarkerWaveMap waveMap)
 	{
-		TileMarkerWaveMap resolvedWaveMap = resolveWaveMap(waveMap);
-		List<TileMarkerStrategyPreset> presets = new ArrayList<>();
-		for (TileMarkerStrategyPreset preset : builtInStrategyPresets)
-		{
-			if (preset != null && preset.getWaveMap() == resolvedWaveMap)
-			{
-				TileMarkerStrategyPreset override = findUserStrategyPreset(preset.getId());
-				presets.add(override != null && override.isBuiltIn() ? override : preset);
-			}
-		}
-		for (TileMarkerStrategyPreset preset : store.getStrategyPresets())
-		{
-			if (preset != null
-					&& preset.getWaveMap() == resolvedWaveMap
-					&& findBuiltInStrategyPreset(preset.getId()) == null)
-			{
-				presets.add(preset);
-			}
-		}
+		List<TileMarkerStrategyPreset> presets = getUserStrategyPresets(waveMap);
+		presets.addAll(getBuiltInStrategyPresets(waveMap));
 		return presets;
 	}
 
@@ -307,14 +290,14 @@ public class GeneralTileMarkerStrategyManager
 	{
 		TileMarkerRoleContext resolvedContext = resolveContext(context);
 		List<TileMarkerAssignmentPreset> presets = new ArrayList<>();
-		for (TileMarkerAssignmentPreset preset : builtInAssignmentPresets)
+		for (TileMarkerAssignmentPreset preset : store.getAssignmentPresets())
 		{
-			if (preset != null && preset.getRoleContext() == resolvedContext)
+			if (preset != null && preset.getRoleContext() == resolvedContext && !preset.isBuiltIn())
 			{
 				presets.add(preset);
 			}
 		}
-		for (TileMarkerAssignmentPreset preset : store.getAssignmentPresets())
+		for (TileMarkerAssignmentPreset preset : builtInAssignmentPresets)
 		{
 			if (preset != null && preset.getRoleContext() == resolvedContext)
 			{

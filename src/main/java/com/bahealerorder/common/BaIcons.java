@@ -19,6 +19,7 @@ public final class BaIcons
 	private static final ImageIcon INFO_ICON = loadIcon("info_icon.png");
 	private static final ImageIcon GLOBE_ICON = loadIcon("globe_icon.png");
 	private static final ImageIcon WAVE_OVERVIEW_ICON = loadIcon("wave_overview_icon.png");
+	private static final ImageIcon HEALER_CODE_ICON = loadIcon("healer_code_icon.png");
 	private static final ImageIcon PLUS_ICON = createPlusIcon(Color.WHITE);
 	private static final ImageIcon PLUS_HOVER_ICON = createPlusIcon(Color.WHITE);
 	private static final ImageIcon VERTICAL_ELLIPSIS_ICON = createVerticalEllipsisIcon();
@@ -26,6 +27,8 @@ public final class BaIcons
 	private static final ImageIcon EXPORT_ICON = loadIcon("export_icon.png");
 	private static final ImageIcon CHECKBOX_ICON = createCheckboxIcon(false);
 	private static final ImageIcon CHECKBOX_SELECTED_ICON = createCheckboxIcon(true);
+	private static final ImageIcon CLOCK_ICON = createClockIcon();
+	private static final ImageIcon RESET_ICON = scaledIcon(loadIcon("reset_icon.png"), 18);
 
 	private BaIcons()
 	{
@@ -119,6 +122,16 @@ public final class BaIcons
 		return CHECKBOX_SELECTED_ICON;
 	}
 
+	public static ImageIcon clockIcon()
+	{
+		return CLOCK_ICON;
+	}
+
+	public static ImageIcon resetIcon()
+	{
+		return RESET_ICON;
+	}
+
 	private static ImageIcon createPlusIcon(Color color)
 	{
 		int size = 16;
@@ -167,6 +180,21 @@ public final class BaIcons
 		return new ImageIcon(image);
 	}
 
+	private static ImageIcon createClockIcon()
+	{
+		int size = 14;
+		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		graphics.setColor(ColorScheme.TEXT_COLOR);
+		graphics.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		graphics.drawOval(2, 2, 10, 10);
+		graphics.drawLine(7, 7, 7, 4);
+		graphics.drawLine(7, 7, 10, 8);
+		graphics.dispose();
+		return new ImageIcon(image);
+	}
+
 	public static ImageIcon closeIcon()
 	{
 		int size = 12;
@@ -210,6 +238,11 @@ public final class BaIcons
 	public static ImageIcon waveOverviewIcon(int size)
 	{
 		return scaledIcon(WAVE_OVERVIEW_ICON, size);
+	}
+
+	public static ImageIcon healerCodeIcon(int size)
+	{
+		return scaledIcon(HEALER_CODE_ICON, size);
 	}
 
 	public static ImageIcon tileMarkerIcon(int size)
