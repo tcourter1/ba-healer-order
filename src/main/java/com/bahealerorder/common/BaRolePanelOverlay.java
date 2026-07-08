@@ -274,7 +274,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
         if (!isBlank(detail))
         {
-            title += " (" + detail + ")";
+            title += " - " + detail;
         }
 
         return title;

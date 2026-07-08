@@ -694,7 +694,7 @@ public class HealerController
 	public String getCurrentWaveCodeName()
 	{
 		WaveCode waveCode = codeManager.getActiveWaveCode(getCurrentWave());
-		return waveCode == null ? null : waveCode.getName();
+		return waveCode == null ? null : HealerCodeManager.waveCodeDisplayName(waveCode);
 	}
 
 	public boolean hasActiveWaveCode()

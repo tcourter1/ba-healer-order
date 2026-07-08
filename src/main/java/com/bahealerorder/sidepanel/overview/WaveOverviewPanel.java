@@ -668,7 +668,7 @@ public class WaveOverviewPanel extends JPanel
 		}
 
 		WaveCode code = healerCodeManager.getActiveWaveCode(snapshot.getWave());
-		return code == null || code.getName() == null ? "" : code.getName().trim();
+		return code == null ? "" : HealerCodeManager.waveCodeDisplayName(code);
 	}
 
 	private String getActiveStrategyName(BaWaveOverviewSnapshot snapshot)

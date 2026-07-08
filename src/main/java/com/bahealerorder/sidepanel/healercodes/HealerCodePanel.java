@@ -376,7 +376,7 @@ public class HealerCodePanel extends JPanel
 		comboBox.addItem(new BaPanelUi.ComboOption(null, EMPTY_WAVE_SELECTION_LABEL));
 		for (WaveCode code : codeManager.getWaveCodesForWave(wave))
 		{
-			comboBox.addItem(new BaPanelUi.ComboOption(code.getId(), code.getName(), code.isBuiltIn()));
+			comboBox.addItem(new BaPanelUi.ComboOption(code.getId(), HealerCodeManager.waveCodeDisplayName(code), code.isBuiltIn()));
 		}
 		BaPanelUi.selectComboValue(comboBox, selectedCodeId);
 	}
@@ -427,7 +427,7 @@ public class HealerCodePanel extends JPanel
 			return;
 		}
 
-		String heading = isBlank(code.getName()) ? "Wave " + code.getWave() : code.getName().trim();
+		String heading = HealerCodeManager.waveCodeDisplayName(code);
 		wavePreviewSection.add(Box.createVerticalStrut(WAVE_PREVIEW_TOP_GAP));
 		wavePreviewSection.add(BaNotesPreviewPanel.create(
 				heading,

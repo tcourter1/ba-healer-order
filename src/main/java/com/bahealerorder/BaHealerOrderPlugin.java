@@ -16,6 +16,8 @@ import com.bahealerorder.healer.HealerCodeDefaultResolver;
 import com.bahealerorder.healer.HealerController;
 import com.bahealerorder.healer.HealerCodeManager;
 import com.bahealerorder.healer.codes.HealerCodeDefaultRole;
+import com.bahealerorder.healer.codes.RunPreset;
+import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerController;
 import com.google.inject.Provides;
 import javax.inject.Inject;
@@ -70,6 +72,9 @@ public class BaHealerOrderPlugin extends Plugin
 
 	@Inject
 	private HealerCodeManager healerCodeManager;
+
+	@Inject
+	private BaUtilitiesPanel panel;
 
 	@Inject
 	private DefenderController defenderController;
@@ -332,7 +337,16 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (defaultRole != null)
 		{
-			healerCodeManager.applyDefaultRunPreset(defaultRole);
+			RunPreset preset = healerCodeManager.applyDefaultRunPreset(defaultRole);
+			if (preset != null)
+			{
+				panel.refreshLater();
+				addChatMessage("BA Utilities swapping to "
+						+ HealerCodeManager.runPresetDisplayName(preset)
+						+ " because it is marked as the default for "
+						+ defaultRole.getDisplayName()
+						+ ".");
+			}
 		}
 	}
 

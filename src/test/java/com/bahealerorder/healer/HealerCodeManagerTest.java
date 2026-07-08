@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNull;
 
 import com.bahealerorder.healer.codes.HealerCodeExport;
 import com.bahealerorder.healer.codes.HealerCodeExportType;
+import com.bahealerorder.healer.codes.HealerCodeDefaultRole;
 import com.bahealerorder.healer.codes.HealerCodeParser;
 import com.bahealerorder.healer.codes.HealerCodeStoreNormalizer;
 import com.bahealerorder.healer.codes.RunPreset;
@@ -30,9 +31,9 @@ public class HealerCodeManagerTest
 		store.getRunPresets().add(new RunPreset("user:preset:main-run", "Main Run", false, existingWaveCodeIds));
 
 		HealerCodeManager manager = new HealerCodeManager(store, new Gson());
-		WaveCode importedCode = HealerCodeParser.parseWaveCode(null, "Fast Five", 5, false, "2-2-2");
+		WaveCode importedCode = HealerCodeParser.parseWaveCode("import:wave:fast-five", "Fast Five", 5, false, "2-2-2");
 		Map<Integer, String> importedWaveCodeIds = new HashMap<>();
-		importedWaveCodeIds.put(5, "Fast Five");
+		importedWaveCodeIds.put(5, importedCode.getId());
 		RunPreset importedPreset = new RunPreset(null, "Main Run", false, importedWaveCodeIds);
 		String json = new Gson().toJson(new HealerCodeExport(
 				2,
@@ -46,12 +47,35 @@ public class HealerCodeManagerTest
 
 		WaveCode imported = manager.getActiveWaveCode(5);
 		assertNotNull(imported);
-		assertEquals("Fast Five (1)", imported.getName());
+		assertEquals("Fast Five", imported.getName());
 		assertEquals(2, imported.getCall(0).getInstruction(1).getTargetFoodCount());
 		assertEquals("1-1-1", existing.getSourceText());
 		assertEquals(imported.getId(), manager.getActiveWaveCodeId(5));
 		assertEquals(2, store.getWaveCodes().size());
 		assertEquals(2, store.getRunPresets().size());
+	}
+
+	@Test
+	public void importsSameNameSameContentWaveCodeAsExistingCode()
+	{
+		StrategyStore store = new StrategyStore();
+		WaveCode existing = HealerCodeParser.parseWaveCode("user:wave:fast-five", "Fast Five", 5, false, "1-1-1");
+		store.getWaveCodes().add(existing);
+
+		HealerCodeManager manager = new HealerCodeManager(store, new Gson());
+		WaveCode importedCode = HealerCodeParser.parseWaveCode("import:wave:fast-five", "Fast Five", 5, false, "1-1-1");
+		String json = new Gson().toJson(new HealerCodeExport(
+				2,
+				HealerCodeExportType.WAVE_CODE,
+				null,
+				importedCode,
+				null
+		));
+
+		assertNotNull(manager.importHealerCodeJson(json, 5));
+
+		assertEquals(existing.getId(), manager.getActiveWaveCodeId(5));
+		assertEquals(1, store.getWaveCodes().size());
 	}
 
 	@Test
@@ -89,6 +113,10 @@ public class HealerCodeManagerTest
 
 		HealerCodeManager manager = new HealerCodeManager(store, new Gson());
 		String json = manager.exportCurrentRunPreset(null).getJson();
+		HealerCodeExport exported = new Gson().fromJson(json, HealerCodeExport.class);
+
+		assertEquals(waveOne.getId(), exported.getPreset().getWaveCodeId(1));
+		assertEquals(waveOne.getId(), exported.getWaveCodes().get(0).getId());
 
 		StrategyStore importedStore = new StrategyStore();
 		HealerCodeManager importedManager = new HealerCodeManager(importedStore, new Gson());
@@ -116,6 +144,37 @@ public class HealerCodeManagerTest
 		assertEquals(false, builtInPreset.getId().equals(saved.getId()));
 		assertEquals(1, store.getRunPresets().size());
 		assertEquals(saved.getId(), manager.getActiveRunPresetId());
+	}
+
+	@Test
+	public void applyDefaultRunPresetReportsOnlyActualPresetChanges()
+	{
+		StrategyStore store = new StrategyStore();
+		WaveCode waveOne = HealerCodeParser.parseWaveCode("user:wave:one", "Wave One", 1, false, "1-1-1");
+		store.getWaveCodes().add(waveOne);
+		Map<Integer, String> waveCodeIds = new HashMap<>();
+		waveCodeIds.put(1, waveOne.getId());
+		RunPreset preset = new RunPreset("user:preset:solo", "Solo", false, waveCodeIds);
+		store.getRunPresets().add(preset);
+		store.getActiveWaveCodeIds().putAll(waveCodeIds);
+
+		HealerCodeManager manager = new HealerCodeManager(store, new Gson());
+		assertEquals(true, manager.setDefaultRunPresetId(HealerCodeDefaultRole.SOLO_HEALER, preset.getId()));
+
+		assertEquals(preset, manager.applyDefaultRunPreset(HealerCodeDefaultRole.SOLO_HEALER));
+		assertEquals(preset.getId(), manager.getActiveRunPresetId());
+		assertNull(manager.applyDefaultRunPreset(HealerCodeDefaultRole.SOLO_HEALER));
+	}
+
+	@Test
+	public void builtInWaveCodeNamesOmitExpectedWaveEnd()
+	{
+		HealerCodeManager manager = new HealerCodeManager(new StrategyStore(), new Gson());
+		WaveCode builtIn = manager.findBuiltInWaveCode("builtin:w4:regular");
+
+		assertNotNull(builtIn);
+		assertEquals("Reg", builtIn.getName());
+		assertEquals("Reg (42)", HealerCodeManager.waveCodeDisplayName(builtIn));
 	}
 
 	@Test
