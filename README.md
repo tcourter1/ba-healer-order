@@ -214,6 +214,12 @@ BA Utilities does not automate gameplay. It provides visual tracking, menu organ
 <details>
 <summary>Show version history</summary>
 
+### 2.3.0
+* Added user-friendly healer code editor
+* Enhanced healer code models, parser and import/export flow
+* Added Scroller options for highlighting ladder and omega dupe items
+* Fixed bug where renamed NPCs caused issues
+
 ### 2.2.0
 * Added options for customizing overlay panel
 * Improved ::bawave dev command support 
