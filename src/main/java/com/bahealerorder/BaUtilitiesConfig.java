@@ -29,23 +29,34 @@ public interface BaUtilitiesConfig extends Config
 	@ConfigSection(
 			name = "Healer",
 			description = "Settings for healer highlighting, labels, food counts, and dispenser options",
-			position = 2
+			position = 2,
+			closedByDefault = true
 	)
 	String healerSection = "healer";
 
 	@ConfigSection(
 			name = "Attacker",
 			description = "Utility helpers for the BA attacker role",
-			position = 3
+			position = 3,
+			closedByDefault = true
 	)
 	String attackerSection = "attacker";
 
 	@ConfigSection(
 			name = "Defender",
 			description = "Utility helpers for the BA defender role",
-			position = 4
+			position = 4,
+			closedByDefault = true
 	)
 	String defenderSection = "defender";
+
+	@ConfigSection(
+			name = "Scroller",
+			description = "Utility helpers for the BA team scroller",
+			position = 5,
+			closedByDefault = true
+	)
+	String scrollerSection = "scroller";
 
 	enum HighlightStyle
 	{
@@ -363,7 +374,7 @@ public interface BaUtilitiesConfig extends Config
 			name = "Hide Dead NPCs",
 			description = "Hides selected BA NPCs immediately when they begin dying instead of waiting for their death animation to finish",
 			section = generalSection,
-			position = 4
+			position = 5
 	)
 	default HideDeadNpcMode hideDeadNpcs()
 	{
@@ -605,6 +616,30 @@ public interface BaUtilitiesConfig extends Config
 	default boolean deprioritizeOtherDispensers()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+			keyName = "highlightScrollerLadder",
+			name = "Highlight Current Wave Ladder",
+			description = "Highlights the Barbarian Assault ladder for the current wave room while you are the BA team scroller",
+			section = scrollerSection,
+			position = 1
+	)
+	default boolean highlightScrollerLadder()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+			keyName = "highlightOmegaDupeItems",
+			name = "Highlight Omega Dupe Items",
+			description = "Highlights book of egg, shrink, and shields when omega egg is loaded",
+			section = scrollerSection,
+			position = 2
+	)
+	default boolean highlightOmegaDupeItems()
+	{
+		return true;
 	}
 
 	@ConfigItem(

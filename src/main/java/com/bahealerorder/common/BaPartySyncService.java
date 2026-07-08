@@ -149,6 +149,30 @@ public class BaPartySyncService
 		return new ArrayList<>(baPartySyncTeamMembers);
 	}
 
+	public boolean isLocalPlayerBaTeamLeader()
+	{
+		return !baPartySyncTeamMembers.isEmpty()
+				&& isLocalPlayer(baPartySyncTeamMembers.get(0).getName());
+	}
+
+	public boolean isBaTeamMemberRole(String playerName, BaRole role)
+	{
+		if (role == null) return false;
+
+		String normalizedPlayerName = normalizePlayerName(playerName);
+
+		for (BaTeamMember member : baPartySyncTeamMembers)
+		{
+			if (normalizePlayerName(member.getName()).equals(normalizedPlayerName)
+					&& role.getDisplayName().equals(member.getRole()))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public boolean hasIncompleteDuoHealerParty()
 	{
 		return hasIncompleteDuoHealerParty(
