@@ -2,6 +2,7 @@ package com.bahealerorder.attacker;
 
 import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.common.BaOverviewNpcType;
+import com.bahealerorder.common.BaNpcIds;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.BaRoleDetector;
 import com.bahealerorder.common.BaWaveLifecycleService;
@@ -30,9 +31,6 @@ import net.runelite.client.util.Text;
 @Singleton
 public class AttackerController
 {
-    private static final String PENANCE_RANGER_NAME = "Penance Ranger";
-    private static final String PENANCE_FIGHTER_NAME = "Penance Fighter";
-
     /*
      * Normal waves 1-9. Captured from Block -> Penance cave debug.
      */
@@ -101,21 +99,15 @@ public class AttackerController
         }
 
         NPC npc = event.getNpc();
+        BaOverviewNpcType type = BaNpcIds.getOverviewType(npc);
 
-        if (npc == null || npc.getName() == null)
-        {
-            return;
-        }
-
-        String npcName = Text.removeTags(npc.getName());
-
-        if (PENANCE_RANGER_NAME.equals(npcName))
+        if (type == BaOverviewNpcType.RANGER)
         {
             visibleAttackableNpcs.put(npc, BaOverviewNpcType.RANGER);
             waveOverviewService.recordSpawn(BaOverviewNpcType.RANGER, npc.getIndex());
             log.debug("Attacker spawn counter registered Ranger {}/{} for wave {}", getRangersSpawned(), getRangerTotal(), getCurrentWave());
         }
-        else if (PENANCE_FIGHTER_NAME.equals(npcName))
+        else if (type == BaOverviewNpcType.FIGHTER)
         {
             visibleAttackableNpcs.put(npc, BaOverviewNpcType.FIGHTER);
             waveOverviewService.recordSpawn(BaOverviewNpcType.FIGHTER, npc.getIndex());
