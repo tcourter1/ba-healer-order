@@ -12,7 +12,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.MessageNode;
 import org.junit.Test;
 
 public class BaPartySyncServiceTest
@@ -95,10 +97,55 @@ public class BaPartySyncServiceTest
 		assertFalse(BaPartySyncService.isRealWaveActive(lifecycle));
 	}
 
+	@Test
+	public void nativePublicChatMessageMatchesPartyChatRelay()
+	{
+		List<MessageNode> messages = Arrays.asList(
+				messageNode(ChatMessageType.GAMEMESSAGE, "", "A game message.", null),
+				messageNode(ChatMessageType.PUBLICCHAT, "Healer One", "North cannon", null)
+		);
+
+		assertTrue(BaPartySyncService.hasNativePublicChatMessage(messages, "healer_one", "North cannon"));
+	}
+
+	@Test
+	public void syntheticPartyChatMessageDoesNotMatchNativeChat()
+	{
+		List<MessageNode> messages = Collections.singletonList(
+				messageNode(ChatMessageType.PUBLICCHAT, "Healer One", "North cannon", "BA Party Chat")
+		);
+
+		assertFalse(BaPartySyncService.hasNativePublicChatMessage(messages, "Healer One", "North cannon"));
+	}
+
+	@Test
+	public void partyChatMessageIsCleanedBeforeRelay()
+	{
+		String message = BaPartySyncService.cleanPartyChatMessage("<img=10>North cannon");
+		assertEquals("North cannon", message);
+		assertEquals(150, BaPartySyncService.cleanPartyChatMessage("x".repeat(151)).length());
+	}
+
 	private static java.util.function.Predicate<String> inParty(String... names)
 	{
 		Set<String> partyNames = new HashSet<>(names == null ? Collections.emptyList() : Arrays.asList(names));
 		return partyNames::contains;
+	}
+
+	private static MessageNode messageNode(ChatMessageType type, String name, String value, String sender)
+	{
+		return (MessageNode) Proxy.newProxyInstance(
+				MessageNode.class.getClassLoader(),
+				new Class<?>[]{MessageNode.class},
+				(proxy, method, args) ->
+				{
+					if ("getType".equals(method.getName())) return type;
+					if ("getName".equals(method.getName())) return name;
+					if ("getValue".equals(method.getName())) return value;
+					if ("getSender".equals(method.getName())) return sender;
+					return defaultValue(method.getReturnType());
+				}
+		);
 	}
 
 	private static Client client(AtomicInteger tick)
