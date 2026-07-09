@@ -20,6 +20,7 @@ import com.bahealerorder.healer.HealerCodeManager;
 import com.bahealerorder.healer.codes.HealerCodeDefaultRole;
 import com.bahealerorder.healer.codes.RunPreset;
 import com.bahealerorder.sidepanel.BaUtilitiesPanel;
+import com.bahealerorder.sidepanel.onboarding.BaAssistancePresetManager;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerController;
 import com.google.inject.Provides;
 import java.util.Locale;
@@ -84,6 +85,9 @@ public class BaHealerOrderPlugin extends Plugin
 
 	@Inject
 	private BaUtilitiesPanel panel;
+
+	@Inject
+	private BaAssistancePresetManager presetManager;
 
 	@Inject
 	private DefenderController defenderController;
@@ -261,6 +265,12 @@ public class BaHealerOrderPlugin extends Plugin
 		if ("bawave".equalsIgnoreCase(command))
 		{
 			handleBaWaveCommand(event.getArguments());
+			return;
+		}
+
+		if ("bautil".equalsIgnoreCase(command))
+		{
+			handleBaUtilCommand(event.getArguments());
 			return;
 		}
 
@@ -490,6 +500,61 @@ public class BaHealerOrderPlugin extends Plugin
 
 		addChatMessage("BA Utilities dev wave " + wave + " started as "
 				+ (scroller ? "Scroller" : role.getDisplayName()) + ".");
+	}
+
+	private void handleBaUtilCommand(String[] arguments)
+	{
+		if (arguments.length < 1)
+		{
+			addBaUtilUsage();
+			return;
+		}
+
+		boolean reset = false;
+		for (String argument : arguments)
+		{
+			String option = argument == null ? "" : argument.trim().toLowerCase(Locale.ROOT);
+			if (option.isEmpty())
+			{
+				continue;
+			}
+
+			if ("onboard".equals(option))
+			{
+				presetManager.resetAssistancePresetForDev();
+				addChatMessage("BA Utilities assistance onboarding reset.");
+				reset = true;
+				continue;
+			}
+
+			if ("update".equals(option))
+			{
+				presetManager.resetUpdateNotesForDev();
+				addChatMessage("BA Utilities update notes reset.");
+				reset = true;
+				continue;
+			}
+
+			addChatMessage("Unknown ::bautil option: " + argument);
+			addBaUtilUsage();
+			return;
+		}
+
+		if (!reset)
+		{
+			addBaUtilUsage();
+			return;
+		}
+
+		onboardingSidePanelOpened = false;
+		panel.showOnboarding();
+		healerController.openSidePanel();
+		onboardingSidePanelOpened = true;
+	}
+
+	private void addBaUtilUsage()
+	{
+		addChatMessage("Usage: ::bautil onboard|update [onboard|update]");
 	}
 
 	private void addBaWaveUsage()

@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -38,6 +37,7 @@ import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicButtonUI;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
@@ -47,25 +47,25 @@ import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
 import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.LinkBrowser;
+import net.runelite.client.util.SwingUtil;
 
 @Singleton
 public class BaUtilitiesPanel extends PluginPanel
 {
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
+	private static final int HEADER_BUTTON_SIZE = 24;
 	private static final int TAB_ICON_SIZE = 24;
 	private static final int ROLE_ICON_SIZE = 18;
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
+	private static final String DISCORD_URL = "https://discord.gg/2HrwVWf8Cx";
+	private static final String GITHUB_ISSUES_URL = "https://github.com/tcourter1/ba-healer-order/issues";
 	private static final String CALLED_FOOD_HTML_COLOR = "#00dc00";
 	private static final String OVERVIEW_TAB = "overview";
 	private static final String HEALER_TAB = "healer";
 	private static final String TILE_MARKERS_TAB = "tile-markers";
-
-	private static final Color BUTTON_BACKGROUND_COLOR = ColorScheme.DARKER_GRAY_COLOR;
-	private static final Color BUTTON_HOVER_COLOR = ColorScheme.MEDIUM_GRAY_COLOR;
-	private static final Color BUTTON_BORDER_COLOR = ColorScheme.BORDER_COLOR;
-	private static final Color BUTTON_TEXT_COLOR = ColorScheme.TEXT_COLOR;
 
 	private final ItemManager itemManager;
 	private final BaUtilitiesConfig config;
@@ -212,8 +212,6 @@ public class BaUtilitiesPanel extends PluginPanel
 		normalPanel.removeAll();
 		normalPanel.add(header("BA Utilities"));
 		normalPanel.add(Box.createVerticalStrut(10));
-		normalPanel.add(createAssistancePresetSection());
-		normalPanel.add(Box.createVerticalStrut(10));
 		normalPanel.add(createPartySyncSection());
 		normalPanel.add(Box.createVerticalStrut(10));
 		normalPanel.add(createTabSection());
@@ -297,53 +295,6 @@ public class BaUtilitiesPanel extends PluginPanel
 				statusLabel.setForeground(statusColor);
 			}
 		}
-	}
-
-	private JPanel createAssistancePresetSection()
-	{
-		JPanel section = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		section.setBorder(new EmptyBorder(8, 8, 8, 8));
-		section.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-		section.setAlignmentX(LEFT_ALIGNMENT);
-
-		JButton button = panelButton("Config Presets");
-		button.addActionListener(event -> showAssistancePresetPanel());
-
-		section.add(button);
-		return section;
-	}
-
-	private JButton panelButton(String text)
-	{
-		JButton button = new JButton(text);
-		button.setBackground(BUTTON_BACKGROUND_COLOR);
-		button.setForeground(BUTTON_TEXT_COLOR);
-		button.setBorder(BorderFactory.createLineBorder(BUTTON_BORDER_COLOR));
-		button.setFont(LABEL_FONT);
-		button.setFocusPainted(false);
-		button.setFocusable(false);
-		button.setOpaque(true);
-		button.setContentAreaFilled(true);
-		button.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		button.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		button.setAlignmentX(LEFT_ALIGNMENT);
-
-		button.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mouseEntered(MouseEvent event)
-			{
-				button.setBackground(BUTTON_HOVER_COLOR);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent event)
-			{
-				button.setBackground(BUTTON_BACKGROUND_COLOR);
-			}
-		});
-
-		return button;
 	}
 
 	private JPanel createPartySyncSection()
@@ -602,10 +553,62 @@ public class BaUtilitiesPanel extends PluginPanel
 		JPanel panel = verticalPanel(ColorScheme.DARK_GRAY_COLOR);
 		panel.setAlignmentX(LEFT_ALIGNMENT);
 		panel.setMaximumSize(new Dimension(CONTENT_WIDTH, 34));
-		panel.add(centeredLabelRow(text, true, ColorScheme.DARK_GRAY_COLOR));
+		panel.add(headerRow(text));
 		panel.add(Box.createVerticalStrut(5));
 		panel.add(separator);
 		return panel;
+	}
+
+	private JPanel headerRow(String text)
+	{
+		JLabel title = label(text, true);
+		title.setHorizontalAlignment(SwingConstants.LEFT);
+
+		JPanel buttons = new JPanel();
+		buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
+		buttons.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		buttons.add(headerIconButton(BaIcons.settingsIcon(), "Choose a preset", this::showAssistancePresetPanel));
+		buttons.add(Box.createHorizontalStrut(2));
+		buttons.add(headerIconButton(BaIcons.notesIcon(), "Recent updates", this::showUpdatesPanel));
+		buttons.add(Box.createHorizontalStrut(2));
+		buttons.add(headerIconButton(BaIcons.discordIcon(), "Discord", () -> LinkBrowser.browse(DISCORD_URL)));
+		buttons.add(Box.createHorizontalStrut(2));
+		buttons.add(headerIconButton(BaIcons.githubIcon(), "GitHub issues", () -> LinkBrowser.browse(GITHUB_ISSUES_URL)));
+
+		JPanel row = new JPanel(new BorderLayout());
+		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		row.setPreferredSize(new Dimension(CONTENT_WIDTH, CONTROL_HEIGHT));
+		row.setMaximumSize(new Dimension(CONTENT_WIDTH, CONTROL_HEIGHT));
+		row.setAlignmentX(LEFT_ALIGNMENT);
+		row.add(title, BorderLayout.WEST);
+		row.add(buttons, BorderLayout.EAST);
+		return row;
+	}
+
+	private JButton headerIconButton(ImageIcon icon, String tooltip, Runnable action)
+	{
+		JButton button = new JButton(icon);
+		button.setToolTipText(tooltip);
+		button.addActionListener(event -> action.run());
+		SwingUtil.removeButtonDecorations(button);
+		button.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		button.setUI(new BasicButtonUI());
+		button.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent event)
+			{
+				button.setBackground(ColorScheme.DARK_GRAY_HOVER_COLOR);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent event)
+			{
+				button.setBackground(ColorScheme.DARK_GRAY_COLOR);
+			}
+		});
+		BaPanelUi.fixedSize(button, HEADER_BUTTON_SIZE, HEADER_BUTTON_SIZE);
+		return button;
 	}
 
 	private JPanel centeredLabelRow(String text, boolean bold, Color background)

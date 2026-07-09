@@ -29,6 +29,10 @@ public final class BaIcons
 	private static final ImageIcon CHECKBOX_SELECTED_ICON = createCheckboxIcon(true);
 	private static final ImageIcon CLOCK_ICON = createClockIcon();
 	private static final ImageIcon RESET_ICON = scaledIcon(loadIcon("reset_icon.png"), 18);
+	private static final ImageIcon SETTINGS_ICON = scaledIcon(loadIcon("settings_icon.png"), 22);
+	private static final ImageIcon NOTES_ICON = createNotesIcon();
+	private static final ImageIcon DISCORD_ICON = scaledIcon(loadIcon("discord_icon.png"), 16);
+	private static final ImageIcon GITHUB_ICON = scaledIcon(loadIcon("github_icon.png"), 16);
 
 	private BaIcons()
 	{
@@ -132,6 +136,40 @@ public final class BaIcons
 		return RESET_ICON;
 	}
 
+	public static ImageIcon backIcon()
+	{
+		int size = 14;
+		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		graphics.setColor(ColorScheme.TEXT_COLOR);
+		graphics.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		graphics.drawLine(9, 3, 4, 7);
+		graphics.drawLine(4, 7, 9, 11);
+		graphics.dispose();
+		return new ImageIcon(image);
+	}
+
+	public static ImageIcon settingsIcon()
+	{
+		return SETTINGS_ICON;
+	}
+
+	public static ImageIcon notesIcon()
+	{
+		return NOTES_ICON;
+	}
+
+	public static ImageIcon discordIcon()
+	{
+		return DISCORD_ICON;
+	}
+
+	public static ImageIcon githubIcon()
+	{
+		return GITHUB_ICON;
+	}
+
 	private static ImageIcon createPlusIcon(Color color)
 	{
 		int size = 16;
@@ -191,6 +229,24 @@ public final class BaIcons
 		graphics.drawOval(2, 2, 10, 10);
 		graphics.drawLine(7, 7, 7, 4);
 		graphics.drawLine(7, 7, 10, 8);
+		graphics.dispose();
+		return new ImageIcon(image);
+	}
+
+	private static ImageIcon createNotesIcon()
+	{
+		int size = 16;
+		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		graphics.setColor(ColorScheme.TEXT_COLOR);
+		graphics.setStroke(new BasicStroke(1.3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+		graphics.drawRoundRect(3, 2, 10, 12, 2, 2);
+		graphics.drawLine(10, 2, 13, 5);
+		graphics.drawLine(10, 2, 10, 5);
+		graphics.drawLine(10, 5, 13, 5);
+		graphics.drawLine(5, 7, 11, 7);
+		graphics.drawLine(5, 10, 11, 10);
 		graphics.dispose();
 		return new ImageIcon(image);
 	}

@@ -39,10 +39,20 @@ public class BaAssistancePresetManager
         set(BaUtilitiesConfig.LAST_SEEN_UPDATE_VERSION_KEY, BaUtilitiesConfig.CURRENT_UPDATE_NOTES_VERSION);
     }
 
+    public void resetUpdateNotesForDev()
+    {
+        set(BaUtilitiesConfig.LAST_SEEN_UPDATE_VERSION_KEY, "");
+    }
+
     public void skipAssistancePreset()
     {
         set(BaUtilitiesConfig.ASSISTANCE_PRESET_CHOICE_KEY, BaUtilitiesConfig.AssistancePreset.SKIPPED);
         set(BaUtilitiesConfig.ASSISTANCE_PRESET_VERSION_KEY, BaUtilitiesConfig.CURRENT_ASSISTANCE_PRESET_VERSION);
+    }
+
+    public void resetAssistancePresetForDev()
+    {
+        set(BaUtilitiesConfig.ASSISTANCE_PRESET_VERSION_KEY, "");
     }
 
     public void applyPreset(BaUtilitiesConfig.AssistancePreset preset)
