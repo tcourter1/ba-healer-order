@@ -61,6 +61,11 @@ import net.runelite.client.plugins.PluginDescriptor;
 )
 public class BaHealerOrderPlugin extends Plugin
 {
+	private static final int BA_SURFACE_REGION = 10039;
+	private static final int BA_WAVES_1_TO_9_REGION = 7509;
+	private static final int BA_WAVE_10_REGION = 7508;
+
+	private boolean onboardingSidePanelOpened;
 
 	@Inject
 	private Client client;
@@ -229,6 +234,8 @@ public class BaHealerOrderPlugin extends Plugin
 		defenderController.onGameTick(event);
 		healerController.onGameTick(event);
 		waveOverviewService.onGameTick();
+
+		handleOnboardingAutoOpen();
 	}
 
 	@Subscribe
@@ -286,6 +293,7 @@ public class BaHealerOrderPlugin extends Plugin
 				|| event.getGameState() == GameState.HOPPING)
 		{
 			waveLifecycleService.reset();
+			onboardingSidePanelOpened = false;
 		}
 
 		roleDetector.onGameStateChanged(event);
@@ -349,6 +357,8 @@ public class BaHealerOrderPlugin extends Plugin
 		defenderController.onWaveStarted();
 		healerController.onWaveStarted(waveStart);
 	}
+
+
 
 	private void applyDefaultHealerCodePreset(WaveStart waveStart)
 	{
@@ -514,6 +524,56 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		return null;
+	}
+
+	private void handleOnboardingAutoOpen()
+	{
+		if (!panel.shouldShowOnboarding())
+		{
+			onboardingSidePanelOpened = false;
+			return;
+		}
+
+		if (onboardingSidePanelOpened)
+		{
+			return;
+		}
+
+		if (!isInOrNearBarbarianAssault())
+		{
+			return;
+		}
+
+		panel.showOnboarding();
+		healerController.openSidePanel();
+		onboardingSidePanelOpened = true;
+	}
+
+	private boolean isInOrNearBarbarianAssault()
+	{
+		if (client.getGameState() != GameState.LOGGED_IN)
+		{
+			return false;
+		}
+
+		int[] mapRegions = client.getMapRegions();
+
+		if (mapRegions == null)
+		{
+			return false;
+		}
+
+		for (int region : mapRegions)
+		{
+			if (region == BA_SURFACE_REGION
+					|| region == BA_WAVES_1_TO_9_REGION
+					|| region == BA_WAVE_10_REGION)
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private void addChatMessage(String message)

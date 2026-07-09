@@ -5,8 +5,11 @@ import com.bahealerorder.common.BaPartySyncMemberStatus;
 import com.bahealerorder.common.BaHealerFoodCounts;
 import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.common.BaRole;
-import com.bahealerorder.sidepanel.overview.WaveOverviewPanel;
 import com.bahealerorder.sidepanel.healercodes.HealerCodePanel;
+import com.bahealerorder.sidepanel.onboarding.BaAssistancePresetManager;
+import com.bahealerorder.sidepanel.onboarding.BaAssistancePresetPanel;
+import com.bahealerorder.sidepanel.onboarding.BaUpdatesPanel;
+import com.bahealerorder.sidepanel.overview.WaveOverviewPanel;
 import com.bahealerorder.sidepanel.tilemarkers.GeneralTileMarkerPanel;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -58,10 +61,14 @@ public class BaUtilitiesPanel extends PluginPanel
 	private final ItemManager itemManager;
 	private final BaUtilitiesConfig config;
 	private final ConfigManager configManager;
+	private final BaAssistancePresetManager presetManager;
+	private final BaUpdatesPanel updatesPanel;
+	private final BaAssistancePresetPanel assistancePresetPanel;
 	private final WaveOverviewPanel waveOverviewPanel;
 	private final HealerCodePanel healerCodePanel;
 	private final GeneralTileMarkerPanel generalTileMarkerPanel;
 	private final JPanel contentPanel = new JPanel();
+	private final JPanel normalPanel = new JPanel();
 	private final JPanel tabDisplayPanel = new JPanel(new BorderLayout());
 	private final MaterialTabGroup tabGroup = new MaterialTabGroup(tabDisplayPanel);
 	private final Map<String, MaterialTab> tabsById = new LinkedHashMap<>();
@@ -75,6 +82,9 @@ public class BaUtilitiesPanel extends PluginPanel
 			ItemManager itemManager,
 			BaUtilitiesConfig config,
 			ConfigManager configManager,
+			BaAssistancePresetManager presetManager,
+			BaUpdatesPanel updatesPanel,
+			BaAssistancePresetPanel assistancePresetPanel,
 			WaveOverviewPanel waveOverviewPanel,
 			HealerCodePanel healerCodePanel,
 			GeneralTileMarkerPanel generalTileMarkerPanel)
@@ -82,6 +92,9 @@ public class BaUtilitiesPanel extends PluginPanel
 		this.itemManager = itemManager;
 		this.config = config;
 		this.configManager = configManager;
+		this.presetManager = presetManager;
+		this.updatesPanel = updatesPanel;
+		this.assistancePresetPanel = assistancePresetPanel;
 		this.waveOverviewPanel = waveOverviewPanel;
 		this.healerCodePanel = healerCodePanel;
 		this.generalTileMarkerPanel = generalTileMarkerPanel;
@@ -93,15 +106,43 @@ public class BaUtilitiesPanel extends PluginPanel
 		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
 		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 
+		normalPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		normalPanel.setLayout(new BoxLayout(normalPanel, BoxLayout.Y_AXIS));
+
 		add(contentPanel, BorderLayout.NORTH);
 
-		contentPanel.add(header("BA Utilities"));
-		contentPanel.add(Box.createVerticalStrut(10));
-		contentPanel.add(createPartySyncSection());
-		contentPanel.add(Box.createVerticalStrut(10));
-		contentPanel.add(createTabSection());
+		updatesPanel.setContinueCallback(this::showNextOnboardingPanel);
+		assistancePresetPanel.setPresetSelectedCallback(this::showNormalPanel);
 
-		refreshAll();
+		buildNormalPanel();
+		showPreferredPanel();
+	}
+
+	public boolean shouldShowOnboarding()
+	{
+		return presetManager.shouldShowOnboarding();
+	}
+
+	public void showOnboarding()
+	{
+		SwingUtilities.invokeLater(this::showPreferredPanel);
+	}
+
+	public void showPreferredPanel()
+	{
+		if (presetManager.isUpdateNotesPending())
+		{
+			showUpdatesPanel();
+			return;
+		}
+
+		if (presetManager.isAssistancePresetPending())
+		{
+			showAssistancePresetPanel();
+			return;
+		}
+
+		showNormalPanel();
 	}
 
 	public void refreshAll()
@@ -153,9 +194,60 @@ public class BaUtilitiesPanel extends PluginPanel
 				partySyncMembersPanel.add(message("You must leave your current party to join a BA party.", ColorScheme.DARKER_GRAY_COLOR, CONTROL_HEIGHT * 2, false));
 			}
 
-			contentPanel.revalidate();
-			contentPanel.repaint();
+			revalidateContent();
 		});
+	}
+
+	private void buildNormalPanel()
+	{
+		normalPanel.removeAll();
+		normalPanel.add(header("BA Utilities"));
+		normalPanel.add(Box.createVerticalStrut(10));
+		normalPanel.add(createPartySyncSection());
+		normalPanel.add(Box.createVerticalStrut(10));
+		normalPanel.add(createTabSection());
+	}
+
+	private void showNextOnboardingPanel()
+	{
+		if (presetManager.isAssistancePresetPending())
+		{
+			showAssistancePresetPanel();
+			return;
+		}
+
+		showNormalPanel();
+	}
+
+	private void showUpdatesPanel()
+	{
+		setContent(updatesPanel);
+	}
+
+	private void showAssistancePresetPanel()
+	{
+		setContent(assistancePresetPanel);
+	}
+
+	private void showNormalPanel()
+	{
+		setContent(normalPanel);
+		refreshAll();
+	}
+
+	private void setContent(JComponent component)
+	{
+		contentPanel.removeAll();
+		contentPanel.add(component);
+		revalidateContent();
+	}
+
+	private void revalidateContent()
+	{
+		contentPanel.revalidate();
+		contentPanel.repaint();
+		revalidate();
+		repaint();
 	}
 
 	private String buildPartySyncMemberStructure(String status, List<BaPartySyncMemberStatus> memberStatuses)

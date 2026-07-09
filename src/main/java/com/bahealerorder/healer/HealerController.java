@@ -2382,6 +2382,18 @@ public class HealerController
 		resetWaveState();
 	}
 
+	public void openSidePanel()
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			ensureNavigationButton();
+
+			if (navigationButton != null)
+			{
+				clientToolbar.openPanel(navigationButton);
+			}
+		});
+	}
 	private void updateNavigationButton()
 	{
 		if (config.hideSidePanelButton())
@@ -2390,6 +2402,11 @@ public class HealerController
 			return;
 		}
 
+		ensureNavigationButton();
+	}
+
+	private void ensureNavigationButton()
+	{
 		if (navigationButton != null) return;
 
 		navigationButton = NavigationButton.builder()
