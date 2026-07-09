@@ -16,6 +16,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Image;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,9 +25,11 @@ import java.util.List;
 import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -57,6 +61,11 @@ public class BaUtilitiesPanel extends PluginPanel
 	private static final String OVERVIEW_TAB = "overview";
 	private static final String HEALER_TAB = "healer";
 	private static final String TILE_MARKERS_TAB = "tile-markers";
+
+	private static final Color BUTTON_BACKGROUND_COLOR = ColorScheme.DARKER_GRAY_COLOR;
+	private static final Color BUTTON_HOVER_COLOR = ColorScheme.MEDIUM_GRAY_COLOR;
+	private static final Color BUTTON_BORDER_COLOR = ColorScheme.BORDER_COLOR;
+	private static final Color BUTTON_TEXT_COLOR = ColorScheme.TEXT_COLOR;
 
 	private final ItemManager itemManager;
 	private final BaUtilitiesConfig config;
@@ -203,6 +212,8 @@ public class BaUtilitiesPanel extends PluginPanel
 		normalPanel.removeAll();
 		normalPanel.add(header("BA Utilities"));
 		normalPanel.add(Box.createVerticalStrut(10));
+		normalPanel.add(createAssistancePresetSection());
+		normalPanel.add(Box.createVerticalStrut(10));
 		normalPanel.add(createPartySyncSection());
 		normalPanel.add(Box.createVerticalStrut(10));
 		normalPanel.add(createTabSection());
@@ -286,6 +297,53 @@ public class BaUtilitiesPanel extends PluginPanel
 				statusLabel.setForeground(statusColor);
 			}
 		}
+	}
+
+	private JPanel createAssistancePresetSection()
+	{
+		JPanel section = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		section.setBorder(new EmptyBorder(8, 8, 8, 8));
+		section.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
+		section.setAlignmentX(LEFT_ALIGNMENT);
+
+		JButton button = panelButton("Config Presets");
+		button.addActionListener(event -> showAssistancePresetPanel());
+
+		section.add(button);
+		return section;
+	}
+
+	private JButton panelButton(String text)
+	{
+		JButton button = new JButton(text);
+		button.setBackground(BUTTON_BACKGROUND_COLOR);
+		button.setForeground(BUTTON_TEXT_COLOR);
+		button.setBorder(BorderFactory.createLineBorder(BUTTON_BORDER_COLOR));
+		button.setFont(LABEL_FONT);
+		button.setFocusPainted(false);
+		button.setFocusable(false);
+		button.setOpaque(true);
+		button.setContentAreaFilled(true);
+		button.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		button.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
+		button.setAlignmentX(LEFT_ALIGNMENT);
+
+		button.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent event)
+			{
+				button.setBackground(BUTTON_HOVER_COLOR);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent event)
+			{
+				button.setBackground(BUTTON_BACKGROUND_COLOR);
+			}
+		});
+
+		return button;
 	}
 
 	private JPanel createPartySyncSection()
