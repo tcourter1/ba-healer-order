@@ -5,14 +5,19 @@ import com.bahealerorder.common.BaPartySyncMemberStatus;
 import com.bahealerorder.common.BaHealerFoodCounts;
 import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.common.BaRole;
-import com.bahealerorder.sidepanel.overview.WaveOverviewPanel;
 import com.bahealerorder.sidepanel.healercodes.HealerCodePanel;
+import com.bahealerorder.sidepanel.onboarding.BaAssistancePresetManager;
+import com.bahealerorder.sidepanel.onboarding.BaAssistancePresetPanel;
+import com.bahealerorder.sidepanel.onboarding.BaUpdatesPanel;
+import com.bahealerorder.sidepanel.overview.WaveOverviewPanel;
 import com.bahealerorder.sidepanel.tilemarkers.GeneralTileMarkerPanel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Image;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,6 +28,7 @@ import javax.inject.Singleton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -31,6 +37,7 @@ import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicButtonUI;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
@@ -40,16 +47,21 @@ import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
 import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.LinkBrowser;
+import net.runelite.client.util.SwingUtil;
 
 @Singleton
 public class BaUtilitiesPanel extends PluginPanel
 {
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
+	private static final int HEADER_BUTTON_SIZE = 24;
 	private static final int TAB_ICON_SIZE = 24;
 	private static final int ROLE_ICON_SIZE = 18;
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
+	private static final String DISCORD_URL = "https://discord.gg/2HrwVWf8Cx";
+	private static final String GITHUB_ISSUES_URL = "https://github.com/tcourter1/ba-healer-order/issues";
 	private static final String CALLED_FOOD_HTML_COLOR = "#00dc00";
 	private static final String OVERVIEW_TAB = "overview";
 	private static final String HEALER_TAB = "healer";
@@ -58,10 +70,14 @@ public class BaUtilitiesPanel extends PluginPanel
 	private final ItemManager itemManager;
 	private final BaUtilitiesConfig config;
 	private final ConfigManager configManager;
+	private final BaAssistancePresetManager presetManager;
+	private final BaUpdatesPanel updatesPanel;
+	private final BaAssistancePresetPanel assistancePresetPanel;
 	private final WaveOverviewPanel waveOverviewPanel;
 	private final HealerCodePanel healerCodePanel;
 	private final GeneralTileMarkerPanel generalTileMarkerPanel;
 	private final JPanel contentPanel = new JPanel();
+	private final JPanel normalPanel = new JPanel();
 	private final JPanel tabDisplayPanel = new JPanel(new BorderLayout());
 	private final MaterialTabGroup tabGroup = new MaterialTabGroup(tabDisplayPanel);
 	private final Map<String, MaterialTab> tabsById = new LinkedHashMap<>();
@@ -75,6 +91,9 @@ public class BaUtilitiesPanel extends PluginPanel
 			ItemManager itemManager,
 			BaUtilitiesConfig config,
 			ConfigManager configManager,
+			BaAssistancePresetManager presetManager,
+			BaUpdatesPanel updatesPanel,
+			BaAssistancePresetPanel assistancePresetPanel,
 			WaveOverviewPanel waveOverviewPanel,
 			HealerCodePanel healerCodePanel,
 			GeneralTileMarkerPanel generalTileMarkerPanel)
@@ -82,6 +101,9 @@ public class BaUtilitiesPanel extends PluginPanel
 		this.itemManager = itemManager;
 		this.config = config;
 		this.configManager = configManager;
+		this.presetManager = presetManager;
+		this.updatesPanel = updatesPanel;
+		this.assistancePresetPanel = assistancePresetPanel;
 		this.waveOverviewPanel = waveOverviewPanel;
 		this.healerCodePanel = healerCodePanel;
 		this.generalTileMarkerPanel = generalTileMarkerPanel;
@@ -93,15 +115,43 @@ public class BaUtilitiesPanel extends PluginPanel
 		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
 		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 
+		normalPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		normalPanel.setLayout(new BoxLayout(normalPanel, BoxLayout.Y_AXIS));
+
 		add(contentPanel, BorderLayout.NORTH);
 
-		contentPanel.add(header("BA Utilities"));
-		contentPanel.add(Box.createVerticalStrut(10));
-		contentPanel.add(createPartySyncSection());
-		contentPanel.add(Box.createVerticalStrut(10));
-		contentPanel.add(createTabSection());
+		updatesPanel.setContinueCallback(this::showNextOnboardingPanel);
+		assistancePresetPanel.setPresetSelectedCallback(this::showNormalPanel);
 
-		refreshAll();
+		buildNormalPanel();
+		showPreferredPanel();
+	}
+
+	public boolean shouldShowOnboarding()
+	{
+		return presetManager.shouldShowOnboarding();
+	}
+
+	public void showOnboarding()
+	{
+		SwingUtilities.invokeLater(this::showPreferredPanel);
+	}
+
+	public void showPreferredPanel()
+	{
+		if (presetManager.isUpdateNotesPending())
+		{
+			showUpdatesPanel();
+			return;
+		}
+
+		if (presetManager.isAssistancePresetPending())
+		{
+			showAssistancePresetPanel();
+			return;
+		}
+
+		showNormalPanel();
 	}
 
 	public void refreshAll()
@@ -153,9 +203,60 @@ public class BaUtilitiesPanel extends PluginPanel
 				partySyncMembersPanel.add(message("You must leave your current party to join a BA party.", ColorScheme.DARKER_GRAY_COLOR, CONTROL_HEIGHT * 2, false));
 			}
 
-			contentPanel.revalidate();
-			contentPanel.repaint();
+			revalidateContent();
 		});
+	}
+
+	private void buildNormalPanel()
+	{
+		normalPanel.removeAll();
+		normalPanel.add(header("BA Utilities"));
+		normalPanel.add(Box.createVerticalStrut(10));
+		normalPanel.add(createPartySyncSection());
+		normalPanel.add(Box.createVerticalStrut(10));
+		normalPanel.add(createTabSection());
+	}
+
+	private void showNextOnboardingPanel()
+	{
+		if (presetManager.isAssistancePresetPending())
+		{
+			showAssistancePresetPanel();
+			return;
+		}
+
+		showNormalPanel();
+	}
+
+	private void showUpdatesPanel()
+	{
+		setContent(updatesPanel);
+	}
+
+	private void showAssistancePresetPanel()
+	{
+		setContent(assistancePresetPanel);
+	}
+
+	private void showNormalPanel()
+	{
+		setContent(normalPanel);
+		refreshAll();
+	}
+
+	private void setContent(JComponent component)
+	{
+		contentPanel.removeAll();
+		contentPanel.add(component);
+		revalidateContent();
+	}
+
+	private void revalidateContent()
+	{
+		contentPanel.revalidate();
+		contentPanel.repaint();
+		revalidate();
+		repaint();
 	}
 
 	private String buildPartySyncMemberStructure(String status, List<BaPartySyncMemberStatus> memberStatuses)
@@ -452,10 +553,62 @@ public class BaUtilitiesPanel extends PluginPanel
 		JPanel panel = verticalPanel(ColorScheme.DARK_GRAY_COLOR);
 		panel.setAlignmentX(LEFT_ALIGNMENT);
 		panel.setMaximumSize(new Dimension(CONTENT_WIDTH, 34));
-		panel.add(centeredLabelRow(text, true, ColorScheme.DARK_GRAY_COLOR));
+		panel.add(headerRow(text));
 		panel.add(Box.createVerticalStrut(5));
 		panel.add(separator);
 		return panel;
+	}
+
+	private JPanel headerRow(String text)
+	{
+		JLabel title = label(text, true);
+		title.setHorizontalAlignment(SwingConstants.LEFT);
+
+		JPanel buttons = new JPanel();
+		buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
+		buttons.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		buttons.add(headerIconButton(BaIcons.settingsIcon(), "Choose a preset", this::showAssistancePresetPanel));
+		buttons.add(Box.createHorizontalStrut(2));
+		buttons.add(headerIconButton(BaIcons.notesIcon(), "Recent updates", this::showUpdatesPanel));
+		buttons.add(Box.createHorizontalStrut(2));
+		buttons.add(headerIconButton(BaIcons.discordIcon(), "Discord", () -> LinkBrowser.browse(DISCORD_URL)));
+		buttons.add(Box.createHorizontalStrut(2));
+		buttons.add(headerIconButton(BaIcons.githubIcon(), "GitHub issues", () -> LinkBrowser.browse(GITHUB_ISSUES_URL)));
+
+		JPanel row = new JPanel(new BorderLayout());
+		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		row.setPreferredSize(new Dimension(CONTENT_WIDTH, CONTROL_HEIGHT));
+		row.setMaximumSize(new Dimension(CONTENT_WIDTH, CONTROL_HEIGHT));
+		row.setAlignmentX(LEFT_ALIGNMENT);
+		row.add(title, BorderLayout.WEST);
+		row.add(buttons, BorderLayout.EAST);
+		return row;
+	}
+
+	private JButton headerIconButton(ImageIcon icon, String tooltip, Runnable action)
+	{
+		JButton button = new JButton(icon);
+		button.setToolTipText(tooltip);
+		button.addActionListener(event -> action.run());
+		SwingUtil.removeButtonDecorations(button);
+		button.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		button.setUI(new BasicButtonUI());
+		button.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent event)
+			{
+				button.setBackground(ColorScheme.DARK_GRAY_HOVER_COLOR);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent event)
+			{
+				button.setBackground(ColorScheme.DARK_GRAY_COLOR);
+			}
+		});
+		BaPanelUi.fixedSize(button, HEADER_BUTTON_SIZE, HEADER_BUTTON_SIZE);
+		return button;
 	}
 
 	private JPanel centeredLabelRow(String text, boolean bold, Color background)

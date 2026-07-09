@@ -20,6 +20,7 @@ import com.bahealerorder.healer.HealerCodeManager;
 import com.bahealerorder.healer.codes.HealerCodeDefaultRole;
 import com.bahealerorder.healer.codes.RunPreset;
 import com.bahealerorder.sidepanel.BaUtilitiesPanel;
+import com.bahealerorder.sidepanel.onboarding.BaAssistancePresetManager;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerController;
 import com.google.inject.Provides;
 import java.util.Locale;
@@ -61,6 +62,12 @@ import net.runelite.client.plugins.PluginDescriptor;
 )
 public class BaHealerOrderPlugin extends Plugin
 {
+	private static final int BA_SURFACE_REGION = 10039;
+	private static final int BA_LOBBY_REGION = 10322;
+	private static final int BA_WAVES_1_TO_9_REGION = 7509;
+	private static final int BA_WAVE_10_REGION = 7508;
+
+	private boolean onboardingSidePanelOpened;
 
 	@Inject
 	private Client client;
@@ -79,6 +86,9 @@ public class BaHealerOrderPlugin extends Plugin
 
 	@Inject
 	private BaUtilitiesPanel panel;
+
+	@Inject
+	private BaAssistancePresetManager presetManager;
 
 	@Inject
 	private DefenderController defenderController;
@@ -229,6 +239,8 @@ public class BaHealerOrderPlugin extends Plugin
 		defenderController.onGameTick(event);
 		healerController.onGameTick(event);
 		waveOverviewService.onGameTick();
+
+		handleOnboardingAutoOpen();
 	}
 
 	@Subscribe
@@ -254,6 +266,12 @@ public class BaHealerOrderPlugin extends Plugin
 		if ("bawave".equalsIgnoreCase(command))
 		{
 			handleBaWaveCommand(event.getArguments());
+			return;
+		}
+
+		if ("bautil".equalsIgnoreCase(command))
+		{
+			handleBaUtilCommand(event.getArguments());
 			return;
 		}
 
@@ -286,6 +304,7 @@ public class BaHealerOrderPlugin extends Plugin
 				|| event.getGameState() == GameState.HOPPING)
 		{
 			waveLifecycleService.reset();
+			onboardingSidePanelOpened = false;
 		}
 
 		roleDetector.onGameStateChanged(event);
@@ -349,6 +368,8 @@ public class BaHealerOrderPlugin extends Plugin
 		defenderController.onWaveStarted();
 		healerController.onWaveStarted(waveStart);
 	}
+
+
 
 	private void applyDefaultHealerCodePreset(WaveStart waveStart)
 	{
@@ -482,6 +503,58 @@ public class BaHealerOrderPlugin extends Plugin
 				+ (scroller ? "Scroller" : role.getDisplayName()) + ".");
 	}
 
+	private void handleBaUtilCommand(String[] arguments)
+	{
+		if (arguments.length < 1)
+		{
+			addBaUtilUsage();
+			return;
+		}
+
+		boolean reset = false;
+		for (String argument : arguments)
+		{
+			String option = argument == null ? "" : argument.trim().toLowerCase(Locale.ROOT);
+			if (option.isEmpty())
+			{
+				continue;
+			}
+
+			if ("onboard".equals(option))
+			{
+				presetManager.resetAssistancePresetForDev();
+				addChatMessage("BA Utilities assistance onboarding reset.");
+				reset = true;
+				continue;
+			}
+
+			if ("update".equals(option))
+			{
+				presetManager.resetUpdateNotesForDev();
+				addChatMessage("BA Utilities update notes reset.");
+				reset = true;
+				continue;
+			}
+
+			addChatMessage("Unknown ::bautil option: " + argument);
+			addBaUtilUsage();
+			return;
+		}
+
+		if (!reset)
+		{
+			addBaUtilUsage();
+			return;
+		}
+
+		onboardingSidePanelOpened = false;
+	}
+
+	private void addBaUtilUsage()
+	{
+		addChatMessage("Usage: ::bautil onboard|update [onboard|update]");
+	}
+
 	private void addBaWaveUsage()
 	{
 		addChatMessage("Usage: ::bawave wave role [queen] [omega]");
@@ -514,6 +587,57 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		return null;
+	}
+
+	private void handleOnboardingAutoOpen()
+	{
+		if (!panel.shouldShowOnboarding())
+		{
+			onboardingSidePanelOpened = false;
+			return;
+		}
+
+		if (onboardingSidePanelOpened)
+		{
+			return;
+		}
+
+		if (!isInOrNearBarbarianAssault())
+		{
+			return;
+		}
+
+		panel.showOnboarding();
+		healerController.openSidePanel();
+		onboardingSidePanelOpened = true;
+	}
+
+	private boolean isInOrNearBarbarianAssault()
+	{
+		if (client.getGameState() != GameState.LOGGED_IN)
+		{
+			return false;
+		}
+
+		int[] mapRegions = client.getMapRegions();
+
+		if (mapRegions == null)
+		{
+			return false;
+		}
+
+		for (int region : mapRegions)
+		{
+			if (region == BA_SURFACE_REGION
+					|| region == BA_LOBBY_REGION
+					|| region == BA_WAVES_1_TO_9_REGION
+					|| region == BA_WAVE_10_REGION)
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private void addChatMessage(String message)

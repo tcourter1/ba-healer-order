@@ -113,7 +113,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	void refreshSelectors()
 	{
-		if (runCombo.isPopupVisible() || waveCombo.isPopupVisible())
+		if (isPopupOpen(runCombo) || isPopupOpen(waveCombo))
 		{
 			return;
 		}
@@ -160,6 +160,23 @@ class WaveOverviewSelectorPanel extends JPanel
 		styleCombo(waveCombo, SELECTOR_WIDTH - ACTION_BUTTON_WIDTH - 6);
 
 		refreshingControls = false;
+	}
+
+	private boolean isPopupOpen(JComboBox<?> comboBox)
+	{
+		if (!comboBox.isDisplayable())
+		{
+			return false;
+		}
+
+		try
+		{
+			return comboBox.isPopupVisible();
+		}
+		catch (NullPointerException ex)
+		{
+			return false;
+		}
 	}
 
 	private JPanel createRunSelectorRow()
