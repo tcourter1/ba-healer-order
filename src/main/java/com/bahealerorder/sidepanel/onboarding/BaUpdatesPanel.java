@@ -204,10 +204,11 @@ public class BaUpdatesPanel extends JPanel
     private String buildLatestChangelogText()
     {
         return "2.3.0\n\n"
-                + "\u2022 Added assistance presets for different BA playstyles.\n\n"
-                + "\u2022 Added this update panel for major BA Utilities changes.\n\n"
-                + "\u2022 Added onboarding flow for new users near Barbarian Assault.\n\n"
-                + "\u2022 Expanded side-panel setup guidance for Healer Codes and Tile Markers.";
+                + "\u2022 Added onboarding and update side panel.\n\n"
+                + "\u2022 Enhanced healer code parsing and introduced user-friendly healer code editor.\n\n"
+                + "\u2022 Introduced highlight options for omega egg dupe and current wave ladder.\n\n"
+                + "\u2022 Added public chat between BA Party members.\n\n"
+                + "\u2022 Fixed a bug where renamed Penance NPCs could sometimes not be properly identified.";
     }
 
     private String buildPreviousChangelogText()

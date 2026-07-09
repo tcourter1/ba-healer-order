@@ -63,6 +63,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 public class BaHealerOrderPlugin extends Plugin
 {
 	private static final int BA_SURFACE_REGION = 10039;
+	private static final int BA_LOBBY_REGION = 10322;
 	private static final int BA_WAVES_1_TO_9_REGION = 7509;
 	private static final int BA_WAVE_10_REGION = 7508;
 
@@ -547,9 +548,6 @@ public class BaHealerOrderPlugin extends Plugin
 		}
 
 		onboardingSidePanelOpened = false;
-		panel.showOnboarding();
-		healerController.openSidePanel();
-		onboardingSidePanelOpened = true;
 	}
 
 	private void addBaUtilUsage()
@@ -631,6 +629,7 @@ public class BaHealerOrderPlugin extends Plugin
 		for (int region : mapRegions)
 		{
 			if (region == BA_SURFACE_REGION
+					|| region == BA_LOBBY_REGION
 					|| region == BA_WAVES_1_TO_9_REGION
 					|| region == BA_WAVE_10_REGION)
 			{

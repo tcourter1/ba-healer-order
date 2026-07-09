@@ -275,7 +275,7 @@ public interface BaUtilitiesConfig extends Config
 	)
 	default boolean enableBaPartySync()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigItem(
