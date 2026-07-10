@@ -50,6 +50,8 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
@@ -145,10 +147,7 @@ public class WaveOverviewPanel extends JPanel
 		BaWaveOverviewSnapshot snapshot = store.getSelectedSnapshot();
 		String signature = buildRenderSignature(snapshot);
 
-		if (signature.equals(lastRenderSignature))
-		{
-			return;
-		}
+		if (signature.equals(lastRenderSignature)) return;
 
 		lastRenderSignature = signature;
 		titleLabel.setText(getTitleText(snapshot));
@@ -243,15 +242,9 @@ public class WaveOverviewPanel extends JPanel
 
 	private String formatWaveOverviewLabel(String label)
 	{
-		if (label == null)
-		{
-			return "";
-		}
+		if (label == null) return "";
 
-		if (label.matches("^\\(R\\d+\\)$"))
-		{
-			return label.substring(1, label.length() - 1);
-		}
+		if (label.matches("^\\(R\\d+\\)$")) return label.substring(1, label.length() - 1);
 
 		return label.replaceFirst("\\s*\\(R\\d+\\)$", "");
 	}
@@ -298,21 +291,12 @@ public class WaveOverviewPanel extends JPanel
 	private EntryState getEntryState(BaWaveOverviewSnapshot snapshot, BaOverviewNpcType type, int order)
 	{
 		Integer deathTick = snapshot.getDeathTick(type, order);
-		if (deathTick != null)
-		{
-			return EntryState.dead(formatWaveTick(deathTick));
-		}
+		if (deathTick != null) return EntryState.dead(formatWaveTick(deathTick));
 
 		Integer predictedDeathTick = snapshot.getPredictedDeathTick(type, order);
-		if (predictedDeathTick != null)
-		{
-			return EntryState.predicted(formatWaveTick(predictedDeathTick));
-		}
+		if (predictedDeathTick != null) return EntryState.predicted(formatWaveTick(predictedDeathTick));
 
-		if (snapshot.hasUnknownTtk(type, order))
-		{
-			return EntryState.predicted("?");
-		}
+		if (snapshot.hasUnknownTtk(type, order)) return EntryState.predicted("?");
 
 		return snapshot.hasSpawned(type, order) ? EntryState.spawned() : EntryState.pending();
 	}
@@ -383,10 +367,7 @@ public class WaveOverviewPanel extends JPanel
 	{
 		ImageIcon icon = overviewIcons.get(type);
 
-		if (icon != null)
-		{
-			return icon;
-		}
+		if (icon != null) return icon;
 
 		icon = new ImageIcon(new ImageIcon(getClass().getResource(OVERVIEW_ICON_RESOURCE_PATH + getIconResource(type)))
 				.getImage()
@@ -431,10 +412,7 @@ public class WaveOverviewPanel extends JPanel
 			return;
 		}
 
-		if (loadingSkullIcon)
-		{
-			return;
-		}
+		if (loadingSkullIcon) return;
 
 		loadingSkullIcon = true;
 		spriteManager.getSpriteAsync(SpriteID.HEADICONS_PK, 0, image ->
@@ -449,10 +427,7 @@ public class WaveOverviewPanel extends JPanel
 
 	private ImageIcon getScaledSkullIcon(int size)
 	{
-		if (skullIcon == null || size == OVERVIEW_MAX_SKULL_ICON_SIZE)
-		{
-			return skullIcon;
-		}
+		if (skullIcon == null || size == OVERVIEW_MAX_SKULL_ICON_SIZE) return skullIcon;
 
 		return new ImageIcon(skullIcon.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH));
 	}
@@ -537,10 +512,7 @@ public class WaveOverviewPanel extends JPanel
 
 	private String getTitleText(BaWaveOverviewSnapshot snapshot)
 	{
-		if (!BaWaveInfo.isValidWave(snapshot == null ? -1 : snapshot.getWave()))
-		{
-			return "Recent Runs";
-		}
+		if (!BaWaveInfo.isValidWave(snapshot == null ? -1 : snapshot.getWave())) return "Recent Runs";
 
 		return store.isSelectedWaveInProgress()
 				? "Wave " + snapshot.getWave() + " In Progress..."
@@ -603,10 +575,7 @@ public class WaveOverviewPanel extends JPanel
 	private void addActiveNotes(JPanel section, BaWaveOverviewSnapshot snapshot)
 	{
 		String notes = getActiveNotes(snapshot);
-		if (isBlank(notes))
-		{
-			return;
-		}
+		if (isBlank(notes)) return;
 
 		section.add(Box.createVerticalStrut(12));
 		section.add(createNotesPanel(getNotesHeading(snapshot), notes, getCurrentRoleColor(), getCurrentWaveTick()));
@@ -614,25 +583,16 @@ public class WaveOverviewPanel extends JPanel
 
 	private String getActiveNotes(BaWaveOverviewSnapshot snapshot)
 	{
-		if (snapshot == null || !store.isSelectedWaveInProgress())
-		{
-			return "";
-		}
+		if (snapshot == null || !store.isSelectedWaveInProgress()) return "";
 
 		TileMarkerRoleContext context = getDisplayRoleContext();
 		String notes = strategyManager.getActiveNotes(snapshot.getWave(), context);
 		String codeText = getActiveHealerCodeText(snapshot);
 		notes = notes == null ? "" : notes.trim();
 
-		if (isBlank(codeText))
-		{
-			return notes;
-		}
+		if (isBlank(codeText)) return notes;
 
-		if (isBlank(notes))
-		{
-			return codeText;
-		}
+		if (isBlank(notes)) return codeText;
 
 		return codeText + "\n\n" + notes;
 	}
@@ -640,10 +600,7 @@ public class WaveOverviewPanel extends JPanel
 	private String getNotesHeading(BaWaveOverviewSnapshot snapshot)
 	{
 		String codeName = getActiveHealerCodeName(snapshot);
-		if (!isBlank(codeName))
-		{
-			return codeName;
-		}
+		if (!isBlank(codeName)) return codeName;
 
 		String strategyName = getActiveStrategyName(snapshot);
 		return (isBlank(strategyName) ? "Strategy" : strategyName) + " Notes";
@@ -651,10 +608,7 @@ public class WaveOverviewPanel extends JPanel
 
 	private String getActiveHealerCodeText(BaWaveOverviewSnapshot snapshot)
 	{
-		if (snapshot == null || !store.isSelectedWaveInProgress() || !roleDetector.isRole(BaRole.HEALER))
-		{
-			return "";
-		}
+		if (snapshot == null || !store.isSelectedWaveInProgress() || !roleDetector.isRole(BaRole.HEALER)) return "";
 
 		WaveCode code = healerCodeManager.getActiveWaveCode(snapshot.getWave());
 		return code == null ? "" : HealerCodeFormatter.formatDisplay(code).trim();
@@ -662,10 +616,7 @@ public class WaveOverviewPanel extends JPanel
 
 	private String getActiveHealerCodeName(BaWaveOverviewSnapshot snapshot)
 	{
-		if (snapshot == null || !store.isSelectedWaveInProgress() || !roleDetector.isRole(BaRole.HEALER))
-		{
-			return "";
-		}
+		if (snapshot == null || !store.isSelectedWaveInProgress() || !roleDetector.isRole(BaRole.HEALER)) return "";
 
 		WaveCode code = healerCodeManager.getActiveWaveCode(snapshot.getWave());
 		return code == null ? "" : HealerCodeManager.waveCodeDisplayName(code);
@@ -673,10 +624,7 @@ public class WaveOverviewPanel extends JPanel
 
 	private String getActiveStrategyName(BaWaveOverviewSnapshot snapshot)
 	{
-		if (snapshot == null || !store.isSelectedWaveInProgress())
-		{
-			return "";
-		}
+		if (snapshot == null || !store.isSelectedWaveInProgress()) return "";
 
 		TileMarkerRoleContext context = getDisplayRoleContext();
 		return strategyManager.getActiveStrategyName(snapshot.getWave(), context);
@@ -711,15 +659,9 @@ public class WaveOverviewPanel extends JPanel
 
 	private JPanel createRunMetadataPanel(BaWaveOverviewRun run, boolean showMissingDuration)
 	{
-		if (run == null)
-		{
-			return centeredMessage("Select a wave to view.");
-		}
+		if (run == null) return centeredMessage("Select a wave to view.");
 
-		if (!showMissingDuration && run.getRoundDuration() == null)
-		{
-			return verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		}
+		if (!showMissingDuration && run.getRoundDuration() == null) return verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 
 		List<BaTeamMember> members = run.getTeamMembers();
 		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
@@ -841,6 +783,7 @@ public class WaveOverviewPanel extends JPanel
 		component.setAlignmentX(Component.LEFT_ALIGNMENT);
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	private static class EntryState
 	{
 		private final boolean spawned;
@@ -867,15 +810,6 @@ public class WaveOverviewPanel extends JPanel
 		private static EntryState predicted(String text)
 		{
 			return new EntryState(true, false, ColorScheme.TEXT_COLOR, Color.ORANGE, text);
-		}
-
-		private EntryState(boolean spawned, boolean dead, Color labelColor, Color color, String text)
-		{
-			this.spawned = spawned;
-			this.dead = dead;
-			this.labelColor = labelColor;
-			this.color = color;
-			this.text = text;
 		}
 	}
 }

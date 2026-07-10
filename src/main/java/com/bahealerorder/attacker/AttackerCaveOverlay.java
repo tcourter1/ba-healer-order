@@ -82,10 +82,7 @@ public class AttackerCaveOverlay extends Overlay
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (controller == null)
-        {
-            return null;
-        }
+        if (controller == null) return null;
 
         boolean shouldRender = controller.shouldRenderSpawnCountOverlay();
         int tick = client.getTickCount();
@@ -109,10 +106,7 @@ public class AttackerCaveOverlay extends Overlay
             );
         }
 
-        if (!shouldRender)
-        {
-            return null;
-        }
+        if (!shouldRender) return null;
 
         List<TileObject> caves = findPenanceCaves();
 
@@ -169,22 +163,13 @@ public class AttackerCaveOverlay extends Overlay
         {
             for (Tile tile : column)
             {
-                if (tile == null)
-                {
-                    continue;
-                }
+                if (tile == null) continue;
 
                 TileObject cave = getPenanceCave(tile);
 
-                if (cave == null)
-                {
-                    continue;
-                }
+                if (cave == null) continue;
 
-                if (!seenCaves.add(cave.getHash()))
-                {
-                    continue;
-                }
+                if (!seenCaves.add(cave.getHash())) continue;
 
                 caves.add(cave);
             }
@@ -202,20 +187,14 @@ public class AttackerCaveOverlay extends Overlay
         {
             TileObject cave = getPenanceCave(object);
 
-            if (cave != null)
-            {
-                return cave;
-            }
+            if (cave != null) return cave;
         }
 
         for (TileObject object : tile.getGameObjects())
         {
             TileObject cave = getPenanceCave(object);
 
-            if (cave != null)
-            {
-                return cave;
-            }
+            if (cave != null) return cave;
         }
 
         return null;
@@ -223,10 +202,7 @@ public class AttackerCaveOverlay extends Overlay
 
     private TileObject getPenanceCave(TileObject object)
     {
-        if (object == null)
-        {
-            return null;
-        }
+        if (object == null) return null;
 
         ObjectComposition objectComposition = client.getObjectDefinition(object.getId());
 
@@ -249,10 +225,7 @@ public class AttackerCaveOverlay extends Overlay
 
     private void renderText(Graphics2D graphics, LocalPoint localPoint, int fallbackSceneX, int fallbackSceneY, String text)
     {
-        if (text == null)
-        {
-            return;
-        }
+        if (text == null) return;
 
         if (localPoint == null)
         {

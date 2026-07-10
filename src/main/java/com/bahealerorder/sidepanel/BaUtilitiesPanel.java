@@ -38,6 +38,8 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicButtonUI;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
@@ -261,10 +263,7 @@ public class BaUtilitiesPanel extends PluginPanel
 
 	private String buildPartySyncMemberStructure(String status, List<BaPartySyncMemberStatus> memberStatuses)
 	{
-		if (memberStatuses.isEmpty())
-		{
-			return "Already in Party".equals(status) ? "message:already-in-party" : "empty";
-		}
+		if (memberStatuses.isEmpty()) return "Already in Party".equals(status) ? "message:already-in-party" : "empty";
 
 		StringBuilder builder = new StringBuilder();
 		for (BaPartySyncMemberStatus memberStatus : memberStatuses)
@@ -352,10 +351,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	private String getPartySyncMemberStatusText(BaPartySyncMemberStatus memberStatus)
 	{
 		BaHealerFoodCounts counts = memberStatus.getHealerFoodCounts();
-		if (counts != null)
-		{
-			return formatHealerFoodCounts(counts);
-		}
+		if (counts != null) return formatHealerFoodCounts(counts);
 
 		return memberStatus.isInParty() ? "In Party" : "Not In Party";
 	}
@@ -494,6 +490,7 @@ public class BaUtilitiesPanel extends PluginPanel
 		return panel;
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	private static class SidePanelTab
 	{
 		private final String id;
@@ -504,14 +501,6 @@ public class BaUtilitiesPanel extends PluginPanel
 		private static SidePanelTab icon(String id, ImageIcon icon, String tooltip, JComponent content)
 		{
 			return new SidePanelTab(id, icon, tooltip, content);
-		}
-
-		private SidePanelTab(String id, ImageIcon icon, String tooltip, JComponent content)
-		{
-			this.id = id;
-			this.icon = icon;
-			this.tooltip = tooltip;
-			this.content = content;
 		}
 	}
 

@@ -51,6 +51,8 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ChangeListener;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.ui.components.colorpicker.RuneliteColorPicker;
@@ -317,10 +319,7 @@ public class TileMarkerSetEditor extends JPanel
 		setCombo.setRenderer(new MarkerSetRenderer());
 		setCombo.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
 			SetOption item = (SetOption) setCombo.getSelectedItem();
 			if (!confirmDiscard(this))
@@ -472,10 +471,7 @@ public class TileMarkerSetEditor extends JPanel
 		BaPanelUi.styleCombo(markerCombo, SIDE_WIDTH, CONTROL_HEIGHT);
 		markerCombo.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
 			MarkerOption item = (MarkerOption) markerCombo.getSelectedItem();
 			selectedMarkerIds.clear();
@@ -713,10 +709,7 @@ public class TileMarkerSetEditor extends JPanel
 	private void saveSet()
 	{
 		String name = promptMarkerSetName();
-		if (name == null)
-		{
-			return;
-		}
+		if (name == null) return;
 
 		TileMarkerSet saved;
 		if (selectedSetId != null
@@ -753,10 +746,7 @@ public class TileMarkerSetEditor extends JPanel
 		panel.add(nameField);
 
 		int result = JOptionPane.showConfirmDialog(this, panel, "Save Markers", JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return null;
-		}
+		if (result != JOptionPane.OK_OPTION) return null;
 
 		String name = nameField.getText() == null ? "" : nameField.getText().trim();
 		if (name.isEmpty())
@@ -769,10 +759,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	private void deleteSet()
 	{
-		if (selectedSetId == null)
-		{
-			return;
-		}
+		if (selectedSetId == null) return;
 
 		if (selectedSetBuiltIn)
 		{
@@ -781,10 +768,7 @@ public class TileMarkerSetEditor extends JPanel
 		}
 
 		int result = JOptionPane.showConfirmDialog(this, "Delete this tile marker set?", "Delete Marker Set", JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		strategyManager.deleteMarkerSet(selectedSetId);
 		refreshSetCombo(null);
@@ -823,10 +807,7 @@ public class TileMarkerSetEditor extends JPanel
 	private void importSetFromClipboard()
 	{
 		String json = BaClipboard.readText(this, "Import Marker Set");
-		if (json == null)
-		{
-			return;
-		}
+		if (json == null) return;
 
 		TileMarkerExportResult result;
 		try
@@ -860,10 +841,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	private String markerSetImportMessage(TileMarkerExportResult result)
 	{
-		if (result.getType() == TileMarkerExportType.MARKER_SET)
-		{
-			return "Imported tile set " + result.getName() + " with " + result.getMarkerCount() + " tile markers.";
-		}
+		if (result.getType() == TileMarkerExportType.MARKER_SET) return "Imported tile set " + result.getName() + " with " + result.getMarkerCount() + " tile markers.";
 		return "Imported " + result.getTypedName() + ".";
 	}
 
@@ -886,10 +864,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	public boolean confirmDiscard(Component parent)
 	{
-		if (!hasUnsavedChanges())
-		{
-			return true;
-		}
+		if (!hasUnsavedChanges()) return true;
 
 		int result = JOptionPane.showConfirmDialog(
 				parent,
@@ -1011,10 +986,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	private void setMapMode(TileMarkerMapMode mode)
 	{
-		if (refreshing || mode == null || mode == mapMode)
-		{
-			return;
-		}
+		if (refreshing || mode == null || mode == mapMode) return;
 
 		mapMode = mode;
 		strategyManager.setLastMapMode(mode);
@@ -1027,10 +999,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	private void setWaveMap(TileMarkerWaveMap map)
 	{
-		if (refreshing || map == null || map == waveMap)
-		{
-			return;
-		}
+		if (refreshing || map == null || map == waveMap) return;
 
 		if (!confirmDiscard(this))
 		{
@@ -1048,10 +1017,7 @@ public class TileMarkerSetEditor extends JPanel
 	private void addOrSelectMarkerAt(int mapX, int mapY)
 	{
 		TileMarkerMapLayout layout = waveMap.getLayout();
-		if (!mapPanel.isSelectableMapTile(layout, mapX, mapY))
-		{
-			return;
-		}
+		if (!mapPanel.isSelectableMapTile(layout, mapX, mapY)) return;
 
 		TileMarker existing = findMarkerAt(layout, mapX, mapY);
 		if (existing != null)
@@ -1174,16 +1140,10 @@ public class TileMarkerSetEditor extends JPanel
 
 	private void updateSelectedMarkerFromFields()
 	{
-		if (refreshing)
-		{
-			return;
-		}
+		if (refreshing) return;
 
 		TileMarker marker = getSelectedMarker();
-		if (marker == null)
-		{
-			return;
-		}
+		if (marker == null) return;
 
 		marker.setName(markerName.getText().trim());
 		marker.setLabel(markerLabel.getText().trim());
@@ -1195,10 +1155,7 @@ public class TileMarkerSetEditor extends JPanel
 	private void updateSelectedMarkerStyleFromFields()
 	{
 		markerOpacityValue.setText(getMarkerOpacityPercent() + "%");
-		if (refreshing)
-		{
-			return;
-		}
+		if (refreshing) return;
 
 		List<TileMarker> selectedMarkers = getSelectedMarkers();
 		if (!selectedMarkers.isEmpty())
@@ -1227,10 +1184,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	private void setMarkerColor(Color color)
 	{
-		if (color == null)
-		{
-			return;
-		}
+		if (color == null) return;
 
 		markerColor = color;
 		updateMarkerColorButton();
@@ -1265,17 +1219,11 @@ public class TileMarkerSetEditor extends JPanel
 	private TileMarker getSelectedMarker()
 	{
 		String selectedMarkerId = getSelectedMarkerId();
-		if (selectedMarkerId == null)
-		{
-			return null;
-		}
+		if (selectedMarkerId == null) return null;
 
 		for (TileMarker marker : markers)
 		{
-			if (selectedMarkerId.equals(marker.getId()))
-			{
-				return marker;
-			}
+			if (selectedMarkerId.equals(marker.getId())) return marker;
 		}
 
 		return null;
@@ -1285,10 +1233,7 @@ public class TileMarkerSetEditor extends JPanel
 	{
 		for (TileMarker marker : markers)
 		{
-			if (selectedMarkerIds.contains(marker.getId()))
-			{
-				return marker;
-			}
+			if (selectedMarkerIds.contains(marker.getId())) return marker;
 		}
 
 		return null;
@@ -1330,20 +1275,14 @@ public class TileMarkerSetEditor extends JPanel
 	private String selectionSummaryText()
 	{
 		int count = selectedMarkerIds.size();
-		if (count == 0)
-		{
-			return "No markers selected";
-		}
+		if (count == 0) return "No markers selected";
 		return count == 1 ? "1 marker selected" : count + " markers selected";
 	}
 
 	private String getMarkerDisplayText(TileMarker marker)
 	{
 		String name = marker.getName() == null ? "" : marker.getName().trim();
-		if (!name.isEmpty())
-		{
-			return name;
-		}
+		if (!name.isEmpty()) return name;
 
 		String label = marker.getLabel() == null ? "" : marker.getLabel().trim();
 		return label.isEmpty() ? "Unnamed marker" : label;
@@ -1476,10 +1415,7 @@ public class TileMarkerSetEditor extends JPanel
 	private static List<TileMarker> copyMarkers(List<TileMarker> source)
 	{
 		List<TileMarker> copies = new ArrayList<>();
-		if (source == null)
-		{
-			return copies;
-		}
+		if (source == null) return copies;
 
 		for (TileMarker marker : source)
 		{
@@ -1510,10 +1446,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	private static int defaultTileSize(TileMarkerMapMode mapMode)
 	{
-		if (mapMode != null && mapMode.isFullArena())
-		{
-			return Math.max(MAP_MIN_TILE_SIZE, MAP_DEFAULT_TILE_SIZE - FULL_ARENA_DEFAULT_ZOOM_STEPS_OUT);
-		}
+		if (mapMode != null && mapMode.isFullArena()) return Math.max(MAP_MIN_TILE_SIZE, MAP_DEFAULT_TILE_SIZE - FULL_ARENA_DEFAULT_ZOOM_STEPS_OUT);
 
 		return Math.min(MAP_MAX_TILE_SIZE, MAP_DEFAULT_TILE_SIZE + EAST_SIDE_DEFAULT_ZOOM_STEPS_IN);
 	}
@@ -1550,14 +1483,10 @@ public class TileMarkerSetEditor extends JPanel
 		void open(int wave, TileMarkerRoleContext context, String markerSetId);
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	private static class WaveOption
 	{
 		private final int wave;
-
-		private WaveOption(int wave)
-		{
-			this.wave = wave;
-		}
 
 		@Override
 		public String toString()
@@ -1566,18 +1495,12 @@ public class TileMarkerSetEditor extends JPanel
 		}
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	private static class SetOption
 	{
 		private final String id;
 		private final String label;
 		private final boolean builtIn;
-
-		private SetOption(String id, String label, boolean builtIn)
-		{
-			this.id = id;
-			this.label = label;
-			this.builtIn = builtIn;
-		}
 
 		@Override
 		public String toString()
@@ -1605,16 +1528,11 @@ public class TileMarkerSetEditor extends JPanel
 		}
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	private static class MarkerOption
 	{
 		private final String id;
 		private String label;
-
-		private MarkerOption(String id, String label)
-		{
-			this.id = id;
-			this.label = label;
-		}
 
 		@Override
 		public String toString()

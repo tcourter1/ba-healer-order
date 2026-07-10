@@ -3,12 +3,14 @@ package com.bahealerorder.healer.ttk;
 import java.util.HashMap;
 import java.util.Map;
 import javax.inject.Inject;
+import lombok.Getter;
 
 public class HealerTtkTracker
 {
 	private static final int[] HEALER_MAX_HP_BY_WAVE = {0, 27, 32, 37, 43, 49, 55, 60, 67, 76, 60};
 
 	private final Map<Integer, HealerTtkState> statesByNpcIndex = new HashMap<>();
+	@Getter
 	private int waveStartTick = -1;
 	private int healerMaxHp = -1;
 
@@ -35,10 +37,7 @@ public class HealerTtkTracker
 	{
 		statesByNpcIndex.compute(npcIndex, (key, state) ->
 		{
-			if (state == null)
-			{
-				return new HealerTtkState(tick, healerMaxHp);
-			}
+			if (state == null) return new HealerTtkState(tick, healerMaxHp);
 
 			state.updateSpawn(tick, healerMaxHp);
 			return state;
@@ -85,11 +84,6 @@ public class HealerTtkTracker
 	{
 		HealerTtkState state = statesByNpcIndex.get(npcIndex);
 		return state != null && state.isHealthRatioMode();
-	}
-
-	public int getWaveStartTick()
-	{
-		return waveStartTick;
 	}
 
 	HealerTtkState getState(int npcIndex)

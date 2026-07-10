@@ -33,6 +33,9 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.SwingUtil;
@@ -113,10 +116,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	void refreshSelectors()
 	{
-		if (isPopupOpen(runCombo) || isPopupOpen(waveCombo))
-		{
-			return;
-		}
+		if (isPopupOpen(runCombo) || isPopupOpen(waveCombo)) return;
 
 		refreshingControls = true;
 
@@ -164,10 +164,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private boolean isPopupOpen(JComboBox<?> comboBox)
 	{
-		if (!comboBox.isDisplayable())
-		{
-			return false;
-		}
+		if (!comboBox.isDisplayable()) return false;
 
 		try
 		{
@@ -292,20 +289,14 @@ class WaveOverviewSelectorPanel extends JPanel
 			SelectorItem item = model.getElementAt(i);
 			if (selectedRunId == null ? item.value == null : selectedRunId.equals(item.value))
 			{
-				if (selectedRunId != null || item.value instanceof String)
-				{
-					return item;
-				}
+				if (selectedRunId != null || item.value instanceof String) return item;
 			}
 		}
 
 		for (int i = 0; i < model.getSize(); i++)
 		{
 			SelectorItem item = model.getElementAt(i);
-			if (item.value instanceof String)
-			{
-				return item;
-			}
+			if (item.value instanceof String) return item;
 		}
 
 		return fallback;
@@ -364,10 +355,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private String formatRunDropdownAge(BaWaveOverviewRun run)
 	{
-		if (run.isCurrent())
-		{
-			return run.isComplete() ? "" : "in progress";
-		}
+		if (run.isCurrent()) return run.isComplete() ? "" : "in progress";
 
 		String age = formatRunAge(run.getName());
 		return age;
@@ -473,6 +461,8 @@ class WaveOverviewSelectorPanel extends JPanel
 		}
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	@EqualsAndHashCode(of = "value")
 	private static class SelectorItem
 	{
 		private final Object value;
@@ -484,29 +474,10 @@ class WaveOverviewSelectorPanel extends JPanel
 			this(value, label, label);
 		}
 
-		private SelectorItem(Object value, String label, String selectedLabel)
-		{
-			this.value = value;
-			this.label = label;
-			this.selectedLabel = selectedLabel;
-		}
-
 		@Override
 		public String toString()
 		{
 			return label;
-		}
-
-		@Override
-		public boolean equals(Object other)
-		{
-			return other instanceof SelectorItem && java.util.Objects.equals(value, ((SelectorItem) other).value);
-		}
-
-		@Override
-		public int hashCode()
-		{
-			return java.util.Objects.hashCode(value);
 		}
 	}
 }

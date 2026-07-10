@@ -67,6 +67,10 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.SwingUtil;
@@ -207,10 +211,7 @@ class HealerCodeEditor extends JPanel
 		codeCombo.setRenderer(new CodeOptionRenderer());
 		codeCombo.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
 			if (!confirmDiscard(this))
 			{
@@ -417,10 +418,7 @@ class HealerCodeEditor extends JPanel
 		pane.setAlignmentX(Component.LEFT_ALIGNMENT);
 		pane.addHyperlinkListener(event ->
 		{
-			if (event.getEventType() != HyperlinkEvent.EventType.ACTIVATED)
-			{
-				return;
-			}
+			if (event.getEventType() != HyperlinkEvent.EventType.ACTIVATED) return;
 
 			String action = event.getDescription();
 			if ("text-view".equals(action) && !textMode)
@@ -608,10 +606,7 @@ class HealerCodeEditor extends JPanel
 
 	private void addCallRow()
 	{
-		if (visibleCallCount >= HealerCodeFormatter.CALL_COUNT)
-		{
-			return;
-		}
+		if (visibleCallCount >= HealerCodeFormatter.CALL_COUNT) return;
 
 		commitActiveCell();
 		visibleCallCount++;
@@ -622,10 +617,7 @@ class HealerCodeEditor extends JPanel
 	private void deleteCallRow(int callIndex)
 	{
 		int minimumCallCount = defaultVisibleCallCountForWave(selectedWave);
-		if (callIndex < minimumCallCount || visibleCallCount <= minimumCallCount)
-		{
-			return;
-		}
+		if (callIndex < minimumCallCount || visibleCallCount <= minimumCallCount) return;
 
 		commitActiveCell();
 		int healerCount = getHealerCount();
@@ -681,10 +673,7 @@ class HealerCodeEditor extends JPanel
 
 	private Component createDeleteCallButton(int callIndex)
 	{
-		if (callIndex < defaultVisibleCallCountForWave(selectedWave))
-		{
-			return Box.createHorizontalStrut(DELETE_BUTTON_WIDTH);
-		}
+		if (callIndex < defaultVisibleCallCountForWave(selectedWave)) return Box.createHorizontalStrut(DELETE_BUTTON_WIDTH);
 
 		JButton button = new JButton(BaIcons.trashIcon());
 		button.setToolTipText("Delete call row");
@@ -953,10 +942,7 @@ class HealerCodeEditor extends JPanel
 			@Override
 			public void focusLost(FocusEvent event)
 			{
-				if (timingMenuOpen)
-				{
-					return;
-				}
+				if (timingMenuOpen) return;
 
 				SwingUtilities.invokeLater(() ->
 						commitActiveCellIfFocusOutside(key));
@@ -972,12 +958,11 @@ class HealerCodeEditor extends JPanel
 			return;
 		}
 
-		Component focusOwner = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
 		if (activeCell != null
 				&& activeCell.equals(key)
 				&& activeEditorPanel != null
 				&& !timingMenuOpen
-				&& (focusOwner == null || !SwingUtilities.isDescendingFrom(focusOwner, activeEditorPanel)))
+				&& SwingUtilities.findFocusOwner(activeEditorPanel) == null)
 		{
 			commitActiveCell();
 			rebuildCodeGrid();
@@ -1010,10 +995,7 @@ class HealerCodeEditor extends JPanel
 
 	private void activateCell(CellKey key)
 	{
-		if (key.equals(activeCell))
-		{
-			return;
-		}
+		if (key.equals(activeCell)) return;
 
 		commitActiveCell();
 		activeCell = key;
@@ -1023,10 +1005,7 @@ class HealerCodeEditor extends JPanel
 
 	private void commitActiveCell()
 	{
-		if (activeCell == null)
-		{
-			return;
-		}
+		if (activeCell == null) return;
 
 		cellInstructions.put(activeCell, activeInstructionFromEditor());
 		cellTimingOptions.put(activeCell, activeTimingOption);
@@ -1050,10 +1029,7 @@ class HealerCodeEditor extends JPanel
 			return instruction;
 		}
 
-		if (activeTimingOption == CellTimingOption.SPAM)
-		{
-			return new HealerInstruction(0, null, null, null, "X");
-		}
+		if (activeTimingOption == CellTimingOption.SPAM) return new HealerInstruction(0, null, null, null, "X");
 
 		int food = activeFoodCount();
 		Integer after = activeTimingOption == CellTimingOption.AT_OR_AFTER || activeTimingOption == CellTimingOption.WINDOW
@@ -1078,10 +1054,7 @@ class HealerCodeEditor extends JPanel
 
 	private int activeFoodCount()
 	{
-		if (activeFoodField == null)
-		{
-			return 0;
-		}
+		if (activeFoodField == null) return 0;
 
 		try
 		{
@@ -1150,16 +1123,10 @@ class HealerCodeEditor extends JPanel
 
 	private void changeWave()
 	{
-		if (refreshing)
-		{
-			return;
-		}
+		if (refreshing) return;
 
 		Integer wave = (Integer) waveCombo.getSelectedItem();
-		if (wave == null || wave == selectedWave)
-		{
-			return;
-		}
+		if (wave == null || wave == selectedWave) return;
 
 		if (!confirmDiscard(this))
 		{
@@ -1259,10 +1226,7 @@ class HealerCodeEditor extends JPanel
 
 	boolean selectCodeForWave(int wave, String codeId, Component parent)
 	{
-		if (!confirmDiscard(parent))
-		{
-			return false;
-		}
+		if (!confirmDiscard(parent)) return false;
 
 		selectedWave = requireWave(wave);
 		refreshCodeCombo(codeId);
@@ -1347,10 +1311,7 @@ class HealerCodeEditor extends JPanel
 	{
 		for (CallCode call : code.getCalls())
 		{
-			if (call == null || call.getCallIndex() >= HealerCodeFormatter.CALL_COUNT)
-			{
-				continue;
-			}
+			if (call == null || call.getCallIndex() >= HealerCodeFormatter.CALL_COUNT) continue;
 
 			for (int index = 0; index < call.getHealerInstructions().size(); index++)
 			{
@@ -1438,16 +1399,10 @@ class HealerCodeEditor extends JPanel
 
 	private void importCurrentWaveFromClipboard()
 	{
-		if (!confirmDiscard(this))
-		{
-			return;
-		}
+		if (!confirmDiscard(this)) return;
 
 		String json = BaClipboard.readText(this, "Import Wave");
-		if (json == null)
-		{
-			return;
-		}
+		if (json == null) return;
 
 		HealerCodeExportResult result = codeManager.importHealerCodeJson(json, selectedWave);
 		if (result == null)
@@ -1468,15 +1423,9 @@ class HealerCodeEditor extends JPanel
 	private WaveCode draftCode()
 	{
 		String name = codeName.getText() == null ? "" : codeName.getText().trim();
-		if (name.isEmpty())
-		{
-			return null;
-		}
+		if (name.isEmpty()) return null;
 
-		if (textMode)
-		{
-			return HealerCodeParser.parseWaveCode(selectedCodeId, name, selectedWave, false, codeTextSource.getText());
-		}
+		if (textMode) return HealerCodeParser.parseWaveCode(selectedCodeId, name, selectedWave, false, codeTextSource.getText());
 
 		return advancedDraft(true);
 	}
@@ -1485,10 +1434,7 @@ class HealerCodeEditor extends JPanel
 	{
 		commitActiveCell();
 		String name = codeName.getText() == null ? "" : codeName.getText().trim();
-		if (requireName && name.isEmpty())
-		{
-			return null;
-		}
+		if (requireName && name.isEmpty()) return null;
 
 		WaveCode code = new WaveCode(selectedCodeId, name, selectedWave, false, collectCalls());
 		HealerCodeOverstock overstock = (HealerCodeOverstock) overstockCombo.getSelectedItem();
@@ -1530,16 +1476,10 @@ class HealerCodeEditor extends JPanel
 
 	private Integer readOptionalSeconds(JTextField field)
 	{
-		if (field == null)
-		{
-			return null;
-		}
+		if (field == null) return null;
 
 		String value = field.getText() == null ? "" : field.getText().trim();
-		if (value.isEmpty())
-		{
-			return null;
-		}
+		if (value.isEmpty()) return null;
 		try
 		{
 			return Math.max(0, Integer.parseInt(value));
@@ -1571,10 +1511,7 @@ class HealerCodeEditor extends JPanel
 		}
 
 		int result = JOptionPane.showConfirmDialog(this, "Delete this wave code?", "Delete Wave Code", JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		codeManager.deleteUserWaveCode(selectedCodeId);
 		refreshCodeCombo(null);
@@ -1594,10 +1531,7 @@ class HealerCodeEditor extends JPanel
 		}
 
 		int result = JOptionPane.showConfirmDialog(this, "Reset this built-in wave code to its default?", "Reset Wave Code", JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		String resetCodeId = selectedCodeId;
 		codeManager.resetBuiltInWaveCode(resetCodeId);
@@ -1611,10 +1545,7 @@ class HealerCodeEditor extends JPanel
 
 	boolean confirmDiscard(Component parent)
 	{
-		if (!dirty)
-		{
-			return true;
-		}
+		if (!dirty) return true;
 
 		int result = JOptionPane.showConfirmDialog(
 				parent,
@@ -1790,10 +1721,7 @@ class HealerCodeEditor extends JPanel
 
 	private static String labelForHealer(List<String> labels, int healerOrder)
 	{
-		if (healerOrder <= 0 || healerOrder > labels.size())
-		{
-			return String.valueOf(healerOrder);
-		}
+		if (healerOrder <= 0 || healerOrder > labels.size()) return String.valueOf(healerOrder);
 		return labels.get(healerOrder - 1).replace("s", "");
 	}
 
@@ -1817,15 +1745,9 @@ class HealerCodeEditor extends JPanel
 
 	private static int defaultVisibleCallCountForWave(int wave)
 	{
-		if (wave <= 3)
-		{
-			return 1;
-		}
+		if (wave <= 3) return 1;
 
-		if (wave <= 6)
-		{
-			return 2;
-		}
+		if (wave <= 6) return 2;
 
 		return 3;
 	}
@@ -1836,47 +1758,20 @@ class HealerCodeEditor extends JPanel
 		return new ImageIcon(image.getScaledInstance(32, 32, Image.SCALE_SMOOTH));
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	@EqualsAndHashCode
 	private static class CellKey
 	{
 		private final int callIndex;
 		private final int healerOrder;
-
-		private CellKey(int callIndex, int healerOrder)
-		{
-			this.callIndex = callIndex;
-			this.healerOrder = healerOrder;
-		}
-
-		@Override
-		public boolean equals(Object other)
-		{
-			if (!(other instanceof CellKey))
-			{
-				return false;
-			}
-			CellKey key = (CellKey) other;
-			return callIndex == key.callIndex && healerOrder == key.healerOrder;
-		}
-
-		@Override
-		public int hashCode()
-		{
-			return callIndex * 31 + healerOrder;
-		}
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	private static class CodeOption
 	{
 		private final String id;
 		private final String label;
 		private final boolean builtIn;
-
-		private CodeOption(String id, String label, boolean builtIn)
-		{
-			this.id = id;
-			this.label = label;
-			this.builtIn = builtIn;
-		}
 
 		@Override
 		public String toString()
@@ -1904,6 +1799,7 @@ class HealerCodeEditor extends JPanel
 		}
 	}
 
+	@RequiredArgsConstructor
 	private enum CellTimingOption
 	{
 		NONE("No timing", "No timing rule for this code"),
@@ -1917,48 +1813,21 @@ class HealerCodeEditor extends JPanel
 		private final String label;
 		private final String tooltip;
 
-		CellTimingOption(String label, String tooltip)
-		{
-			this.label = label;
-			this.tooltip = tooltip;
-		}
-
 		private static CellTimingOption fromInstruction(HealerInstruction instruction)
 		{
-			if (isSpamInstruction(instruction))
-			{
-				return SPAM;
-			}
-			if (instruction != null && instruction.isAdvanced())
-			{
-				return ADVANCED;
-			}
-			if (instruction == null || !instruction.hasTiming())
-			{
-				return NONE;
-			}
-			if (instruction.getAfterSeconds() != null && instruction.getBeforeSeconds() != null)
-			{
-				return WINDOW;
-			}
-			if (instruction.getExactSeconds() != null)
-			{
-				return EXACT;
-			}
-			if (instruction.getAfterSeconds() != null)
-			{
-				return AT_OR_AFTER;
-			}
+			if (isSpamInstruction(instruction)) return SPAM;
+			if (instruction != null && instruction.isAdvanced()) return ADVANCED;
+			if (instruction == null || !instruction.hasTiming()) return NONE;
+			if (instruction.getAfterSeconds() != null && instruction.getBeforeSeconds() != null) return WINDOW;
+			if (instruction.getExactSeconds() != null) return EXACT;
+			if (instruction.getAfterSeconds() != null) return AT_OR_AFTER;
 			return BEFORE;
 		}
 
 		private static boolean isSpamInstruction(HealerInstruction instruction)
 		{
 			String raw = instruction == null ? null : instruction.getRaw();
-			if (instruction == null || instruction.hasTarget() || raw == null)
-			{
-				return false;
-			}
+			if (instruction == null || instruction.hasTarget() || raw == null) return false;
 
 			String text = raw.trim().toLowerCase();
 			return "x".equals(text) || text.contains("spam") || text.contains("yolo");
@@ -1979,10 +1848,7 @@ class HealerCodeEditor extends JPanel
 		protected void paintComponent(Graphics graphics)
 		{
 			super.paintComponent(graphics);
-			if (placeholder == null || placeholder.isEmpty() || getText() == null || !getText().isEmpty())
-			{
-				return;
-			}
+			if (placeholder == null || placeholder.isEmpty() || getText() == null || !getText().isEmpty()) return;
 
 			Graphics2D graphics2D = (Graphics2D) graphics.create();
 			graphics2D.setColor(new Color(140, 140, 140));

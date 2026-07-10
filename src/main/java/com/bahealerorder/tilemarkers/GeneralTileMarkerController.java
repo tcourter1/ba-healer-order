@@ -52,10 +52,7 @@ public class GeneralTileMarkerController
 
 	List<TileMarker> getCurrentMarkers()
 	{
-		if (!waveLifecycleService.isWaveActive())
-		{
-			return Collections.emptyList();
-		}
+		if (!waveLifecycleService.isWaveActive()) return Collections.emptyList();
 
 		return strategyManager.getActiveMarkers(waveLifecycleService.getWave(), roleDetector.getCurrentRole());
 	}

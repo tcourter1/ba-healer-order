@@ -11,10 +11,7 @@ public final class HealerCodeStoreNormalizer
 
 	public static boolean normalize(StrategyStore store, int currentVersion)
 	{
-		if (store == null)
-		{
-			return false;
-		}
+		if (store == null) return false;
 
 		boolean changed = store.getVersion() != currentVersion;
 		List<WaveCode> userCodes = new ArrayList<>();
@@ -54,16 +51,10 @@ public final class HealerCodeStoreNormalizer
 
 	private static boolean normalizeCustomCode(WaveCode code)
 	{
-		if (code == null)
-		{
-			return false;
-		}
+		if (code == null) return false;
 
 		String source = code.getStoredSourceText();
-		if (source == null || source.trim().isEmpty())
-		{
-			return false;
-		}
+		if (source == null || source.trim().isEmpty()) return false;
 
 		WaveCode parsed = HealerCodeParser.parseWaveCode(code.getId(), code.getName(), code.getWave(), false, source);
 		code.setCalls(parsed.getCalls());

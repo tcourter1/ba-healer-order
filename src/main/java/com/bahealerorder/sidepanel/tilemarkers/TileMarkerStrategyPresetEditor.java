@@ -130,10 +130,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 
 		targetRoleCombo.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
 			TileMarkerRoleContext selectedContext = (TileMarkerRoleContext) targetRoleCombo.getSelectedItem();
 			if (selectedContext != null)
@@ -174,16 +171,10 @@ class TileMarkerStrategyPresetEditor extends JPanel
 
 	private void changeTargetWave()
 	{
-		if (refreshing)
-		{
-			return;
-		}
+		if (refreshing) return;
 
 		Integer selectedWave = (Integer) targetWaveCombo.getSelectedItem();
-		if (selectedWave == null || selectedWave == targetWave)
-		{
-			return;
-		}
+		if (selectedWave == null || selectedWave == targetWave) return;
 
 		TileMarkerWaveMap nextWaveMap = TileMarkerWaveMap.fromWave(selectedWave);
 		if (nextWaveMap != waveMap && !confirmDiscard(this))
@@ -227,10 +218,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		strategyCombo.setRenderer(BaPanelUi.comboOptionRenderer(CONTROL_HEIGHT));
 		strategyCombo.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
 			if (!confirmDiscard(this))
 			{
@@ -367,10 +355,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 			String initialMarkerSetId,
 			Component parent)
 	{
-		if (!confirmDiscard(parent))
-		{
-			return false;
-		}
+		if (!confirmDiscard(parent)) return false;
 
 		targetRoleContext = roleContext == null ? TileMarkerRoleContext.DEFENDER : roleContext;
 		targetWave = requireWave(wave);
@@ -470,10 +455,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		}
 
 		int result = JOptionPane.showConfirmDialog(this, "Delete this wave strategy?", "Delete Strategy", JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		strategyManager.deleteStrategyPreset(selectedStrategyId);
 		refreshStrategyCombo(null);
@@ -504,16 +486,10 @@ class TileMarkerStrategyPresetEditor extends JPanel
 
 	private void importStrategyFromClipboard()
 	{
-		if (!confirmDiscard(this))
-		{
-			return;
-		}
+		if (!confirmDiscard(this)) return;
 
 		String json = BaClipboard.readText(this, "Import Strategy");
-		if (json == null)
-		{
-			return;
-		}
+		if (json == null) return;
 
 		TileMarkerExportResult result;
 		try
@@ -553,10 +529,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 
 	boolean confirmDiscard(Component parent)
 	{
-		if (!dirty)
-		{
-			return true;
-		}
+		if (!dirty) return true;
 
 		int result = JOptionPane.showConfirmDialog(
 				parent,

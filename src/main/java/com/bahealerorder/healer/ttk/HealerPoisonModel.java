@@ -11,15 +11,9 @@ public class HealerPoisonModel
 
 	public OptionalInt calculateDeathTick(int currentHp, int firstPoisonTick, int lastFoodTick, int currentTick)
 	{
-		if (currentHp <= 0)
-		{
-			return OptionalInt.of(currentTick);
-		}
+		if (currentHp <= 0) return OptionalInt.of(currentTick);
 
-		if (firstPoisonTick < 0 || lastFoodTick < 0)
-		{
-			return OptionalInt.empty();
-		}
+		if (firstPoisonTick < 0 || lastFoodTick < 0) return OptionalInt.empty();
 
 		int hp = currentHp;
 
@@ -27,17 +21,11 @@ public class HealerPoisonModel
 		{
 			int damage = getDamageAtPoisonTick(lastFoodTick, poisonTick);
 
-			if (damage <= 0)
-			{
-				break;
-			}
+			if (damage <= 0) break;
 
 			hp -= damage;
 
-			if (hp <= 0)
-			{
-				return OptionalInt.of(poisonTick);
-			}
+			if (hp <= 0) return OptionalInt.of(poisonTick);
 		}
 
 		return OptionalInt.empty();
@@ -45,27 +33,16 @@ public class HealerPoisonModel
 
 	static int getDamageForHit(int poisonHitNumber)
 	{
-		if (poisonHitNumber < 1 || poisonHitNumber > TOTAL_POISON_HITS)
-		{
-			return 0;
-		}
+		if (poisonHitNumber < 1 || poisonHitNumber > TOTAL_POISON_HITS) return 0;
 
 		return INITIAL_POISON_DAMAGE - (poisonHitNumber - 1) / HITS_PER_POISON_DAMAGE;
-	}
-
-	static int getTickForHit(int lastFoodTick, int poisonHitNumber)
-	{
-		return lastFoodTick + poisonHitNumber * TICKS_PER_POISON_HIT;
 	}
 
 	static int getDamageAtPoisonTick(int lastFoodTick, int poisonTick)
 	{
 		int elapsedTicks = poisonTick - lastFoodTick;
 
-		if (elapsedTicks <= 0)
-		{
-			return 0;
-		}
+		if (elapsedTicks <= 0) return 0;
 
 		int poisonHitNumber = (elapsedTicks + TICKS_PER_POISON_HIT - 1) / TICKS_PER_POISON_HIT;
 		return getDamageForHit(poisonHitNumber);
@@ -73,10 +50,7 @@ public class HealerPoisonModel
 
 	private static int getNextPoisonTick(int firstPoisonTick, int afterTick)
 	{
-		if (afterTick < firstPoisonTick)
-		{
-			return firstPoisonTick;
-		}
+		if (afterTick < firstPoisonTick) return firstPoisonTick;
 
 		int ticksSinceStart = afterTick - firstPoisonTick;
 		return firstPoisonTick + (ticksSinceStart / TICKS_PER_POISON_HIT + 1) * TICKS_PER_POISON_HIT;

@@ -260,10 +260,7 @@ public class BaWaveOverviewService
 	{
 		int wave = waveLifecycleService.getWave();
 
-		if (!BaWaveInfo.isValidWave(wave))
-		{
-			return false;
-		}
+		if (!BaWaveInfo.isValidWave(wave)) return false;
 
 		return store.saveSnapshot(BaWaveOverviewSnapshot.fromStates(wave, state, healerState));
 	}

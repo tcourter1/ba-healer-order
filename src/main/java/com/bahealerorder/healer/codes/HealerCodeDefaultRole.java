@@ -1,5 +1,10 @@
 package com.bahealerorder.healer.codes;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+@Getter
+@RequiredArgsConstructor
 public enum HealerCodeDefaultRole
 {
 	SOLO_HEALER("Default Solo Heal", "Solo Heal"),
@@ -8,20 +13,4 @@ public enum HealerCodeDefaultRole
 
 	private final String presetBadge;
 	private final String displayName;
-
-	HealerCodeDefaultRole(String presetBadge, String displayName)
-	{
-		this.presetBadge = presetBadge;
-		this.displayName = displayName;
-	}
-
-	public String getPresetBadge()
-	{
-		return presetBadge;
-	}
-
-	public String getDisplayName()
-	{
-		return displayName;
-	}
 }

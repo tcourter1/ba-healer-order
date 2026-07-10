@@ -1,8 +1,12 @@
 package com.bahealerorder.common;
 
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.ItemID;
 
+@RequiredArgsConstructor
 public enum BaRole
 {
 	ATTACKER(485, InterfaceID.BARBASSAULT_OVER_ATT, "Attacker", "Attacker item machine", ItemID.BARBASSAULT_PLAYERICON_ATTACKER),
@@ -11,39 +15,14 @@ public enum BaRole
 	HEALER(488, InterfaceID.BARBASSAULT_OVER_HEAL, "Healer", "Healer item machine", ItemID.BARBASSAULT_PLAYERICON_HEALER);
 
 	private final int groupId;
+	@Getter(AccessLevel.PACKAGE)
 	private final int interfaceGroupId;
+	@Getter
 	private final String displayName;
+	@Getter
 	private final String dispenserName;
+	@Getter
 	private final int playerIconItemId;
-
-	BaRole(int groupId, int interfaceGroupId, String displayName, String dispenserName, int playerIconItemId)
-	{
-		this.groupId = groupId;
-		this.interfaceGroupId = interfaceGroupId;
-		this.displayName = displayName;
-		this.dispenserName = dispenserName;
-		this.playerIconItemId = playerIconItemId;
-	}
-
-	public String getDisplayName()
-	{
-		return displayName;
-	}
-
-	public String getDispenserName()
-	{
-		return dispenserName;
-	}
-
-	public int getPlayerIconItemId()
-	{
-		return playerIconItemId;
-	}
-
-	int getInterfaceGroupId()
-	{
-		return interfaceGroupId;
-	}
 
 	public static BaRole fromDisplayName(String displayName)
 	{
@@ -51,10 +30,7 @@ public enum BaRole
 
 		for (BaRole role : values())
 		{
-			if (role.displayName.equalsIgnoreCase(displayName))
-			{
-				return role;
-			}
+			if (role.displayName.equalsIgnoreCase(displayName)) return role;
 		}
 
 		return null;
@@ -64,10 +40,7 @@ public enum BaRole
 	{
 		for (BaRole role : values())
 		{
-			if (groupId == role.groupId || groupId == role.interfaceGroupId)
-			{
-				return role;
-			}
+			if (groupId == role.groupId || groupId == role.interfaceGroupId) return role;
 		}
 
 		return null;

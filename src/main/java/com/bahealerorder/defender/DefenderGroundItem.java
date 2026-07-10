@@ -1,8 +1,13 @@
 package com.bahealerorder.defender;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import net.runelite.api.Tile;
 import net.runelite.api.TileItem;
 
+@AllArgsConstructor(access = AccessLevel.PACKAGE)
+@Getter(AccessLevel.PACKAGE)
 class DefenderGroundItem
 {
 	enum Type
@@ -13,26 +18,4 @@ class DefenderGroundItem
 	private final Tile tile;
 	private final TileItem item;
 	private final Type type;
-
-	DefenderGroundItem(Tile tile, TileItem item, Type type)
-	{
-		this.tile = tile;
-		this.item = item;
-		this.type = type;
-	}
-
-	Tile getTile()
-	{
-		return tile;
-	}
-
-	TileItem getItem()
-	{
-		return item;
-	}
-
-	Type getType()
-	{
-		return type;
-	}
 }

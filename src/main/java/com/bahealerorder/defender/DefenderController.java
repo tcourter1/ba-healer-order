@@ -139,10 +139,7 @@ public class DefenderController
 
 	public void onItemSpawned(ItemSpawned event)
 	{
-		if (!waveLifecycleService.isWaveActive())
-		{
-			return;
-		}
+		if (!waveLifecycleService.isWaveActive()) return;
 
 		DefenderGroundItem groundItem = createGroundItem(event.getTile(), event.getItem());
 
@@ -154,10 +151,7 @@ public class DefenderController
 
 	public void onItemDespawned(ItemDespawned event)
 	{
-		if (!waveLifecycleService.isWaveActive())
-		{
-			return;
-		}
+		if (!waveLifecycleService.isWaveActive()) return;
 
 		removeGroundItem(event.getTile(), event.getItem());
 	}
@@ -176,17 +170,11 @@ public class DefenderController
 
 	public List<DefenderGroundItem> getHighlightedGroundItems()
 	{
-		if (!isDefenderRole() || !waveLifecycleService.isWaveActive())
-		{
-			return Collections.emptyList();
-		}
+		if (!isDefenderRole() || !waveLifecycleService.isWaveActive()) return Collections.emptyList();
 
 		boolean highlightHammer = config.highlightDefenderHammer() && !hasHammer();
 
-		if (!highlightHammer)
-		{
-			return Collections.emptyList();
-		}
+		if (!highlightHammer) return Collections.emptyList();
 
 		List<DefenderGroundItem> highlighted = new ArrayList<>();
 
@@ -245,10 +233,7 @@ public class DefenderController
 		{
 			for (Item item : inventory.getItems())
 			{
-				if (isHammer(item))
-				{
-					return true;
-				}
+				if (isHammer(item)) return true;
 			}
 		}
 
@@ -257,10 +242,7 @@ public class DefenderController
 
 	private boolean isHammer(Item item)
 	{
-		if (item == null || item.getId() <= 0)
-		{
-			return false;
-		}
+		if (item == null || item.getId() <= 0) return false;
 
 		return DefenderInventory.isHammer(item.getId(), getItemName(item.getId()));
 	}
@@ -269,10 +251,7 @@ public class DefenderController
 	{
 		PlayerComposition composition = client.getLocalPlayer() == null ? null : client.getLocalPlayer().getPlayerComposition();
 
-		if (composition == null)
-		{
-			return false;
-		}
+		if (composition == null) return false;
 
 		int itemId = composition.getEquipmentId(kitType);
 
@@ -281,17 +260,11 @@ public class DefenderController
 
 	private DefenderGroundItem createGroundItem(Tile tile, TileItem item)
 	{
-		if (tile == null || item == null || item.getId() <= 0)
-		{
-			return null;
-		}
+		if (tile == null || item == null || item.getId() <= 0) return null;
 
 		String name = getItemName(item.getId());
 
-		if (DefenderInventory.isHammer(item.getId(), name))
-		{
-			return new DefenderGroundItem(tile, item, DefenderGroundItem.Type.HAMMER);
-		}
+		if (DefenderInventory.isHammer(item.getId(), name)) return new DefenderGroundItem(tile, item, DefenderGroundItem.Type.HAMMER);
 
 		return null;
 	}
@@ -310,10 +283,7 @@ public class DefenderController
 
 	private void removeGroundItem(Tile tile, TileItem item)
 	{
-		if (tile == null || item == null)
-		{
-			return;
-		}
+		if (tile == null || item == null) return;
 
 		for (int i = 0; i < groundItems.size(); i++)
 		{
@@ -341,33 +311,21 @@ public class DefenderController
 	{
 		groundItems.clear();
 
-		if (client.getTopLevelWorldView() == null || client.getTopLevelWorldView().getScene() == null)
-		{
-			return;
-		}
+		if (client.getTopLevelWorldView() == null || client.getTopLevelWorldView().getScene() == null) return;
 
 		Tile[][][] tiles = client.getTopLevelWorldView().getScene().getTiles();
 
 		for (Tile[][] plane : tiles)
 		{
-			if (plane == null)
-			{
-				continue;
-			}
+			if (plane == null) continue;
 
 			for (Tile[] row : plane)
 			{
-				if (row == null)
-				{
-					continue;
-				}
+				if (row == null) continue;
 
 				for (Tile tile : row)
 				{
-					if (tile == null || tile.getGroundItems() == null)
-					{
-						continue;
-					}
+					if (tile == null || tile.getGroundItems() == null) continue;
 
 					for (TileItem item : tile.getGroundItems())
 					{

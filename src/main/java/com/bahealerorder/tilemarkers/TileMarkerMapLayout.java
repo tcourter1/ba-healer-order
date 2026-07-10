@@ -1,5 +1,8 @@
 package com.bahealerorder.tilemarkers;
 
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
 public enum TileMarkerMapLayout
 {
 	WAVES_1_TO_9("W1-9", 7509),
@@ -11,12 +14,6 @@ public enum TileMarkerMapLayout
 
 	private final String name;
 	private final int regionId;
-
-	TileMarkerMapLayout(String name, int regionId)
-	{
-		this.name = name;
-		this.regionId = regionId;
-	}
 
 	public TileMarkerTile toTile(int mapX, int mapY)
 	{
@@ -35,19 +32,11 @@ public enum TileMarkerMapLayout
 
 	public boolean contains(TileMarkerTile tile)
 	{
-		if (tile == null || tile.getRegionId() != regionId)
-		{
-			return false;
-		}
+		if (tile == null || tile.getRegionId() != regionId) return false;
 
 		int x = toMapX(tile);
 		int y = toMapY(tile);
 		return x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT;
-	}
-
-	public static TileMarkerMapLayout forWave(int wave)
-	{
-		return wave == 10 ? WAVE_10 : WAVES_1_TO_9;
 	}
 
 	@Override

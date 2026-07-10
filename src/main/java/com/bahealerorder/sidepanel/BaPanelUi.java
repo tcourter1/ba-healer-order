@@ -4,12 +4,10 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.util.List;
 import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -25,6 +23,10 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.JTextComponent;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
@@ -58,19 +60,6 @@ public final class BaPanelUi
 		row.setBackground(background);
 		fixedSize(row, contentWidth - 16, controlHeight);
 		row.add(label, BorderLayout.CENTER);
-		return row;
-	}
-
-	public static JPanel comboRow(String text, JComboBox<?> comboBox, int contentWidth, int controlHeight, int labelWidth)
-	{
-		JLabel rowLabel = label(text);
-		fixedSize(rowLabel, labelWidth, controlHeight);
-
-		JPanel row = new JPanel(new BorderLayout(6, 0));
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(row, contentWidth - 16, controlHeight);
-		row.add(rowLabel, BorderLayout.WEST);
-		row.add(comboBox, BorderLayout.CENTER);
 		return row;
 	}
 
@@ -235,18 +224,14 @@ public final class BaPanelUi
 		}
 	}
 
-	public static void setComboItems(JComboBox<ComboOption> comboBox, List<ComboOption> items, String selectedId)
-	{
-		comboBox.setModel(new DefaultComboBoxModel<>(items.toArray(new ComboOption[0])));
-		selectComboValue(comboBox, selectedId);
-	}
-
 	public static String selectedId(JComboBox<ComboOption> comboBox)
 	{
 		ComboOption item = (ComboOption) comboBox.getSelectedItem();
 		return item == null ? null : item.getId();
 	}
 
+	@AllArgsConstructor
+	@Getter
 	public static class ComboOption
 	{
 		private final String id;
@@ -258,23 +243,6 @@ public final class BaPanelUi
 			this(id, label, false);
 		}
 
-		public ComboOption(String id, String label, boolean builtIn)
-		{
-			this.id = id;
-			this.label = label;
-			this.builtIn = builtIn;
-		}
-
-		public String getId()
-		{
-			return id;
-		}
-
-		public boolean isBuiltIn()
-		{
-			return builtIn;
-		}
-
 		@Override
 		public String toString()
 		{
@@ -282,14 +250,10 @@ public final class BaPanelUi
 		}
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	private static class ComboOptionRenderer extends DefaultListCellRenderer
 	{
 		private final int controlHeight;
-
-		private ComboOptionRenderer(int controlHeight)
-		{
-			this.controlHeight = controlHeight;
-		}
 
 		@Override
 		public Component getListCellRendererComponent(
@@ -317,15 +281,11 @@ public final class BaPanelUi
 		}
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	private static class FixedPopupWidthComboBox<T> extends JComboBox<T>
 	{
 		private final int popupWidth;
 		private boolean layingOut;
-
-		private FixedPopupWidthComboBox(int popupWidth)
-		{
-			this.popupWidth = popupWidth;
-		}
 
 		@Override
 		public void doLayout()

@@ -152,11 +152,6 @@ public class BaPartySyncService
 		return localMember != null && localMember.getMemberId() == memberId;
 	}
 
-	public List<String> getBaPartySyncTeamNames()
-	{
-		return new ArrayList<>(baPartySyncTeamNames);
-	}
-
 	public List<BaTeamMember> getBaPartySyncTeamMembers()
 	{
 		return new ArrayList<>(baPartySyncTeamMembers);
@@ -166,24 +161,6 @@ public class BaPartySyncService
 	{
 		return !baPartySyncTeamMembers.isEmpty()
 				&& isLocalPlayer(baPartySyncTeamMembers.get(0).getName());
-	}
-
-	public boolean isBaTeamMemberRole(String playerName, BaRole role)
-	{
-		if (role == null) return false;
-
-		String normalizedPlayerName = normalizePlayerName(playerName);
-
-		for (BaTeamMember member : baPartySyncTeamMembers)
-		{
-			if (normalizePlayerName(member.getName()).equals(normalizedPlayerName)
-					&& role.getDisplayName().equals(member.getRole()))
-			{
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	public boolean hasIncompleteDuoHealerParty()
@@ -282,20 +259,11 @@ public class BaPartySyncService
 		if (event == null) return;
 
 		String playerName = event.getPlayerName();
-		if (playerName == null || playerName.isEmpty())
-		{
-			return;
-		}
+		if (playerName == null || playerName.isEmpty()) return;
 
-		if (isLocalPartyMember(event.getMemberId()))
-		{
-			return;
-		}
+		if (isLocalPartyMember(event.getMemberId())) return;
 
-		if (event.getWorld() != client.getWorld())
-		{
-			return;
-		}
+		if (event.getWorld() != client.getWorld()) return;
 
 		BaHealerFoodCounts counts = new BaHealerFoodCounts(
 				event.getTofu(),
@@ -758,10 +726,7 @@ public class BaPartySyncService
 
 	private boolean memberStatusesEqual(List<BaPartySyncMemberStatus> left, List<BaPartySyncMemberStatus> right)
 	{
-		if (left.size() != right.size())
-		{
-			return false;
-		}
+		if (left.size() != right.size()) return false;
 
 		for (int i = 0; i < left.size(); i++)
 		{
@@ -782,15 +747,9 @@ public class BaPartySyncService
 
 	private BaHealerFoodCounts getDisplayableHealerFoodCounts(String playerName, String role, boolean inParty)
 	{
-		if (!isRealWaveActive() || BaRole.fromDisplayName(role) != BaRole.HEALER)
-		{
-			return null;
-		}
+		if (!isRealWaveActive() || BaRole.fromDisplayName(role) != BaRole.HEALER) return null;
 
-		if (!isLocalPlayer(playerName) && !inParty)
-		{
-			return null;
-		}
+		if (!isLocalPlayer(playerName) && !inParty) return null;
 
 		return healerFoodCountsByPlayerName.get(normalizePlayerName(playerName));
 	}
@@ -848,10 +807,7 @@ public class BaPartySyncService
 		String rosterText = cleanWidgetText(text);
 		String expectedPrefix = playerIndex == 0 ? "Leader" : "Player " + playerIndex;
 
-		if (rosterText.isEmpty())
-		{
-			return null;
-		}
+		if (rosterText.isEmpty()) return null;
 
 		String name = rosterText.toLowerCase(Locale.ROOT).startsWith(expectedPrefix.toLowerCase(Locale.ROOT) + ":")
 				? rosterText.substring(rosterText.indexOf(':') + 1).trim()
@@ -908,10 +864,7 @@ public class BaPartySyncService
 
 		for (String teamName : baPartySyncTeamNames)
 		{
-			if (normalizePlayerName(teamName).equals(normalizedPlayerName))
-			{
-				return true;
-			}
+			if (normalizePlayerName(teamName).equals(normalizedPlayerName)) return true;
 		}
 
 		return false;
@@ -921,10 +874,7 @@ public class BaPartySyncService
 	{
 		for (BaTeamMember member : baPartySyncTeamMembers)
 		{
-			if (member.getName().equals(name))
-			{
-				return member;
-			}
+			if (member.getName().equals(name)) return member;
 		}
 
 		return null;
@@ -946,10 +896,7 @@ public class BaPartySyncService
 
 		for (MessageNode messageNode : messages)
 		{
-			if (isMatchingNativePublicChatMessage(messageNode, senderName, message))
-			{
-				return true;
-			}
+			if (isMatchingNativePublicChatMessage(messageNode, senderName, message)) return true;
 		}
 
 		return false;

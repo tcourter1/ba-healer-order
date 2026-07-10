@@ -1,7 +1,11 @@
 package com.bahealerorder.tilemarkers;
 
 import com.bahealerorder.common.BaRole;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
+@Getter
+@RequiredArgsConstructor
 public enum TileMarkerRoleContext
 {
 	DEFENDER("Defender", BaRole.DEFENDER),
@@ -13,26 +17,10 @@ public enum TileMarkerRoleContext
 	private final String displayName;
 	private final BaRole role;
 
-	TileMarkerRoleContext(String displayName, BaRole role)
-	{
-		this.displayName = displayName;
-		this.role = role;
-	}
-
-	public String getDisplayName()
-	{
-		return displayName;
-	}
-
 	@Override
 	public String toString()
 	{
 		return displayName;
-	}
-
-	public BaRole getRole()
-	{
-		return role;
 	}
 
 	public static TileMarkerRoleContext fromRole(BaRole role)
@@ -41,10 +29,7 @@ public enum TileMarkerRoleContext
 		{
 			for (TileMarkerRoleContext context : values())
 			{
-				if (context.role == role)
-				{
-					return context;
-				}
+				if (context.role == role) return context;
 			}
 		}
 
@@ -57,10 +42,7 @@ public enum TileMarkerRoleContext
 		{
 			for (TileMarkerRoleContext context : values())
 			{
-				if (context.name().equals(name))
-				{
-					return context;
-				}
+				if (context.name().equals(name)) return context;
 			}
 		}
 

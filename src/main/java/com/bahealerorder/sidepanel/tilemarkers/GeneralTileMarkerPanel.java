@@ -269,10 +269,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		populateWaveSelectionCombo(comboBox, wave, strategyManager.getWaveSelectionStrategyId(selectedContext, wave));
 		comboBox.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
 			strategyManager.setWaveSelectionStrategyId(selectedContext, wave, BaPanelUi.selectedId(comboBox));
 			refreshAssignmentPresetCombo();
@@ -339,10 +336,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		assignmentPresetCombo.setRenderer(BaPanelUi.comboOptionRenderer(CONTROL_HEIGHT));
 		assignmentPresetCombo.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
 			strategyManager.applyAssignmentPreset(selectedContext, BaPanelUi.selectedId(assignmentPresetCombo));
 			refreshAll();
@@ -467,10 +461,7 @@ public class GeneralTileMarkerPanel extends JPanel
 	{
 		for (TileMarkerAssignmentPreset preset : strategyManager.getAssignmentPresets(selectedContext))
 		{
-			if (preset != null && "Beginner".equalsIgnoreCase(preset.getName()))
-			{
-				return preset.getId();
-			}
+			if (preset != null && "Beginner".equalsIgnoreCase(preset.getName())) return preset.getId();
 		}
 		return null;
 	}
@@ -486,10 +477,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		String activePresetId = strategyManager.getActiveAssignmentPresetId(selectedContext);
 		TileMarkerAssignmentPreset activePreset = strategyManager.findAssignmentPreset(activePresetId);
 		String name = promptName("Preset name", activePreset == null ? "" : activePreset.getName());
-		if (name == null)
-		{
-			return;
-		}
+		if (name == null) return;
 
 		String id = activePreset != null && !activePreset.isBuiltIn() && name.equalsIgnoreCase(activePreset.getName())
 				? activePreset.getId()
@@ -501,10 +489,7 @@ public class GeneralTileMarkerPanel extends JPanel
 	private void deleteSelectedAssignmentPreset()
 	{
 		String id = BaPanelUi.selectedId(assignmentPresetCombo);
-		if (id == null)
-		{
-			return;
-		}
+		if (id == null) return;
 
 		TileMarkerAssignmentPreset preset = strategyManager.findAssignmentPreset(id);
 		if (preset == null || preset.isBuiltIn())
@@ -514,10 +499,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		}
 
 		int result = JOptionPane.showConfirmDialog(this, "Delete this wave strategy preset?", "Delete Preset", JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		strategyManager.deleteAssignmentPreset(id);
 		refreshAll();
@@ -540,10 +522,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		}
 
 		int result = JOptionPane.showConfirmDialog(this, "Delete this wave strategy?", "Delete Strategy", JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		strategyManager.deleteStrategyPreset(strategyId);
 		refreshAll();
@@ -579,10 +558,7 @@ public class GeneralTileMarkerPanel extends JPanel
 	private void importWaveSelectionFromClipboard(int wave)
 	{
 		String json = BaClipboard.readText(this, "Import Wave");
-		if (json == null)
-		{
-			return;
-		}
+		if (json == null) return;
 
 		TileMarkerExportResult result;
 		try
@@ -652,10 +628,7 @@ public class GeneralTileMarkerPanel extends JPanel
 	private void importAssignmentPresetFromClipboard()
 	{
 		String json = BaClipboard.readText(this, "Import Preset");
-		if (json == null)
-		{
-			return;
-		}
+		if (json == null) return;
 
 		TileMarkerExportResult result;
 		try
@@ -703,10 +676,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		JTextField field = new JTextField(defaultValue);
 		BaPanelUi.fixedSize(field, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		int result = JOptionPane.showConfirmDialog(this, field, title, JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION || field.getText().trim().isEmpty())
-		{
-			return null;
-		}
+		if (result != JOptionPane.OK_OPTION || field.getText().trim().isEmpty()) return null;
 		return field.getText().trim();
 	}
 
@@ -722,10 +692,7 @@ public class GeneralTileMarkerPanel extends JPanel
 
 	private String importWaveMessage(TileMarkerExportResult result, int wave)
 	{
-		if (result.getType() == TileMarkerExportType.STRATEGY_PRESET)
-		{
-			return "Imported and selected wave strategy " + result.getName() + " for Wave " + wave + ".";
-		}
+		if (result.getType() == TileMarkerExportType.STRATEGY_PRESET) return "Imported and selected wave strategy " + result.getName() + " for Wave " + wave + ".";
 		return "Imported " + result.getTypedName() + ".";
 	}
 

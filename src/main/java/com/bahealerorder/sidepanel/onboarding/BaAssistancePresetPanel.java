@@ -389,10 +389,7 @@ public class BaAssistancePresetPanel extends JPanel
 
         for (String highlight : highlights)
         {
-            if (highlight == null || highlight.isEmpty())
-            {
-                continue;
-            }
+            if (highlight == null || highlight.isEmpty()) continue;
 
             int index = text.indexOf(highlight);
             while (index >= 0)

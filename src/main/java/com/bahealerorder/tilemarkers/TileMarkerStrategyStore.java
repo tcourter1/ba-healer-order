@@ -4,52 +4,44 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
+import lombok.Setter;
 
 public class TileMarkerStrategyStore
 {
+	@Getter
+	@Setter
 	private String lastMarkerColor = "#50aaff";
+	@Getter
+	@Setter
 	private int lastMarkerOpacityPercent = TileMarker.DEFAULT_OPACITY_PERCENT;
+	@Getter
+	@Setter
 	private float lastMarkerBorderWidth = TileMarker.DEFAULT_BORDER_WIDTH;
 	private String lastMapMode = TileMarkerMapMode.FULL_MAP.name();
 	private String lastWaveMap = TileMarkerWaveMap.WAVES_1_TO_9.name();
 	private String selectedRoleContext = TileMarkerRoleContext.DEFENDER.name();
+	@Getter
+	@Setter
 	private boolean markerEditorLegendVisible = true;
+	@Getter
+	@Setter
 	private boolean beginnerPromptDismissed;
+	@Getter
+	@Setter
 	private List<TileMarkerSet> markerSets = new ArrayList<>();
+	@Getter
+	@Setter
 	private List<TileMarkerWaveSelection> waveSelections = new ArrayList<>();
+	@Getter
+	@Setter
 	private List<TileMarkerStrategyPreset> strategyPresets = new ArrayList<>();
+	@Getter
+	@Setter
 	private List<TileMarkerAssignmentPreset> assignmentPresets = new ArrayList<>();
+	@Getter
+	@Setter
 	private Map<String, String> activeAssignmentPresetIds = new HashMap<>();
-
-	public String getLastMarkerColor()
-	{
-		return lastMarkerColor;
-	}
-
-	public void setLastMarkerColor(String lastMarkerColor)
-	{
-		this.lastMarkerColor = lastMarkerColor;
-	}
-
-	public int getLastMarkerOpacityPercent()
-	{
-		return lastMarkerOpacityPercent;
-	}
-
-	public void setLastMarkerOpacityPercent(int lastMarkerOpacityPercent)
-	{
-		this.lastMarkerOpacityPercent = lastMarkerOpacityPercent;
-	}
-
-	public float getLastMarkerBorderWidth()
-	{
-		return lastMarkerBorderWidth;
-	}
-
-	public void setLastMarkerBorderWidth(float lastMarkerBorderWidth)
-	{
-		this.lastMarkerBorderWidth = lastMarkerBorderWidth;
-	}
 
 	public TileMarkerMapMode getLastMapMode()
 	{
@@ -79,91 +71,6 @@ public class TileMarkerStrategyStore
 	public void setSelectedRoleContext(TileMarkerRoleContext selectedRoleContext)
 	{
 		this.selectedRoleContext = (selectedRoleContext == null ? TileMarkerRoleContext.DEFENDER : selectedRoleContext).name();
-	}
-
-	public boolean isMarkerEditorLegendVisible()
-	{
-		return markerEditorLegendVisible;
-	}
-
-	public void setMarkerEditorLegendVisible(boolean markerEditorLegendVisible)
-	{
-		this.markerEditorLegendVisible = markerEditorLegendVisible;
-	}
-
-	public boolean isBeginnerPromptDismissed()
-	{
-		return beginnerPromptDismissed;
-	}
-
-	public void setBeginnerPromptDismissed(boolean beginnerPromptDismissed)
-	{
-		this.beginnerPromptDismissed = beginnerPromptDismissed;
-	}
-
-	public List<TileMarkerSet> getMarkerSets()
-	{
-		if (markerSets == null)
-		{
-			markerSets = new ArrayList<>();
-		}
-		return markerSets;
-	}
-
-	public void setMarkerSets(List<TileMarkerSet> markerSets)
-	{
-		this.markerSets = markerSets == null ? new ArrayList<>() : new ArrayList<>(markerSets);
-	}
-
-	public List<TileMarkerWaveSelection> getWaveSelections()
-	{
-		if (waveSelections == null)
-		{
-			waveSelections = new ArrayList<>();
-		}
-		return waveSelections;
-	}
-
-	public void setWaveSelections(List<TileMarkerWaveSelection> waveSelections)
-	{
-		this.waveSelections = waveSelections == null ? new ArrayList<>() : new ArrayList<>(waveSelections);
-	}
-
-	public List<TileMarkerStrategyPreset> getStrategyPresets()
-	{
-		if (strategyPresets == null)
-		{
-			strategyPresets = new ArrayList<>();
-		}
-		return strategyPresets;
-	}
-
-	public void setStrategyPresets(List<TileMarkerStrategyPreset> strategyPresets)
-	{
-		this.strategyPresets = strategyPresets == null ? new ArrayList<>() : new ArrayList<>(strategyPresets);
-	}
-
-	public List<TileMarkerAssignmentPreset> getAssignmentPresets()
-	{
-		if (assignmentPresets == null)
-		{
-			assignmentPresets = new ArrayList<>();
-		}
-		return assignmentPresets;
-	}
-
-	public void setAssignmentPresets(List<TileMarkerAssignmentPreset> assignmentPresets)
-	{
-		this.assignmentPresets = assignmentPresets == null ? new ArrayList<>() : new ArrayList<>(assignmentPresets);
-	}
-
-	public Map<String, String> getActiveAssignmentPresetIds()
-	{
-		if (activeAssignmentPresetIds == null)
-		{
-			activeAssignmentPresetIds = new HashMap<>();
-		}
-		return activeAssignmentPresetIds;
 	}
 
 	public void setActiveAssignmentPresetId(TileMarkerRoleContext context, String presetId)

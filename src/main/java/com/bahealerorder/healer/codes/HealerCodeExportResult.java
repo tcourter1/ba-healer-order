@@ -3,7 +3,9 @@ package com.bahealerorder.healer.codes;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import lombok.Getter;
 
+@Getter
 public class HealerCodeExportResult
 {
 	private final String json;
@@ -26,32 +28,7 @@ public class HealerCodeExportResult
 		this.name = name;
 		this.wave = wave;
 		this.type = type;
-		this.summaryLines = summaryLines == null ? Collections.emptyList() : new ArrayList<>(summaryLines);
-	}
-
-	public String getJson()
-	{
-		return json;
-	}
-
-	public String getId()
-	{
-		return id;
-	}
-
-	public String getName()
-	{
-		return name;
-	}
-
-	public int getWave()
-	{
-		return wave;
-	}
-
-	public HealerCodeExportType getType()
-	{
-		return type;
+		this.summaryLines = summaryLines == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(summaryLines));
 	}
 
 	public String getTypedName()
@@ -59,22 +36,10 @@ public class HealerCodeExportResult
 		String displayName = isBlank(name) ? unnamedTypeName() : name;
 		return type == null ? displayName : type.getDisplayName() + " " + displayName;
 	}
-
-	public List<String> getSummaryLines()
-	{
-		return Collections.unmodifiableList(summaryLines);
-	}
-
 	private String unnamedTypeName()
 	{
-		if (type == HealerCodeExportType.RUN_PRESET)
-		{
-			return "unnamed run preset";
-		}
-		if (type == HealerCodeExportType.WAVE_CODE)
-		{
-			return "unnamed wave code";
-		}
+		if (type == HealerCodeExportType.RUN_PRESET) return "unnamed run preset";
+		if (type == HealerCodeExportType.WAVE_CODE) return "unnamed wave code";
 		return "unnamed export";
 	}
 

@@ -1,31 +1,26 @@
 package com.bahealerorder.tilemarkers;
 
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@NoArgsConstructor
+@Getter
 public class TileMarkerWaveSelection
 {
+	@Setter
 	private String id;
 	private String roleContext;
+	@Setter
 	private int wave;
+	@Setter
 	private String strategyId;
-
-	public TileMarkerWaveSelection()
-	{
-	}
 
 	public TileMarkerWaveSelection(String id, TileMarkerRoleContext roleContext, int wave)
 	{
 		this.id = id;
 		this.roleContext = (roleContext == null ? TileMarkerRoleContext.GLOBAL : roleContext).name();
 		this.wave = wave;
-	}
-
-	public String getId()
-	{
-		return id;
-	}
-
-	public void setId(String id)
-	{
-		this.id = id;
 	}
 
 	public TileMarkerRoleContext getRoleContext()
@@ -38,23 +33,4 @@ public class TileMarkerWaveSelection
 		this.roleContext = (roleContext == null ? TileMarkerRoleContext.GLOBAL : roleContext).name();
 	}
 
-	public int getWave()
-	{
-		return wave;
-	}
-
-	public void setWave(int wave)
-	{
-		this.wave = wave;
-	}
-
-	public String getStrategyId()
-	{
-		return strategyId;
-	}
-
-	public void setStrategyId(String strategyId)
-	{
-		this.strategyId = strategyId;
-	}
 }

@@ -1,6 +1,7 @@
 package com.bahealerorder;
 
 import java.awt.Color;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -66,6 +67,7 @@ public interface BaUtilitiesConfig extends Config
 	)
 	String scrollerSection = "scroller";
 
+	@RequiredArgsConstructor
 	enum AssistancePreset
 	{
 		BEGINNER("Beginner"),
@@ -76,11 +78,6 @@ public interface BaUtilitiesConfig extends Config
 
 		private final String name;
 
-		AssistancePreset(String name)
-		{
-			this.name = name;
-		}
-
 		@Override
 		public String toString()
 		{
@@ -88,6 +85,7 @@ public interface BaUtilitiesConfig extends Config
 		}
 	}
 
+	@RequiredArgsConstructor
 	enum HighlightStyle
 	{
 		NONE("None"),
@@ -97,11 +95,6 @@ public interface BaUtilitiesConfig extends Config
 
 		private final String name;
 
-		HighlightStyle(String name)
-		{
-			this.name = name;
-		}
-
 		@Override
 		public String toString()
 		{
@@ -109,6 +102,7 @@ public interface BaUtilitiesConfig extends Config
 		}
 	}
 
+	@RequiredArgsConstructor
 	enum HealerLabelStyle
 	{
 		NONE("None"),
@@ -117,11 +111,6 @@ public interface BaUtilitiesConfig extends Config
 
 		private final String name;
 
-		HealerLabelStyle(String name)
-		{
-			this.name = name;
-		}
-
 		@Override
 		public String toString()
 		{
@@ -129,6 +118,7 @@ public interface BaUtilitiesConfig extends Config
 		}
 	}
 
+	@RequiredArgsConstructor
 	enum HideDeadNpcMode
 	{
 		NONE("None"),
@@ -137,11 +127,6 @@ public interface BaUtilitiesConfig extends Config
 
 		private final String name;
 
-		HideDeadNpcMode(String name)
-		{
-			this.name = name;
-		}
-
 		@Override
 		public String toString()
 		{
@@ -149,6 +134,7 @@ public interface BaUtilitiesConfig extends Config
 		}
 	}
 
+	@RequiredArgsConstructor
 	enum FoodCountType
 	{
 		COUNT_UP("Count Up"),
@@ -156,11 +142,6 @@ public interface BaUtilitiesConfig extends Config
 
 		private final String name;
 
-		FoodCountType(String name)
-		{
-			this.name = name;
-		}
-
 		@Override
 		public String toString()
 		{
@@ -168,6 +149,7 @@ public interface BaUtilitiesConfig extends Config
 		}
 	}
 
+	@RequiredArgsConstructor
 	enum FoodPanelStyle
 	{
 		NONE("None"),
@@ -178,11 +160,6 @@ public interface BaUtilitiesConfig extends Config
 
 		private final String name;
 
-		FoodPanelStyle(String name)
-		{
-			this.name = name;
-		}
-
 		@Override
 		public String toString()
 		{
@@ -190,6 +167,7 @@ public interface BaUtilitiesConfig extends Config
 		}
 	}
 
+	@RequiredArgsConstructor
 	enum OverlayFont
 	{
 		DEFAULT("Default"),
@@ -198,11 +176,6 @@ public interface BaUtilitiesConfig extends Config
 
 		private final String name;
 
-		OverlayFont(String name)
-		{
-			this.name = name;
-		}
-
 		@Override
 		public String toString()
 		{
@@ -210,6 +183,7 @@ public interface BaUtilitiesConfig extends Config
 		}
 	}
 
+	@RequiredArgsConstructor
 	enum HealerTtkDisplayMode
 	{
 		OFF("Off"),
@@ -219,11 +193,6 @@ public interface BaUtilitiesConfig extends Config
 
 		private final String name;
 
-		HealerTtkDisplayMode(String name)
-		{
-			this.name = name;
-		}
-
 		@Override
 		public String toString()
 		{
@@ -231,6 +200,7 @@ public interface BaUtilitiesConfig extends Config
 		}
 	}
 
+	@RequiredArgsConstructor
 	enum DispenserOptions
 	{
 		NONE("None", false, false),
@@ -241,13 +211,6 @@ public interface BaUtilitiesConfig extends Config
 		private final String name;
 		private final boolean removeTakeVial;
 		private final boolean moveTakeMeatUp;
-
-		DispenserOptions(String name, boolean removeTakeVial, boolean moveTakeMeatUp)
-		{
-			this.name = name;
-			this.removeTakeVial = removeTakeVial;
-			this.moveTakeMeatUp = moveTakeMeatUp;
-		}
 
 		public boolean removeTakeVial()
 		{

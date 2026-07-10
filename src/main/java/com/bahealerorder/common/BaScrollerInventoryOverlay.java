@@ -45,10 +45,7 @@ public class BaScrollerInventoryOverlay extends WidgetItemOverlay
 	@Override
 	public void renderItemOverlay(Graphics2D graphics, int itemId, WidgetItem widgetItem)
 	{
-		if (controller == null || !controller.shouldHighlightOmegaDupeItems() || !OMEGA_DUPE_ITEM_IDS.contains(itemId))
-		{
-			return;
-		}
+		if (controller == null || !controller.shouldHighlightOmegaDupeItems() || !OMEGA_DUPE_ITEM_IDS.contains(itemId)) return;
 
 		renderItemHighlight(graphics, itemId, widgetItem, controller.getOmegaDupeItemHighlightColor());
 	}

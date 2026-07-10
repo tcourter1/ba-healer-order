@@ -65,10 +65,7 @@ public class BaDispenserMenuService
 
 		for (BaRole dispenserRole : BaRole.values())
 		{
-			if (dispenserRole != role && targetText.contains(dispenserRole.getDispenserName().toLowerCase(Locale.ROOT)))
-			{
-				return true;
-			}
+			if (dispenserRole != role && targetText.contains(dispenserRole.getDispenserName().toLowerCase(Locale.ROOT))) return true;
 		}
 
 		return false;

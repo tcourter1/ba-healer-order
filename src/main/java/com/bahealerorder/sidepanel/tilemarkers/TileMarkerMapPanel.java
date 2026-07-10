@@ -77,10 +77,7 @@ class TileMarkerMapPanel extends JPanel
 			@Override
 			public void mousePressed(MouseEvent event)
 			{
-				if (!SwingUtilities.isLeftMouseButton(event))
-				{
-					return;
-				}
+				if (!SwingUtilities.isLeftMouseButton(event)) return;
 
 				int x = toMapX(event.getX());
 				int y = toMapY(event.getY());
@@ -120,10 +117,7 @@ class TileMarkerMapPanel extends JPanel
 
 	boolean isSelectableMapTile(TileMarkerMapLayout layout, int mapX, int mapY)
 	{
-		if (!mapBounds().contains(mapX, mapY))
-		{
-			return false;
-		}
+		if (!mapBounds().contains(mapX, mapY)) return false;
 
 		return BaArenaMapTopology.isUsableTile(layout, mapX, mapY);
 	}
@@ -172,10 +166,7 @@ class TileMarkerMapPanel extends JPanel
 		{
 			int mapX = layout.toMapX(marker.getTile());
 			int mapY = layout.toMapY(marker.getTile());
-			if (!layout.contains(marker.getTile()) || !mapBounds().contains(mapX, mapY) || !isSelectableMapTile(layout, mapX, mapY))
-			{
-				continue;
-			}
+			if (!layout.contains(marker.getTile()) || !mapBounds().contains(mapX, mapY) || !isSelectableMapTile(layout, mapX, mapY)) continue;
 
 			int x = toScreenX(mapX);
 			int y = toScreenY(mapY);
@@ -200,10 +191,7 @@ class TileMarkerMapPanel extends JPanel
 	private void drawMarkerBorder(Graphics graphics, int x, int y, Color color, float borderWidth)
 	{
 		float width = TileMarkerStyle.clampBorderWidth(borderWidth);
-		if (width <= 0)
-		{
-			return;
-		}
+		if (width <= 0) return;
 
 		Graphics2D graphics2D = (Graphics2D) graphics.create();
 		Stroke originalStroke = graphics2D.getStroke();
@@ -347,10 +335,7 @@ class TileMarkerMapPanel extends JPanel
 		{
 			for (int y = bounds.minY; y < bounds.maxY; y++)
 			{
-				if (isSelectableMapTile(layout, x, y))
-				{
-					continue;
-				}
+				if (isSelectableMapTile(layout, x, y)) continue;
 
 				graphics.setColor(DISABLED_TILE_COLOR);
 				graphics.fillRect(toScreenX(x), toScreenY(y), tileSize, tileSize);
@@ -399,10 +384,7 @@ class TileMarkerMapPanel extends JPanel
 		{
 			for (int y = minY; y < maxY; y++)
 			{
-				if (!group.contains(x, y))
-				{
-					continue;
-				}
+				if (!group.contains(x, y)) continue;
 
 				drawPerimeterEdges(graphics2D, group, x, y);
 			}
@@ -445,10 +427,7 @@ class TileMarkerMapPanel extends JPanel
 
 	private boolean drawFilledTile(Graphics graphics, int mapX, int mapY, Color color)
 	{
-		if (!mapBounds().contains(mapX, mapY))
-		{
-			return false;
-		}
+		if (!mapBounds().contains(mapX, mapY)) return false;
 
 		graphics.setColor(color);
 		graphics.fillRect(toScreenX(mapX), toScreenY(mapY), getTileSize(), getTileSize());
@@ -458,10 +437,7 @@ class TileMarkerMapPanel extends JPanel
 	private void drawMarkerText(Graphics graphics, TileMarker marker, int x, int y)
 	{
 		String text = marker.getLabel();
-		if (text == null || text.trim().isEmpty())
-		{
-			return;
-		}
+		if (text == null || text.trim().isEmpty()) return;
 
 		drawCenteredText(
 				graphics,

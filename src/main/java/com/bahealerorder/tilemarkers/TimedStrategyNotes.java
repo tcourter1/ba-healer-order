@@ -19,10 +19,7 @@ public final class TimedStrategyNotes
 	{
 		List<TimedStrategyNote> parsed = new ArrayList<>();
 
-		if (notes == null || notes.isEmpty())
-		{
-			return parsed;
-		}
+		if (notes == null || notes.isEmpty()) return parsed;
 
 		for (String line : notes.split("\\r?\\n", -1))
 		{
@@ -36,18 +33,12 @@ public final class TimedStrategyNotes
 
 	public static int getActiveTimedIndex(List<TimedStrategyNote> notes, int currentWaveTick)
 	{
-		if (notes == null || notes.isEmpty())
-		{
-			return -1;
-		}
+		if (notes == null || notes.isEmpty()) return -1;
 
 		for (int i = 0; i < notes.size(); i++)
 		{
 			TimedStrategyNote note = notes.get(i);
-			if (note.isTimed() && note.getTick() >= currentWaveTick)
-			{
-				return i;
-			}
+			if (note.isTimed() && note.getTick() >= currentWaveTick) return i;
 		}
 
 		return -1;
@@ -61,15 +52,9 @@ public final class TimedStrategyNotes
 			Color defaultColor,
 			Color passedColor)
 	{
-		if (index == activeIndex)
-		{
-			return ACTIVE_NOTE_COLOR;
-		}
+		if (index == activeIndex) return ACTIVE_NOTE_COLOR;
 
-		if (note != null && note.isTimed() && note.getTick() < currentWaveTick)
-		{
-			return passedColor;
-		}
+		if (note != null && note.isTimed() && note.getTick() < currentWaveTick) return passedColor;
 
 		return defaultColor;
 	}

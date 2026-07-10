@@ -97,10 +97,7 @@ public class HealerCodeManager
 
 	public void save()
 	{
-		if (configManager == null)
-		{
-			return;
-		}
+		if (configManager == null) return;
 
 		userStore.setVersion(CURRENT_STORE_VERSION);
 		configManager.setConfiguration(CONFIG_GROUP, STRATEGY_STORE_KEY, gson.toJson(userStore));
@@ -108,10 +105,7 @@ public class HealerCodeManager
 
 	private void backupRawStrategyStore(String json)
 	{
-		if (configManager == null || isBlank(json))
-		{
-			return;
-		}
+		if (configManager == null || isBlank(json)) return;
 
 		String existingBackup = configManager.getConfiguration(CONFIG_GROUP, STRATEGY_STORE_UPGRADE_BACKUP_KEY);
 		if (isBlank(existingBackup))
@@ -127,12 +121,6 @@ public class HealerCodeManager
 		return store;
 	}
 
-	public String exportRunPresetJson(String presetId)
-	{
-		HealerCodeExportResult result = exportRunPreset(presetId);
-		return result == null ? null : result.getJson();
-	}
-
 	public HealerCodeExportResult exportCurrentRunPreset(String name)
 	{
 		return exportRunPreset(name, userStore.getActiveWaveCodeIds(), null);
@@ -142,20 +130,14 @@ public class HealerCodeManager
 	{
 		RunPreset preset = findRunPreset(presetId);
 
-		if (preset == null)
-		{
-			return null;
-		}
+		if (preset == null) return null;
 
 		return exportRunPreset(preset.getName(), preset.getWaveCodeIds(), preset.getId());
 	}
 
 	private HealerCodeExportResult exportRunPreset(String name, Map<Integer, String> waveCodeIds, String id)
 	{
-		if (waveCodeIds == null || waveCodeIds.isEmpty())
-		{
-			return null;
-		}
+		if (waveCodeIds == null || waveCodeIds.isEmpty()) return null;
 
 		List<WaveCode> waveCodes = new ArrayList<>();
 		Map<Integer, String> exportedWaveCodeIds = new HashMap<>();
@@ -171,10 +153,7 @@ public class HealerCodeManager
 			}
 		}
 
-		if (exportedWaveCodeIds.isEmpty())
-		{
-			return null;
-		}
+		if (exportedWaveCodeIds.isEmpty()) return null;
 
 		RunPreset exportedPreset = new RunPreset(null, normalizedExportName(name), false, exportedWaveCodeIds);
 		String json = gson.toJson(new HealerCodeExport(
@@ -198,10 +177,7 @@ public class HealerCodeManager
 	{
 		WaveCode waveCode = findWaveCode(waveCodeId);
 
-		if (waveCode == null)
-		{
-			return null;
-		}
+		if (waveCode == null) return null;
 
 		WaveCode exported = exportableWaveCode(waveCode);
 		String json = gson.toJson(new HealerCodeExport(
@@ -233,29 +209,17 @@ public class HealerCodeManager
 
 	public HealerCodeExportResult importHealerCodeJson(String json, Integer expectedWave)
 	{
-		if (json == null || json.trim().isEmpty())
-		{
-			return null;
-		}
+		if (json == null || json.trim().isEmpty()) return null;
 
 		try
 		{
 			HealerCodeExport imported = gson.fromJson(json, HealerCodeExport.class);
 
-			if (imported == null || imported.getVersion() != CURRENT_STORE_VERSION || imported.getType() == null)
-			{
-				return null;
-			}
+			if (imported == null || imported.getVersion() != CURRENT_STORE_VERSION || imported.getType() == null) return null;
 
-			if (imported.getType() == HealerCodeExportType.WAVE_CODE)
-			{
-				return importWaveCodeExport(imported.getWaveCode(), expectedWave);
-			}
+			if (imported.getType() == HealerCodeExportType.WAVE_CODE) return importWaveCodeExport(imported.getWaveCode(), expectedWave);
 
-			if (expectedWave != null)
-			{
-				return null;
-			}
+			if (expectedWave != null) return null;
 
 			return importRunPresetExport(imported);
 		}
@@ -303,10 +267,7 @@ public class HealerCodeManager
 
 		for (WaveCode userCode : userStore.getWaveCodes())
 		{
-			if (userCode == null || userCode.isBuiltIn() || isBuiltInWaveCodeId(userCode.getId()))
-			{
-				continue;
-			}
+			if (userCode == null || userCode.isBuiltIn() || isBuiltInWaveCodeId(userCode.getId())) continue;
 
 			waveCodes.add(userCode);
 		}
@@ -318,10 +279,7 @@ public class HealerCodeManager
 	{
 		RunPreset preset = findRunPreset(userStore.getActiveRunPresetId());
 
-		if (preset != null && preset.getWaveCodeIds().equals(userStore.getActiveWaveCodeIds()))
-		{
-			return preset.getId();
-		}
+		if (preset != null && preset.getWaveCodeIds().equals(userStore.getActiveWaveCodeIds())) return preset.getId();
 
 		preset = findMatchingRunPreset();
 
@@ -363,27 +321,18 @@ public class HealerCodeManager
 
 	public HealerCodeDefaultRole getDefaultRoleForPreset(String runPresetId)
 	{
-		if (isBlank(runPresetId))
-		{
-			return null;
-		}
+		if (isBlank(runPresetId)) return null;
 
 		for (HealerCodeDefaultRole role : HealerCodeDefaultRole.values())
 		{
-			if (runPresetId.equals(userStore.getDefaultRunPresetId(role)))
-			{
-				return role;
-			}
+			if (runPresetId.equals(userStore.getDefaultRunPresetId(role))) return role;
 		}
 		return null;
 	}
 
 	public boolean setDefaultRunPresetId(HealerCodeDefaultRole role, String runPresetId)
 	{
-		if (role == null || findRunPreset(runPresetId) == null)
-		{
-			return false;
-		}
+		if (role == null || findRunPreset(runPresetId) == null) return false;
 
 		clearDefaultRunPresetIdsForPreset(runPresetId);
 		userStore.setDefaultRunPresetId(role, runPresetId);
@@ -393,10 +342,7 @@ public class HealerCodeManager
 
 	public boolean clearDefaultRunPresetIdsForPreset(String runPresetId)
 	{
-		if (isBlank(runPresetId))
-		{
-			return false;
-		}
+		if (isBlank(runPresetId)) return false;
 
 		boolean removed = userStore.getDefaultRunPresetIds().values().removeIf(runPresetId::equals);
 		if (removed)
@@ -410,17 +356,11 @@ public class HealerCodeManager
 	{
 		String presetId = getDefaultRunPresetId(role);
 		RunPreset preset = findRunPreset(presetId);
-		if (preset == null)
-		{
-			return null;
-		}
+		if (preset == null) return null;
 
 		String activePresetId = userStore.getActiveRunPresetId();
 		Map<Integer, String> activeWaveCodeIds = new HashMap<>(userStore.getActiveWaveCodeIds());
-		if (presetId.equals(activePresetId) && preset.getWaveCodeIds().equals(activeWaveCodeIds))
-		{
-			return null;
-		}
+		if (presetId.equals(activePresetId) && preset.getWaveCodeIds().equals(activeWaveCodeIds)) return null;
 
 		applyRunPreset(presetId);
 		return preset;
@@ -430,17 +370,11 @@ public class HealerCodeManager
 	{
 		Map<Integer, String> activeWaveCodes = userStore.getActiveWaveCodeIds();
 
-		if (activeWaveCodes.isEmpty())
-		{
-			return null;
-		}
+		if (activeWaveCodes.isEmpty()) return null;
 
 		for (RunPreset preset : getRunPresets())
 		{
-			if (preset.getWaveCodeIds().equals(activeWaveCodes))
-			{
-				return preset;
-			}
+			if (preset.getWaveCodeIds().equals(activeWaveCodes)) return preset;
 		}
 
 		return null;
@@ -448,17 +382,11 @@ public class HealerCodeManager
 
 	public RunPreset findRunPreset(String id)
 	{
-		if (id == null)
-		{
-			return null;
-		}
+		if (id == null) return null;
 
 		for (RunPreset preset : getRunPresets())
 		{
-			if (id.equals(preset.getId()))
-			{
-				return preset;
-			}
+			if (id.equals(preset.getId())) return preset;
 		}
 
 		return null;
@@ -466,17 +394,11 @@ public class HealerCodeManager
 
 	public WaveCode findWaveCode(String id)
 	{
-		if (id == null)
-		{
-			return null;
-		}
+		if (id == null) return null;
 
 		for (WaveCode code : getWaveCodes())
 		{
-			if (id.equals(code.getId()))
-			{
-				return code;
-			}
+			if (id.equals(code.getId())) return code;
 		}
 
 		return null;
@@ -484,17 +406,11 @@ public class HealerCodeManager
 
 	public WaveCode findBuiltInWaveCode(String id)
 	{
-		if (id == null)
-		{
-			return null;
-		}
+		if (id == null) return null;
 
 		for (WaveCode code : builtIns.getWaveCodes())
 		{
-			if (id.equals(code.getId()))
-			{
-				return code;
-			}
+			if (id.equals(code.getId())) return code;
 		}
 
 		return null;
@@ -504,17 +420,11 @@ public class HealerCodeManager
 	{
 		WaveCode selectedWaveCode = findWaveCode(getActiveWaveCodeId(wave));
 
-		if (selectedWaveCode != null)
-		{
-			return selectedWaveCode;
-		}
+		if (selectedWaveCode != null) return selectedWaveCode;
 
 		RunPreset preset = getActiveRunPreset();
 
-		if (preset != null)
-		{
-			return findWaveCode(preset.getWaveCodeId(wave));
-		}
+		if (preset != null) return findWaveCode(preset.getWaveCodeId(wave));
 
 		return null;
 	}
@@ -624,10 +534,7 @@ public class HealerCodeManager
 
 	public boolean deleteUserPreset(String id)
 	{
-		if (id == null)
-		{
-			return false;
-		}
+		if (id == null) return false;
 
 		boolean removed = false;
 		List<RunPreset> presets = new ArrayList<>();
@@ -644,10 +551,7 @@ public class HealerCodeManager
 			}
 		}
 
-		if (!removed)
-		{
-			return false;
-		}
+		if (!removed) return false;
 
 		userStore.setRunPresets(presets);
 
@@ -664,10 +568,7 @@ public class HealerCodeManager
 
 	public boolean updateUserPreset(String id, String name, Map<Integer, String> waveCodeIds)
 	{
-		if (id == null || name == null || name.trim().isEmpty())
-		{
-			return false;
-		}
+		if (id == null || name == null || name.trim().isEmpty()) return false;
 
 		for (RunPreset preset : userStore.getRunPresets())
 		{
@@ -685,10 +586,7 @@ public class HealerCodeManager
 
 	public WaveCode saveWaveCode(String selectedId, WaveCode draft)
 	{
-		if (draft == null || isBlank(draft.getName()))
-		{
-			return null;
-		}
+		if (draft == null || isBlank(draft.getName())) return null;
 
 		WaveCode builtIn = findBuiltInWaveCode(selectedId);
 		if (builtIn != null)
@@ -729,10 +627,7 @@ public class HealerCodeManager
 
 	public boolean resetBuiltInWaveCode(String id)
 	{
-		if (findBuiltInWaveCode(id) == null || !removeStoredWaveCode(id))
-		{
-			return false;
-		}
+		if (findBuiltInWaveCode(id) == null || !removeStoredWaveCode(id)) return false;
 
 		save();
 		return true;
@@ -740,10 +635,7 @@ public class HealerCodeManager
 
 	public boolean deleteUserWaveCode(String id)
 	{
-		if (id == null)
-		{
-			return false;
-		}
+		if (id == null) return false;
 
 		boolean removed = false;
 		List<WaveCode> waveCodes = new ArrayList<>();
@@ -760,10 +652,7 @@ public class HealerCodeManager
 			}
 		}
 
-		if (!removed)
-		{
-			return false;
-		}
+		if (!removed) return false;
 
 		userStore.setWaveCodes(waveCodes);
 		userStore.getActiveWaveCodeIds().values().removeIf(id::equals);
@@ -779,15 +668,9 @@ public class HealerCodeManager
 
 	private HealerCodeExportResult importWaveCodeExport(WaveCode importedWaveCode, Integer expectedWave)
 	{
-		if (importedWaveCode == null || isBlank(importedWaveCode.getName()))
-		{
-			return null;
-		}
+		if (importedWaveCode == null || isBlank(importedWaveCode.getName())) return null;
 
-		if (expectedWave != null && importedWaveCode.getWave() != expectedWave)
-		{
-			return null;
-		}
+		if (expectedWave != null && importedWaveCode.getWave() != expectedWave) return null;
 
 		WaveCode saved = importWaveCode(importedWaveCode);
 		userStore.setActiveRunPresetId(null);
@@ -806,19 +689,13 @@ public class HealerCodeManager
 	private HealerCodeExportResult importRunPresetExport(HealerCodeExport imported)
 	{
 		RunPreset importedPreset = imported.getPreset();
-		if (importedPreset == null)
-		{
-			return null;
-		}
+		if (importedPreset == null) return null;
 
 		Map<String, WaveCode> importedWaveCodesById = new HashMap<>();
 		List<WaveCode> savedWaveCodes = new ArrayList<>();
 		for (WaveCode waveCode : imported.getWaveCodes())
 		{
-			if (waveCode == null || isBlank(waveCode.getId()) || isBlank(waveCode.getName()))
-			{
-				continue;
-			}
+			if (waveCode == null || isBlank(waveCode.getId()) || isBlank(waveCode.getName())) continue;
 
 			String importedWaveCodeId = waveCode.getId();
 			WaveCode saved = importWaveCode(waveCode);
@@ -831,10 +708,7 @@ public class HealerCodeManager
 		{
 			Integer wave = entry.getKey();
 			String importedReference = entry.getValue();
-			if (wave == null || isBlank(importedReference))
-			{
-				continue;
-			}
+			if (wave == null || isBlank(importedReference)) continue;
 
 			WaveCode waveCode = importedWaveCodesById.get(importedReference);
 			if (waveCode == null)
@@ -848,10 +722,7 @@ public class HealerCodeManager
 			}
 		}
 
-		if (localWaveCodeIds.isEmpty())
-		{
-			return null;
-		}
+		if (localWaveCodeIds.isEmpty()) return null;
 
 		if (isBlank(importedPreset.getName()))
 		{
@@ -888,10 +759,7 @@ public class HealerCodeManager
 		WaveCode candidate = copyWaveCode(importedWaveCode, null, false);
 		WaveCode existing = findMatchingWaveCode(candidate);
 
-		if (existing != null)
-		{
-			return existing;
-		}
+		if (existing != null) return existing;
 
 		candidate.setId(uniqueUserId("wave", candidate.getWave() + "-" + candidate.getName()));
 		candidate.setBuiltIn(false);
@@ -904,10 +772,7 @@ public class HealerCodeManager
 	private RunPreset importRunPreset(String name, Map<Integer, String> waveCodeIds)
 	{
 		RunPreset existing = findRunPresetByName(name);
-		if (existing != null && existing.getWaveCodeIds().equals(waveCodeIds))
-		{
-			return existing;
-		}
+		if (existing != null && existing.getWaveCodeIds().equals(waveCodeIds)) return existing;
 
 		String savedName = existing == null ? name : uniquePresetName(name);
 		RunPreset preset = new RunPreset(uniqueUserId("preset", savedName), savedName, false, waveCodeIds);
@@ -1032,10 +897,7 @@ public class HealerCodeManager
 
 	private boolean removeStoredWaveCode(String id)
 	{
-		if (id == null)
-		{
-			return false;
-		}
+		if (id == null) return false;
 
 		List<WaveCode> waveCodes = new ArrayList<>(userStore.getWaveCodes());
 		boolean removed = waveCodes.removeIf(code -> code != null && id.equals(code.getId()));
@@ -1048,10 +910,7 @@ public class HealerCodeManager
 
 	private boolean sameWaveCodeContent(WaveCode first, WaveCode second)
 	{
-		if (first == null || second == null)
-		{
-			return first == second;
-		}
+		if (first == null || second == null) return first == second;
 
 		return first.getWave() == second.getWave()
 				&& sameText(first.getName(), second.getName())
@@ -1085,17 +944,11 @@ public class HealerCodeManager
 
 	private static CallCode callAt(List<CallCode> calls, int callIndex)
 	{
-		if (calls == null)
-		{
-			return null;
-		}
+		if (calls == null) return null;
 
 		for (CallCode call : calls)
 		{
-			if (call != null && call.getCallIndex() == callIndex)
-			{
-				return call;
-			}
+			if (call != null && call.getCallIndex() == callIndex) return call;
 		}
 		return null;
 	}
@@ -1128,10 +981,7 @@ public class HealerCodeManager
 
 	private static HealerInstruction instructionAt(List<HealerInstruction> instructions, int index)
 	{
-		if (instructions == null || index < 0 || index >= instructions.size() || instructions.get(index) == null)
-		{
-			return new HealerInstruction();
-		}
+		if (instructions == null || index < 0 || index >= instructions.size() || instructions.get(index) == null) return new HealerInstruction();
 		return instructions.get(index);
 	}
 
@@ -1194,15 +1044,9 @@ public class HealerCodeManager
 	private WaveCode findSummaryWaveCode(String reference, List<WaveCode> waveCodes)
 	{
 		WaveCode waveCode = findWaveCode(reference);
-		if (waveCode != null)
-		{
-			return waveCode;
-		}
+		if (waveCode != null) return waveCode;
 
-		if (waveCodes == null)
-		{
-			return null;
-		}
+		if (waveCodes == null) return null;
 
 		for (WaveCode candidate : waveCodes)
 		{
@@ -1232,17 +1076,11 @@ public class HealerCodeManager
 
 	private WaveCode findStoredUserWaveCode(String id)
 	{
-		if (id == null)
-		{
-			return null;
-		}
+		if (id == null) return null;
 
 		for (WaveCode code : userStore.getWaveCodes())
 		{
-			if (id.equals(code.getId()))
-			{
-				return code;
-			}
+			if (id.equals(code.getId())) return code;
 		}
 
 		return null;
@@ -1250,17 +1088,11 @@ public class HealerCodeManager
 
 	private RunPreset findRunPresetByName(String name)
 	{
-		if (isBlank(name))
-		{
-			return null;
-		}
+		if (isBlank(name)) return null;
 
 		for (RunPreset preset : getRunPresets())
 		{
-			if (sameName(name, preset.getName()))
-			{
-				return preset;
-			}
+			if (sameName(name, preset.getName())) return preset;
 		}
 
 		return null;
@@ -1268,17 +1100,11 @@ public class HealerCodeManager
 
 	private RunPreset findStoredUserRunPresetByName(String name)
 	{
-		if (isBlank(name))
-		{
-			return null;
-		}
+		if (isBlank(name)) return null;
 
 		for (RunPreset preset : userStore.getRunPresets())
 		{
-			if (sameName(name, preset.getName()))
-			{
-				return preset;
-			}
+			if (sameName(name, preset.getName())) return preset;
 		}
 
 		return null;
@@ -1286,17 +1112,11 @@ public class HealerCodeManager
 
 	private WaveCode findMatchingWaveCode(WaveCode candidate)
 	{
-		if (candidate == null)
-		{
-			return null;
-		}
+		if (candidate == null) return null;
 
 		for (WaveCode code : getWaveCodes())
 		{
-			if (sameWaveCodeContent(code, candidate))
-			{
-				return code;
-			}
+			if (sameWaveCodeContent(code, candidate)) return code;
 		}
 		return null;
 	}

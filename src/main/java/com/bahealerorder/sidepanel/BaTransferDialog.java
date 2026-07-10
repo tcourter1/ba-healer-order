@@ -64,10 +64,7 @@ public final class BaTransferDialog
 		messagePane.setText(messageHtml(message, action, false));
 		messagePane.addHyperlinkListener(event ->
 		{
-			if (event.getEventType() != HyperlinkEvent.EventType.ACTIVATED)
-			{
-				return;
-			}
+			if (event.getEventType() != HyperlinkEvent.EventType.ACTIVATED) return;
 
 			scrollPane.setVisible(!scrollPane.isVisible());
 			messagePane.setText(messageHtml(message, action, scrollPane.isVisible()));
@@ -123,10 +120,7 @@ public final class BaTransferDialog
 
 	private static String escapeHtml(String text)
 	{
-		if (text == null)
-		{
-			return "";
-		}
+		if (text == null) return "";
 
 		return text
 				.replace("&", "&amp;")

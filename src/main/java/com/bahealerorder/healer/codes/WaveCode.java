@@ -1,30 +1,50 @@
 package com.bahealerorder.healer.codes;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+@NoArgsConstructor
 public class WaveCode
 {
+	@Getter
+	@Setter
 	private String id;
+	@Getter
+	@Setter
 	private String name;
+	@Getter
+	@Setter
 	private int wave;
+	@Getter
+	@Setter
 	private boolean builtIn;
 	private HealerCodeOverstock overstock = HealerCodeOverstock.REGULAR;
+	@Getter
+	@Setter
 	private boolean alchHorn;
+	@Getter
+	@Setter
 	private String customOverstockInstructions;
+	@Getter
 	private Integer expectedWaveEndSeconds;
+	@Getter
+	@Setter
 	private String restockingInstructions;
+	@Getter
+	@Setter
 	private String additionalNotes;
 	private String sourceText;
+	@Getter
+	@Setter
 	private Map<Integer, Integer> expectedTimesSeconds = new HashMap<>();
+	@Getter
+	@Setter
 	private List<CallCode> calls = new ArrayList<>();
-
-	public WaveCode()
-	{
-	}
 
 	public WaveCode(String id, String name, int wave, boolean builtIn, List<CallCode> calls)
 	{
@@ -33,46 +53,6 @@ public class WaveCode
 		this.wave = wave;
 		this.builtIn = builtIn;
 		this.calls = calls == null ? new ArrayList<>() : new ArrayList<>(calls);
-	}
-
-	public String getId()
-	{
-		return id;
-	}
-
-	public void setId(String id)
-	{
-		this.id = id;
-	}
-
-	public String getName()
-	{
-		return name;
-	}
-
-	public void setName(String name)
-	{
-		this.name = name;
-	}
-
-	public int getWave()
-	{
-		return wave;
-	}
-
-	public void setWave(int wave)
-	{
-		this.wave = wave;
-	}
-
-	public boolean isBuiltIn()
-	{
-		return builtIn;
-	}
-
-	public void setBuiltIn(boolean builtIn)
-	{
-		this.builtIn = builtIn;
 	}
 
 	public HealerCodeOverstock getOverstock()
@@ -85,54 +65,9 @@ public class WaveCode
 		this.overstock = HealerCodeOverstock.valueOrRegular(overstock);
 	}
 
-	public boolean isAlchHorn()
-	{
-		return alchHorn;
-	}
-
-	public void setAlchHorn(boolean alchHorn)
-	{
-		this.alchHorn = alchHorn;
-	}
-
-	public String getCustomOverstockInstructions()
-	{
-		return customOverstockInstructions;
-	}
-
-	public void setCustomOverstockInstructions(String customOverstockInstructions)
-	{
-		this.customOverstockInstructions = customOverstockInstructions;
-	}
-
-	public Integer getExpectedWaveEndSeconds()
-	{
-		return expectedWaveEndSeconds;
-	}
-
 	public void setExpectedWaveEndSeconds(Integer expectedWaveEndSeconds)
 	{
 		this.expectedWaveEndSeconds = expectedWaveEndSeconds == null ? null : Math.max(0, expectedWaveEndSeconds);
-	}
-
-	public String getRestockingInstructions()
-	{
-		return restockingInstructions;
-	}
-
-	public void setRestockingInstructions(String restockingInstructions)
-	{
-		this.restockingInstructions = restockingInstructions;
-	}
-
-	public String getAdditionalNotes()
-	{
-		return additionalNotes;
-	}
-
-	public void setAdditionalNotes(String additionalNotes)
-	{
-		this.additionalNotes = additionalNotes;
 	}
 
 	String getStoredSourceText()
@@ -143,21 +78,6 @@ public class WaveCode
 	void clearStoredSourceText()
 	{
 		this.sourceText = null;
-	}
-
-	public Map<Integer, Integer> getExpectedTimesSeconds()
-	{
-		if (expectedTimesSeconds == null)
-		{
-			expectedTimesSeconds = new HashMap<>();
-		}
-
-		return expectedTimesSeconds;
-	}
-
-	public void setExpectedTimesSeconds(Map<Integer, Integer> expectedTimesSeconds)
-	{
-		this.expectedTimesSeconds = expectedTimesSeconds == null ? new HashMap<>() : new HashMap<>(expectedTimesSeconds);
 	}
 
 	public Integer getExpectedTimeSeconds(int healerOrder)
@@ -181,24 +101,11 @@ public class WaveCode
 		return HealerCodeFormatter.format(this);
 	}
 
-	public List<CallCode> getCalls()
-	{
-		return calls == null ? Collections.emptyList() : calls;
-	}
-
-	public void setCalls(List<CallCode> calls)
-	{
-		this.calls = calls == null ? new ArrayList<>() : new ArrayList<>(calls);
-	}
-
 	public CallCode getCall(int callIndex)
 	{
 		for (CallCode call : getCalls())
 		{
-			if (call.getCallIndex() == callIndex)
-			{
-				return call;
-			}
+			if (call.getCallIndex() == callIndex) return call;
 		}
 
 		return null;

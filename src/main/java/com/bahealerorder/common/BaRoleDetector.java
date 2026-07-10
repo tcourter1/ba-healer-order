@@ -45,10 +45,7 @@ public class BaRoleDetector
 	{
 		for (BaRole role : BaRole.values())
 		{
-			if (client.getWidget(role.getInterfaceGroupId(), 0) != null)
-			{
-				return true;
-			}
+			if (client.getWidget(role.getInterfaceGroupId(), 0) != null) return true;
 		}
 
 		return false;

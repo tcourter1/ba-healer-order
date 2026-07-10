@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.OptionalInt;
+import lombok.AccessLevel;
+import lombok.Getter;
 
 final class DeterministicHealerTtk
 {
@@ -12,8 +14,11 @@ final class DeterministicHealerTtk
 
 	private final List<Integer> foodTicks = new ArrayList<>();
 	private int spawnTick;
+	@Getter(AccessLevel.PACKAGE)
 	private int maxHp;
+	@Getter(AccessLevel.PACKAGE)
 	private int firstPoisonTick = UNKNOWN_TICK;
+	@Getter(AccessLevel.PACKAGE)
 	private int lastFoodTick = UNKNOWN_TICK;
 
 	DeterministicHealerTtk(int spawnTick, int maxHp)
@@ -52,10 +57,7 @@ final class DeterministicHealerTtk
 					&& poisonTick <= latestFoodTick + HealerPoisonModel.TOTAL_POISON_HITS * HealerPoisonModel.TICKS_PER_POISON_HIT;
 			int nextPoisonTick = poisonCanHit ? poisonTick : Integer.MAX_VALUE;
 
-			if (nextFoodTick == Integer.MAX_VALUE && nextPoisonTick == Integer.MAX_VALUE)
-			{
-				return OptionalInt.empty();
-			}
+			if (nextFoodTick == Integer.MAX_VALUE && nextPoisonTick == Integer.MAX_VALUE) return OptionalInt.empty();
 
 			if (nextPoisonTick <= nextFoodTick)
 			{
@@ -85,21 +87,6 @@ final class DeterministicHealerTtk
 	int getConfirmedFoodCount()
 	{
 		return foodTicks.size();
-	}
-
-	int getFirstPoisonTick()
-	{
-		return firstPoisonTick;
-	}
-
-	int getLastFoodTick()
-	{
-		return lastFoodTick;
-	}
-
-	int getMaxHp()
-	{
-		return maxHp;
 	}
 
 	private int calculateFirstPoisonTick(int firstFoodTick, int waveStartTick)

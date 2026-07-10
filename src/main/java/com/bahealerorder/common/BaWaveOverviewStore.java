@@ -131,21 +131,6 @@ public class BaWaveOverviewStore
 		return true;
 	}
 
-	public synchronized boolean updateCurrentRunTeamNames(List<String> teamNames)
-	{
-		List<BaTeamMember> members = new ArrayList<>();
-
-		if (teamNames != null)
-		{
-			for (String name : teamNames)
-			{
-				members.add(new BaTeamMember(name, null));
-			}
-		}
-
-		return updateCurrentRunTeamMembers(members);
-	}
-
 	public synchronized boolean updateCurrentRunPlayerRole(BaRole role)
 	{
 		if (currentRunId == null || role == null) return false;
@@ -241,27 +226,15 @@ public class BaWaveOverviewStore
 
 	public synchronized BaWaveOverviewSnapshot getSelectedSnapshot()
 	{
-		if (!BaWaveInfo.isValidWave(selectedWave))
-		{
-			return null;
-		}
+		if (!BaWaveInfo.isValidWave(selectedWave)) return null;
 
-		if (selectedRunId == null)
-		{
-			return BaWaveOverviewSnapshot.blank(selectedWave);
-		}
+		if (selectedRunId == null) return BaWaveOverviewSnapshot.blank(selectedWave);
 
 		MutableRun run = runsById.get(selectedRunId);
-		if (run == null)
-		{
-			return BaWaveOverviewSnapshot.blank(selectedWave);
-		}
+		if (run == null) return BaWaveOverviewSnapshot.blank(selectedWave);
 
 		BaWaveOverviewSnapshot snapshot = run.liveSnapshotsByWave.get(selectedWave);
-		if (snapshot != null)
-		{
-			return snapshot;
-		}
+		if (snapshot != null) return snapshot;
 
 		snapshot = run.completedSnapshotsByWave.get(selectedWave);
 		return snapshot == null ? BaWaveOverviewSnapshot.blank(selectedWave) : snapshot;
@@ -455,10 +428,7 @@ public class BaWaveOverviewStore
 	{
 		List<BaTeamMember> normalizedMembers = new ArrayList<>();
 
-		if (teamMembers == null)
-		{
-			return normalizedMembers;
-		}
+		if (teamMembers == null) return normalizedMembers;
 
 		for (BaTeamMember member : teamMembers)
 		{
@@ -558,10 +528,7 @@ public class BaWaveOverviewStore
 
 		private List<BaTeamMember> getTeamMembers()
 		{
-			if (teamMembers != null && !teamMembers.isEmpty())
-			{
-				return new ArrayList<>(teamMembers);
-			}
+			if (teamMembers != null && !teamMembers.isEmpty()) return new ArrayList<>(teamMembers);
 
 			List<BaTeamMember> members = new ArrayList<>();
 

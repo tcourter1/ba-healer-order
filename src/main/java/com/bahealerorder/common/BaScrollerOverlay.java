@@ -78,10 +78,7 @@ public class BaScrollerOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (controller == null || !controller.shouldHighlightCurrentRoomLadder())
-		{
-			return null;
-		}
+		if (controller == null || !controller.shouldHighlightCurrentRoomLadder()) return null;
 
 		LadderScan scan = scanCurrentRoom();
 
@@ -91,10 +88,7 @@ public class BaScrollerOverlay extends Overlay
 			log.debug("BA scroller ladder overlay: {}", describeScan(scan));
 		}
 
-		if (scan.selectedLadder == null)
-		{
-			return null;
-		}
+		if (scan.selectedLadder == null) return null;
 
 		renderLadderHighlight(graphics, scan.selectedLadder);
 		return null;
@@ -110,10 +104,7 @@ public class BaScrollerOverlay extends Overlay
 		WorldPoint playerLocation = client.getLocalPlayer() == null ? null : client.getLocalPlayer().getWorldLocation();
 		BaRoom room = findRoom(playerLocation);
 
-		if (room == null)
-		{
-			return new LadderScan(playerLocation, null, null, new ArrayList<>());
-		}
+		if (room == null) return new LadderScan(playerLocation, null, null, new ArrayList<>());
 
 		List<TileObject> ladders = findRoomLadders(room);
 		TileObject selectedLadder = ladders.isEmpty() ? null : ladders.get(0);
@@ -123,17 +114,11 @@ public class BaScrollerOverlay extends Overlay
 
 	private BaRoom findRoom(WorldPoint playerLocation)
 	{
-		if (playerLocation == null)
-		{
-			return null;
-		}
+		if (playerLocation == null) return null;
 
 		for (BaRoom room : BA_ROOMS)
 		{
-			if (room.contains(playerLocation))
-			{
-				return room;
-			}
+			if (room.contains(playerLocation)) return room;
 		}
 
 		return null;
@@ -143,41 +128,26 @@ public class BaScrollerOverlay extends Overlay
 	{
 		WorldView worldView = client.getTopLevelWorldView();
 
-		if (worldView == null)
-		{
-			return new ArrayList<>();
-		}
+		if (worldView == null) return new ArrayList<>();
 
 		Scene scene = worldView.getScene();
 
-		if (scene == null)
-		{
-			return new ArrayList<>();
-		}
+		if (scene == null) return new ArrayList<>();
 
 		Tile[][][] tiles = scene.getTiles();
 		int plane = worldView.getPlane();
 
-		if (tiles == null || plane < 0 || plane >= tiles.length || tiles[plane] == null)
-		{
-			return new ArrayList<>();
-		}
+		if (tiles == null || plane < 0 || plane >= tiles.length || tiles[plane] == null) return new ArrayList<>();
 
 		List<TileObject> ladders = new ArrayList<>();
 
 		for (Tile[] column : tiles[plane])
 		{
-			if (column == null)
-			{
-				continue;
-			}
+			if (column == null) continue;
 
 			for (Tile tile : column)
 			{
-				if (tile == null)
-				{
-					continue;
-				}
+				if (tile == null) continue;
 
 				addRoomLadder(tile.getWallObject(), room, ladders);
 				addRoomLadder(tile.getDecorativeObject(), room, ladders);
@@ -200,10 +170,7 @@ public class BaScrollerOverlay extends Overlay
 
 	private void addRoomLadder(TileObject object, BaRoom room, List<TileObject> ladders)
 	{
-		if (object == null || !room.contains(object.getWorldLocation()) || !isNamedLadder(object))
-		{
-			return;
-		}
+		if (object == null || !room.contains(object.getWorldLocation()) || !isNamedLadder(object)) return;
 
 		ladders.add(object);
 	}
@@ -224,10 +191,7 @@ public class BaScrollerOverlay extends Overlay
 	{
 		int tick = client.getTickCount();
 
-		if (tick - lastDebugTick < DEBUG_INTERVAL_TICKS)
-		{
-			return false;
-		}
+		if (tick - lastDebugTick < DEBUG_INTERVAL_TICKS) return false;
 
 		return scan.room != null || scan.isPlayerInBaLobby();
 	}
@@ -273,10 +237,7 @@ public class BaScrollerOverlay extends Overlay
 
 	private String describeObjects(List<TileObject> objects)
 	{
-		if (objects.isEmpty())
-		{
-			return "[]";
-		}
+		if (objects.isEmpty()) return "[]";
 
 		StringBuilder builder = new StringBuilder("[");
 
@@ -295,10 +256,7 @@ public class BaScrollerOverlay extends Overlay
 
 	private String describeObject(TileObject object)
 	{
-		if (object == null)
-		{
-			return "null";
-		}
+		if (object == null) return "null";
 
 		return String.format(
 				Locale.ROOT,
@@ -311,10 +269,7 @@ public class BaScrollerOverlay extends Overlay
 
 	private String formatWorldPoint(WorldPoint worldPoint)
 	{
-		if (worldPoint == null)
-		{
-			return "null";
-		}
+		if (worldPoint == null) return "null";
 
 		return "(" + worldPoint.getX() + ", " + worldPoint.getY() + ", " + worldPoint.getPlane() + ")";
 	}

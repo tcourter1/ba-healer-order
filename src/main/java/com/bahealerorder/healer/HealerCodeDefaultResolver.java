@@ -18,25 +18,16 @@ public final class HealerCodeDefaultResolver
 
 	public static HealerCodeDefaultRole resolve(BaRole currentRole, String localPlayerName, List<BaTeamMember> teamMembers)
 	{
-		if (teamMembers == null)
-		{
-			return null;
-		}
+		if (teamMembers == null) return null;
 
 		List<Integer> healerIndexes = healerIndexes(teamMembers);
 		int localPlayerIndex = localPlayerIndex(localPlayerName, teamMembers);
 		boolean localPlayerIsHealer = localPlayerIndex >= 0
 				&& BaRole.fromDisplayName(teamMembers.get(localPlayerIndex).getRole()) == BaRole.HEALER;
 
-		if (currentRole != BaRole.HEALER && !localPlayerIsHealer)
-		{
-			return null;
-		}
+		if (currentRole != BaRole.HEALER && !localPlayerIsHealer) return null;
 
-		if (healerIndexes.size() == 1)
-		{
-			return HealerCodeDefaultRole.SOLO_HEALER;
-		}
+		if (healerIndexes.size() == 1) return HealerCodeDefaultRole.SOLO_HEALER;
 
 		if (healerIndexes.size() != 2
 				|| healerIndexes.get(0) != DUO_TAG_HEALER_INDEX
@@ -45,14 +36,8 @@ public final class HealerCodeDefaultResolver
 			return null;
 		}
 
-		if (localPlayerIndex == DUO_TAG_HEALER_INDEX)
-		{
-			return HealerCodeDefaultRole.DH_TAG_SECOND;
-		}
-		if (localPlayerIndex == DUO_SPAM_HEALER_INDEX)
-		{
-			return HealerCodeDefaultRole.DH_SPAM_MAIN;
-		}
+		if (localPlayerIndex == DUO_TAG_HEALER_INDEX) return HealerCodeDefaultRole.DH_TAG_SECOND;
+		if (localPlayerIndex == DUO_SPAM_HEALER_INDEX) return HealerCodeDefaultRole.DH_SPAM_MAIN;
 
 		return null;
 	}
@@ -73,17 +58,11 @@ public final class HealerCodeDefaultResolver
 	private static int localPlayerIndex(String localPlayerName, List<BaTeamMember> teamMembers)
 	{
 		String playerName = normalize(localPlayerName);
-		if (playerName.isEmpty())
-		{
-			return -1;
-		}
+		if (playerName.isEmpty()) return -1;
 
 		for (int index = 0; index < teamMembers.size(); index++)
 		{
-			if (playerName.equals(normalize(teamMembers.get(index).getName())))
-			{
-				return index;
-			}
+			if (playerName.equals(normalize(teamMembers.get(index).getName()))) return index;
 		}
 		return -1;
 	}

@@ -1,5 +1,8 @@
 package com.bahealerorder.healer.codes;
 
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
 public enum HealerCodeOverstock
 {
 	REGULAR("Regular"),
@@ -11,11 +14,6 @@ public enum HealerCodeOverstock
 	CUSTOM("Custom");
 
 	private final String label;
-
-	HealerCodeOverstock(String label)
-	{
-		this.label = label;
-	}
 
 	public static HealerCodeOverstock valueOrRegular(HealerCodeOverstock overstock)
 	{

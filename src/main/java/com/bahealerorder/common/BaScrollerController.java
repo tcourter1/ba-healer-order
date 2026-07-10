@@ -140,10 +140,7 @@ public class BaScrollerController
 
 	public void onVarbitChanged(VarbitChanged event)
 	{
-		if (event.getVarbitId() != VarbitID.BARBASSAULT_EGGCOUNT_OMEGA || !shouldTrackOmegaDupeItems())
-		{
-			return;
-		}
+		if (event.getVarbitId() != VarbitID.BARBASSAULT_EGGCOUNT_OMEGA || !shouldTrackOmegaDupeItems()) return;
 
 		log.debug(
 				"BA scroller omega varbit changed: varbit={}, eventValue={}, clientValue={}, queenSpawned={}, tick={}",
@@ -157,10 +154,7 @@ public class BaScrollerController
 
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		if (event == null || !shouldHighlightCurrentRoomLadder() || !isLadderClick(event))
-		{
-			return;
-		}
+		if (event == null || !shouldHighlightCurrentRoomLadder() || !isLadderClick(event)) return;
 
 		WorldPoint worldPoint = client.getLocalPlayer() == null ? null : client.getLocalPlayer().getWorldLocation();
 
@@ -189,10 +183,7 @@ public class BaScrollerController
 
 	Color getOmegaDupeItemHighlightColor()
 	{
-		if (isOmegaEggLoaded())
-		{
-			return OMEGA_DUPLICATE_ITEM_LOADED_COLOR;
-		}
+		if (isOmegaEggLoaded()) return OMEGA_DUPLICATE_ITEM_LOADED_COLOR;
 
 		return OMEGA_DUPLICATE_ITEM_PENDING_COLOR;
 	}
@@ -211,15 +202,9 @@ public class BaScrollerController
 
 	private boolean hasPenanceQueenSpawned()
 	{
-		if (devQueenSpawned)
-		{
-			return true;
-		}
+		if (devQueenSpawned) return true;
 
-		if (!penanceQueens.isEmpty())
-		{
-			return true;
-		}
+		if (!penanceQueens.isEmpty()) return true;
 
 		WorldView worldView = client.getTopLevelWorldView();
 		return worldView != null && worldView.npcs().stream().anyMatch(this::isPenanceQueen);
@@ -232,10 +217,7 @@ public class BaScrollerController
 
 	private boolean isOmegaEggLoaded()
 	{
-		if (devOmegaLoaded != null)
-		{
-			return devOmegaLoaded;
-		}
+		if (devOmegaLoaded != null) return devOmegaLoaded;
 
 		return getOmegaEggCount() > 0;
 	}
@@ -266,10 +248,7 @@ public class BaScrollerController
 
 	private String formatWorldPoint(WorldPoint worldPoint)
 	{
-		if (worldPoint == null)
-		{
-			return "null";
-		}
+		if (worldPoint == null) return "null";
 
 		return "(" + worldPoint.getX() + ", " + worldPoint.getY() + ", " + worldPoint.getPlane() + ")";
 	}

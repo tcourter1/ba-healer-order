@@ -10,15 +10,9 @@ final class HealerHealthEstimator
 
 	static OptionalInt estimate(int healthRatio, int healthScale, int maxHp)
 	{
-		if (maxHp <= 0 || healthRatio < 0 || healthScale <= 0)
-		{
-			return OptionalInt.empty();
-		}
+		if (maxHp <= 0 || healthRatio < 0 || healthScale <= 0) return OptionalInt.empty();
 
-		if (healthRatio <= 0)
-		{
-			return OptionalInt.of(0);
-		}
+		if (healthRatio <= 0) return OptionalInt.of(0);
 
 		int minHp = 1;
 		int maxEstimatedHp;

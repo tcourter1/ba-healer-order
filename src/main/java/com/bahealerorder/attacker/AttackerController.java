@@ -31,19 +31,6 @@ import net.runelite.client.util.Text;
 @Singleton
 public class AttackerController
 {
-    /*
-     * Normal waves 1-9. Captured from Block -> Penance cave debug.
-     */
-    private static final WorldPoint NORMAL_RANGER_CAVE_LABEL_TILE = new WorldPoint(12810, 4518, 0);
-    private static final WorldPoint NORMAL_FIGHTER_CAVE_LABEL_TILE = new WorldPoint(12816, 4519, 0);
-
-    /*
-     * Wave 10 is in a different chunk/instance. These are temporary placeholders
-     * until the Wave 10 cave coordinates are captured.
-     */
-    private static final WorldPoint WAVE_10_RANGER_CAVE_LABEL_TILE = NORMAL_RANGER_CAVE_LABEL_TILE;
-    private static final WorldPoint WAVE_10_FIGHTER_CAVE_LABEL_TILE = NORMAL_FIGHTER_CAVE_LABEL_TILE;
-
     private final Client client;
     private final BaUtilitiesConfig config;
     private final BaRoleDetector roleDetector;
@@ -93,10 +80,7 @@ public class AttackerController
 
     public void onNpcSpawned(NpcSpawned event)
     {
-        if (!isWaveActive())
-        {
-            return;
-        }
+        if (!isWaveActive()) return;
 
         NPC npc = event.getNpc();
         BaOverviewNpcType type = BaNpcIds.getOverviewType(npc);
@@ -214,22 +198,9 @@ public class AttackerController
         return waveOverviewState.getSpawnedCount(BaOverviewNpcType.FIGHTER);
     }
 
-    public WorldPoint getRangerCaveLabelTile()
-    {
-        return getCurrentWave() == 10 ? WAVE_10_RANGER_CAVE_LABEL_TILE : NORMAL_RANGER_CAVE_LABEL_TILE;
-    }
-
-    public WorldPoint getFighterCaveLabelTile()
-    {
-        return getCurrentWave() == 10 ? WAVE_10_FIGHTER_CAVE_LABEL_TILE : NORMAL_FIGHTER_CAVE_LABEL_TILE;
-    }
-
     public void onWaveStarted(int wave)
     {
-        if (wave < 1 || wave > 10)
-        {
-            return;
-        }
+        if (wave < 1 || wave > 10) return;
 
         visibleAttackableNpcs.clear();
 
@@ -258,18 +229,12 @@ public class AttackerController
 
     private void debugAttackerCaveClick(MenuOptionClicked event)
     {
-        if (client.getLocalPlayer() == null)
-        {
-            return;
-        }
+        if (client.getLocalPlayer() == null) return;
 
         String option = Text.removeTags(event.getMenuOption() == null ? "" : event.getMenuOption()).toLowerCase(Locale.ROOT);
         String target = Text.removeTags(event.getMenuTarget() == null ? "" : event.getMenuTarget()).toLowerCase(Locale.ROOT);
 
-        if (!"block".equals(option) || !target.contains("cave"))
-        {
-            return;
-        }
+        if (!"block".equals(option) || !target.contains("cave")) return;
 
         WorldPoint worldPoint = client.getLocalPlayer().getWorldLocation();
         int areaExitPending = client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING);

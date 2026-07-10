@@ -158,10 +158,7 @@ public class HealerCodePanel extends JPanel
 		presetCombo.setRenderer(BaPanelUi.comboOptionRenderer(CONTROL_HEIGHT));
 		presetCombo.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
 			BaPanelUi.ComboOption item = (BaPanelUi.ComboOption) presetCombo.getSelectedItem();
 			if (item == null || item.getId() == null)
@@ -257,10 +254,7 @@ public class HealerCodePanel extends JPanel
 		populateWaveCombo(comboBox, wave, codeManager.getActiveWaveCodeId(wave));
 		comboBox.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
 			String selectedCodeId = BaPanelUi.selectedId(comboBox);
 			codeManager.setActiveWaveCodeId(wave, selectedCodeId);
@@ -452,10 +446,7 @@ public class HealerCodePanel extends JPanel
 	{
 		if (editorDialog != null && editorDialog.isDisplayable())
 		{
-			if (editorPanel != null && !editorPanel.selectCodeForWave(wave, codeId, editorDialog))
-			{
-				return;
-			}
+			if (editorPanel != null && !editorPanel.selectCodeForWave(wave, codeId, editorDialog)) return;
 			editorDialog.toFront();
 			editorDialog.requestFocus();
 			return;
@@ -489,10 +480,7 @@ public class HealerCodePanel extends JPanel
 		BaPanelUi.ComboOption selectedPreset = (BaPanelUi.ComboOption) presetCombo.getSelectedItem();
 		RunPreset currentPreset = selectedPreset == null ? null : codeManager.findRunPreset(selectedPreset.getId());
 		String name = promptName("Preset name", currentPreset == null ? "" : currentPreset.getName());
-		if (name == null)
-		{
-			return;
-		}
+		if (name == null) return;
 
 		if (currentPreset == null || currentPreset.isBuiltIn() || !name.equalsIgnoreCase(currentPreset.getName()))
 		{
@@ -509,10 +497,7 @@ public class HealerCodePanel extends JPanel
 	private void deleteSelectedPreset()
 	{
 		BaPanelUi.ComboOption item = (BaPanelUi.ComboOption) presetCombo.getSelectedItem();
-		if (item == null || item.getId() == null)
-		{
-			return;
-		}
+		if (item == null || item.getId() == null) return;
 
 		RunPreset currentPreset = codeManager.findRunPreset(item.getId());
 		if (currentPreset == null || currentPreset.isBuiltIn())
@@ -522,10 +507,7 @@ public class HealerCodePanel extends JPanel
 		}
 
 		int result = JOptionPane.showConfirmDialog(this, "Delete this run preset?", "Delete Preset", JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		codeManager.deleteUserPreset(item.getId());
 		refreshAll();
@@ -541,10 +523,7 @@ public class HealerCodePanel extends JPanel
 		}
 
 		int result = JOptionPane.showConfirmDialog(this, "Delete this wave code?", "Delete Wave Code", JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		codeManager.deleteUserWaveCode(codeId);
 		refreshAll();
@@ -559,10 +538,7 @@ public class HealerCodePanel extends JPanel
 		}
 
 		int result = JOptionPane.showConfirmDialog(this, "Reset this built-in wave code to its default?", "Reset Wave Code", JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		codeManager.resetBuiltInWaveCode(codeId);
 		refreshAll();
@@ -606,10 +582,7 @@ public class HealerCodePanel extends JPanel
 	private void importFromClipboard()
 	{
 		String json = BaClipboard.readText(this, "Import Healer Codes");
-		if (json == null)
-		{
-			return;
-		}
+		if (json == null) return;
 
 		HealerCodeExportResult result = codeManager.importHealerCodeJson(json);
 		if (result == null)
@@ -625,10 +598,7 @@ public class HealerCodePanel extends JPanel
 	private void importWaveCodeFromClipboard(int wave)
 	{
 		String json = BaClipboard.readText(this, "Import Wave");
-		if (json == null)
-		{
-			return;
-		}
+		if (json == null) return;
 
 		HealerCodeExportResult result = codeManager.importHealerCodeJson(json, wave);
 		if (result == null)
@@ -697,10 +667,7 @@ public class HealerCodePanel extends JPanel
 	{
 		String name = escapeHtml(HealerCodeManager.runPresetDisplayName(preset));
 		HealerCodeDefaultRole defaultRole = codeManager.getDefaultRoleForPreset(preset.getId());
-		if (defaultRole == null)
-		{
-			return name;
-		}
+		if (defaultRole == null) return name;
 
 		String textColor = preset.isBuiltIn() ? HTML_BUILT_IN_TEXT_COLOR : HTML_TEXT_COLOR;
 		return "<html><span style='color:" + textColor + "'>"
@@ -728,10 +695,7 @@ public class HealerCodePanel extends JPanel
 		JTextField field = new JTextField(defaultValue);
 		BaPanelUi.fixedSize(field, PRESET_CONTROL_WIDTH, CONTROL_HEIGHT);
 		int result = JOptionPane.showConfirmDialog(this, field, title, JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION || field.getText().trim().isEmpty())
-		{
-			return null;
-		}
+		if (result != JOptionPane.OK_OPTION || field.getText().trim().isEmpty()) return null;
 		return field.getText().trim();
 	}
 

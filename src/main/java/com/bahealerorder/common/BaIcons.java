@@ -13,15 +13,12 @@ import net.runelite.client.util.ImageUtil;
 public final class BaIcons
 {
 	private static final ImageIcon EDIT_ICON = loadIcon("edit_icon.png");
-	private static final ImageIcon EDIT_HOVER_ICON = loadHoverIcon("edit_icon.png");
 	private static final ImageIcon VISIBLE_ICON = loadIcon("visible_icon.png");
-	private static final ImageIcon VISIBLE_HOVER_ICON = loadHoverIcon("visible_icon.png");
 	private static final ImageIcon INFO_ICON = loadIcon("info_icon.png");
 	private static final ImageIcon GLOBE_ICON = loadIcon("globe_icon.png");
 	private static final ImageIcon WAVE_OVERVIEW_ICON = loadIcon("wave_overview_icon.png");
 	private static final ImageIcon HEALER_CODE_ICON = loadIcon("healer_code_icon.png");
 	private static final ImageIcon PLUS_ICON = createPlusIcon(Color.WHITE);
-	private static final ImageIcon PLUS_HOVER_ICON = createPlusIcon(Color.WHITE);
 	private static final ImageIcon VERTICAL_ELLIPSIS_ICON = createVerticalEllipsisIcon();
 	private static final ImageIcon IMPORT_ICON = loadIcon("import_icon.png");
 	private static final ImageIcon EXPORT_ICON = loadIcon("export_icon.png");
@@ -41,11 +38,6 @@ public final class BaIcons
 	private static ImageIcon loadIcon(String path)
 	{
 		return new ImageIcon(ImageUtil.loadImageResource(BaIcons.class, path));
-	}
-
-	private static ImageIcon loadHoverIcon(String path)
-	{
-		return new ImageIcon(ImageUtil.alphaOffset(ImageUtil.loadImageResource(BaIcons.class, path), -100));
 	}
 
 	private static ImageIcon scaledIcon(ImageIcon icon, int size)
@@ -76,29 +68,14 @@ public final class BaIcons
 		return EDIT_ICON;
 	}
 
-	public static ImageIcon pencilHoverIcon()
-	{
-		return EDIT_HOVER_ICON;
-	}
-
 	public static ImageIcon eyeIcon()
 	{
 		return VISIBLE_ICON;
 	}
 
-	public static ImageIcon eyeHoverIcon()
-	{
-		return VISIBLE_HOVER_ICON;
-	}
-
 	public static ImageIcon plusIcon()
 	{
 		return PLUS_ICON;
-	}
-
-	public static ImageIcon plusHoverIcon()
-	{
-		return PLUS_HOVER_ICON;
 	}
 
 	public static ImageIcon verticalEllipsisIcon()

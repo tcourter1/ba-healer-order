@@ -74,11 +74,6 @@ public class BaWaveOverviewState
 		return getSpawnedOrders(type).size();
 	}
 
-	public int getDeadCount(BaOverviewNpcType type)
-	{
-		return getDeadOrders(type).size();
-	}
-
 	public boolean hasSpawned(BaOverviewNpcType type, int order)
 	{
 		return getSpawnedOrders(type).contains(order);
@@ -200,11 +195,6 @@ public class BaWaveOverviewState
 	private Set<Integer> getSpawnedOrders(BaOverviewNpcType type)
 	{
 		return new HashSet<>(getOrderByNpcIndex(type).values());
-	}
-
-	private Set<Integer> getDeadOrders(BaOverviewNpcType type)
-	{
-		return getDeathTicksByOrder(type).keySet();
 	}
 
 	private Map<Integer, Integer> getDeathTicksByOrder(BaOverviewNpcType type)

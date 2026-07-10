@@ -78,15 +78,9 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (!config.showOverlayPanel() || healerController == null)
-        {
-            return hidePanel();
-        }
+        if (!config.showOverlayPanel() || healerController == null) return hidePanel();
 
-        if (!healerController.isWaveActive())
-        {
-            return hidePanel();
-        }
+        if (!healerController.isWaveActive()) return hidePanel();
 
         BaUtilitiesConfig.FoodPanelStyle panelStyle = getEffectivePanelStyle();
         String sourceText = healerController.getCurrentWaveCodeDisplaySource();
@@ -94,21 +88,13 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         boolean healerContent = shouldRenderHealerContent(panelStyle, sourceText);
         boolean notesContent = !isBlank(notes);
 
-        if (!healerContent && !notesContent)
-        {
-            return hidePanel();
-        }
+        if (!healerContent && !notesContent) return hidePanel();
 
         Font originalFont = preparePanel(graphics);
 
         try
         {
-            panelComponent.getChildren().add(
-                    TitleComponent.builder()
-                            .text(getPanelTitle())
-                            .color(getPanelTitleColor())
-                            .build()
-            );
+            addTitle(getPanelTitle(), getPanelTitleColor());
 
             if (!healerContent)
             {
@@ -231,6 +217,31 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         return dimension;
     }
 
+	private void addTitle(String text, Color color)
+	{
+		panelComponent.getChildren().add(
+				TitleComponent.builder()
+						.text(text)
+						.color(color)
+						.build()
+		);
+	}
+
+	private void addLine(String text)
+	{
+		panelComponent.getChildren().add(LineComponent.builder().left(text).build());
+	}
+
+	private void addLine(String text, Color color)
+	{
+		panelComponent.getChildren().add(
+				LineComponent.builder()
+						.left(text)
+						.leftColor(color)
+						.build()
+		);
+	}
+
     private int getOverlayTextSize()
     {
         return Math.max(8, config.foodPanelOverlayTextSize());
@@ -294,10 +305,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
 	private String getCurrentStrategyName()
 	{
-		if (healerController == null || !healerController.isWaveActive())
-		{
-			return "";
-		}
+		if (healerController == null || !healerController.isWaveActive()) return "";
 
 		return strategyManager.getActiveStrategyName(
 				healerController.getCurrentWave(),
@@ -317,11 +325,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
                     + " "
                     + ColorUtil.prependColorTag("(" + deathTime + ")", getDeathTimeColor(healerOrder, deathTime));
 
-            panelComponent.getChildren().add(
-                    LineComponent.builder()
-                            .left(text)
-                            .build()
-            );
+            addLine(text);
         }
     }
 
@@ -363,7 +367,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         {
             if (start > 0)
             {
-                panelComponent.getChildren().add(LineComponent.builder().left("").build());
+                addLine("");
             }
 
             addColumnTable(graphics, healerOrders.subList(start, Math.min(start + BASE_MAX_HEALER_COLUMNS, healerOrders.size())));
@@ -372,36 +376,18 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
     private void addColumnTable(Graphics2D graphics, List<Integer> healerOrders)
     {
-        if (healerOrders.isEmpty())
-        {
-            return;
-        }
+        if (healerOrders.isEmpty()) return;
 
         List<Integer> callIndexes = getColumnCallIndexes();
 
-        panelComponent.getChildren().add(
-                LineComponent.builder()
-                        .left(buildColumnHeader(healerOrders, graphics.getFontMetrics()))
-                        .leftColor(TEXT_COLOR)
-                        .build()
-        );
+        addLine(buildColumnHeader(healerOrders, graphics.getFontMetrics()), TEXT_COLOR);
 
         for (int callIndex : callIndexes)
         {
-            panelComponent.getChildren().add(
-                    LineComponent.builder()
-                            .left(buildColumnRow(healerOrders, callIndex, graphics.getFontMetrics()))
-                            .leftColor(TEXT_COLOR)
-                            .build()
-            );
+            addLine(buildColumnRow(healerOrders, callIndex, graphics.getFontMetrics()), TEXT_COLOR);
         }
 
-        panelComponent.getChildren().add(
-                LineComponent.builder()
-                        .left(buildDeathTimeRow(healerOrders, graphics.getFontMetrics()))
-                        .leftColor(TEXT_COLOR)
-                        .build()
-        );
+        addLine(buildDeathTimeRow(healerOrders, graphics.getFontMetrics()), TEXT_COLOR);
     }
 
     private List<Integer> getColumnCallIndexes()
@@ -420,21 +406,11 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     {
         FontMetrics metrics = graphics.getFontMetrics();
 
-        panelComponent.getChildren().add(
-                LineComponent.builder()
-                        .left(buildHealerCallHeader(metrics))
-                        .leftColor(TEXT_COLOR)
-                        .build()
-        );
+        addLine(buildHealerCallHeader(metrics), TEXT_COLOR);
 
         for (int healerOrder : healerOrders)
         {
-            panelComponent.getChildren().add(
-                    LineComponent.builder()
-                            .left(buildHealerCallRow(healerOrder, metrics))
-                            .leftColor(TEXT_COLOR)
-                            .build()
-            );
+            addLine(buildHealerCallRow(healerOrder, metrics), TEXT_COLOR);
         }
     }
 
@@ -566,17 +542,11 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     {
         String value = text == null ? "" : text;
 
-        if (metrics == null)
-        {
-            return value;
-        }
+        if (metrics == null) return value;
 
         int remaining = width - metrics.stringWidth(value);
 
-        if (remaining <= 0)
-        {
-            return value;
-        }
+        if (remaining <= 0) return value;
 
         int spaceWidth = Math.max(metrics.stringWidth(" "), 1);
         return value + spaces((int) Math.ceil(remaining / (double) spaceWidth));
@@ -592,10 +562,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         String value = truncateCell(text);
         int maxCellChars = getMaxCellChars();
 
-        if (value.length() >= maxCellChars)
-        {
-            return value;
-        }
+        if (value.length() >= maxCellChars) return value;
 
         return value + spaces(maxCellChars - value.length());
     }
@@ -605,24 +572,14 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         String value = text == null ? "" : text;
         int maxCellChars = getMaxCellChars();
 
-        if (value.length() <= maxCellChars)
-        {
-            return value;
-        }
+        if (value.length() <= maxCellChars) return value;
 
         return value.substring(0, maxCellChars - 3) + "...";
     }
 
     private String spaces(int count)
     {
-        StringBuilder builder = new StringBuilder();
-
-        for (int i = 0; i < count; i++)
-        {
-            builder.append(' ');
-        }
-
-        return builder.toString();
+        return " ".repeat(Math.max(0, count));
     }
 
     private void addCurrentWaveCodeAndNotes(boolean collapsible)
@@ -634,10 +591,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     {
         String sourceText = healerController.getCurrentWaveCodeDisplaySource();
 
-        if (isBlank(sourceText))
-        {
-            return false;
-        }
+        if (isBlank(sourceText)) return false;
 
         if (collapsible)
         {
@@ -648,20 +602,12 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
             panelComponent.getChildren().add(codeToggleLine);
 
-            if (isCodeCollapsed())
-            {
-                return true;
-            }
+            if (isCodeCollapsed()) return true;
         }
 
         for (String line : sourceText.split("\\r?\\n", -1))
         {
-            panelComponent.getChildren().add(
-                    LineComponent.builder()
-                            .left(line.isEmpty() ? " " : line)
-                            .leftColor(TEXT_COLOR)
-                            .build()
-            );
+            addLine(line.isEmpty() ? " " : line, TEXT_COLOR);
         }
 
         return true;
@@ -679,14 +625,11 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     {
         String notes = getCurrentWaveNotes();
 
-        if (isBlank(notes))
-        {
-            return;
-        }
+        if (isBlank(notes)) return;
 
         if (separateFromCode)
         {
-            panelComponent.getChildren().add(LineComponent.builder().left("").build());
+            addLine("");
         }
 
         List<TimedStrategyNote> timedNotes = TimedStrategyNotes.parse(notes);
@@ -697,21 +640,13 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         {
             TimedStrategyNote note = timedNotes.get(i);
             String line = note.getText();
-            panelComponent.getChildren().add(
-                    LineComponent.builder()
-                            .left(line.isEmpty() ? " " : line)
-                            .leftColor(TimedStrategyNotes.colorFor(note, i, activeIndex, currentWaveTick, TEXT_COLOR, DEAD_COLOR))
-                            .build()
-            );
+            addLine(line.isEmpty() ? " " : line, TimedStrategyNotes.colorFor(note, i, activeIndex, currentWaveTick, TEXT_COLOR, DEAD_COLOR));
         }
     }
 
     private String getCurrentWaveNotes()
     {
-        if (healerController == null || !healerController.isWaveActive())
-        {
-            return "";
-        }
+        if (healerController == null || !healerController.isWaveActive()) return "";
 
 		String notes = strategyManager.getActiveNotes(
 				healerController.getCurrentWave(),
