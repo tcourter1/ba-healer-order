@@ -2,6 +2,7 @@ package com.bahealerorder.sidepanel.onboarding;
 
 import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.common.BaIcons;
+import com.bahealerorder.sidepanel.BaPanelUi;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -16,21 +17,17 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.SwingConstants;
 import javax.swing.JTextPane;
 import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.basic.BasicButtonUI;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
-import net.runelite.client.util.SwingUtil;
 
 @Singleton
 public class BaAssistancePresetPanel extends JPanel
@@ -73,11 +70,19 @@ public class BaAssistancePresetPanel extends JPanel
 
     private JPanel buildContent()
     {
-        JPanel panel = verticalPanel(ColorScheme.DARK_GRAY_COLOR);
+        JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARK_GRAY_COLOR);
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
 
-        panel.add(header("Choose Assistance Level"));
+        panel.add(BaPanelUi.centeredHeader(
+                "Choose Assistance Level",
+                BaIcons.backIcon(),
+                "Skip",
+                this::skipAssistancePreset,
+                CONTENT_WIDTH,
+                30,
+                HEADER_BUTTON_SIZE
+        ));
         panel.add(Box.createVerticalStrut(10));
         panel.add(introSection());
         panel.add(Box.createVerticalStrut(INTRO_TO_PRESETS_SPACING));
@@ -124,7 +129,7 @@ public class BaAssistancePresetPanel extends JPanel
 
     private JPanel introSection()
     {
-        JPanel panel = flatPanel();
+        JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARK_GRAY_COLOR, CONTENT_WIDTH);
 
         panel.add(textBlock(
                 "BA Utilities is designed to be beginner-friendly, but the more you understand Barbarian Assault, the more powerful the features can be.",
@@ -148,7 +153,7 @@ public class BaAssistancePresetPanel extends JPanel
 
     private JPanel nonBeginnerNote()
     {
-        JPanel panel = flatPanel();
+        JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARK_GRAY_COLOR, CONTENT_WIDTH);
         panel.add(textBlock(
                 "Note for Non-Beginners",
                 TEXT_WIDTH,
@@ -168,7 +173,7 @@ public class BaAssistancePresetPanel extends JPanel
 
     private JPanel presetCard(String title, String description, BaUtilitiesConfig.AssistancePreset preset)
     {
-        JPanel panel = flatPanel();
+        JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARK_GRAY_COLOR, CONTENT_WIDTH);
 
         JButton button = styledButton(title, CONTENT_WIDTH);
         button.addActionListener(event ->
@@ -180,7 +185,7 @@ public class BaAssistancePresetPanel extends JPanel
         panel.add(button);
         panel.add(Box.createVerticalStrut(5));
         panel.add(textBlock(description, TEXT_WIDTH, PRESET_DESCRIPTION_HEIGHT, StyleConstants.ALIGN_CENTER, highlightPhrase(preset)));
-        fixedSize(panel, CONTENT_WIDTH, PRESET_SECTION_HEIGHT);
+        BaPanelUi.fixedSize(panel, CONTENT_WIDTH, PRESET_SECTION_HEIGHT);
 
         return panel;
     }
@@ -197,7 +202,7 @@ public class BaAssistancePresetPanel extends JPanel
     {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        fixedSize(panel, CONTENT_WIDTH, DIVIDER_HEIGHT);
+        BaPanelUi.fixedSize(panel, CONTENT_WIDTH, DIVIDER_HEIGHT);
 
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridy = 0;
@@ -229,7 +234,7 @@ public class BaAssistancePresetPanel extends JPanel
                 graphics.drawLine(0, getHeight() / 2, getWidth(), getHeight() / 2);
             }
         };
-        fixedSize(line, DIVIDER_LINE_WIDTH, DIVIDER_HEIGHT);
+        BaPanelUi.fixedSize(line, DIVIDER_LINE_WIDTH, DIVIDER_HEIGHT);
         return line;
     }
 
@@ -279,68 +284,6 @@ public class BaAssistancePresetPanel extends JPanel
         }
     }
 
-    private JPanel header(String text)
-    {
-        JLabel label = new JLabel(text);
-        label.setForeground(ColorScheme.TEXT_COLOR);
-        label.setHorizontalAlignment(SwingConstants.CENTER);
-
-        JPanel row = new JPanel(new BorderLayout());
-        row.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        row.setPreferredSize(new Dimension(CONTENT_WIDTH, 30));
-        row.setMaximumSize(new Dimension(CONTENT_WIDTH, 30));
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        row.add(headerBackButton(), BorderLayout.WEST);
-        row.add(label, BorderLayout.CENTER);
-        row.add(headerSpacer(), BorderLayout.EAST);
-
-        return row;
-    }
-
-    private JButton headerBackButton()
-    {
-        JButton button = new JButton(BaIcons.backIcon());
-        button.setToolTipText("Skip");
-        button.addActionListener(event -> skipAssistancePreset());
-        SwingUtil.removeButtonDecorations(button);
-        button.setBorder(BorderFactory.createEmptyBorder());
-        button.setBorderPainted(false);
-        button.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        button.setUI(new BasicButtonUI());
-        button.addMouseListener(new MouseAdapter()
-        {
-            @Override
-            public void mouseEntered(MouseEvent event)
-            {
-                button.setBackground(ColorScheme.DARK_GRAY_HOVER_COLOR);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent event)
-            {
-                button.setBackground(ColorScheme.DARK_GRAY_COLOR);
-            }
-        });
-        fixedSize(button, HEADER_BUTTON_SIZE, HEADER_BUTTON_SIZE);
-        return button;
-    }
-
-    private JPanel headerSpacer()
-    {
-        JPanel spacer = new JPanel();
-        spacer.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        fixedSize(spacer, HEADER_BUTTON_SIZE, HEADER_BUTTON_SIZE);
-        return spacer;
-    }
-
-    private JPanel flatPanel()
-    {
-        JPanel panel = verticalPanel(ColorScheme.DARK_GRAY_COLOR);
-        panel.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return panel;
-    }
-
     private String highlightPhrase(BaUtilitiesConfig.AssistancePreset preset)
     {
         switch (preset)
@@ -360,24 +303,10 @@ public class BaAssistancePresetPanel extends JPanel
 
     private JTextPane textBlock(String text, int width, int height, int alignment, String... highlights)
     {
-        JTextPane textPane = new JTextPane();
-        textPane.setText(text);
-        textPane.setForeground(ColorScheme.TEXT_COLOR);
-        textPane.setEditable(false);
-        textPane.setFocusable(false);
-        textPane.setOpaque(false);
-        textPane.setBorder(null);
-
+        JTextPane textPane = BaPanelUi.textBlock(text, width, height, alignment);
         StyledDocument document = textPane.getStyledDocument();
-        SimpleAttributeSet attributes = new SimpleAttributeSet();
-        StyleConstants.setAlignment(attributes, alignment);
-        StyleConstants.setBold(attributes, false);
-        document.setParagraphAttributes(0, document.getLength(), attributes, false);
-        document.setCharacterAttributes(0, document.getLength(), attributes, false);
         highlightTerms(document, text, highlights);
         boldTerms(document, text, "Note for Non-Beginners");
-
-        fixedSize(textPane, width, height);
         return textPane;
     }
 
@@ -389,10 +318,7 @@ public class BaAssistancePresetPanel extends JPanel
 
         for (String highlight : highlights)
         {
-            if (highlight == null || highlight.isEmpty())
-            {
-                continue;
-            }
+            if (highlight == null || highlight.isEmpty()) continue;
 
             int index = text.indexOf(highlight);
             while (index >= 0)
@@ -419,20 +345,4 @@ public class BaAssistancePresetPanel extends JPanel
         }
     }
 
-    private void fixedSize(JComponent component, int width, int height)
-    {
-        Dimension size = new Dimension(width, height);
-        component.setPreferredSize(size);
-        component.setMinimumSize(size);
-        component.setMaximumSize(size);
-        component.setAlignmentX(Component.LEFT_ALIGNMENT);
-    }
-
-    private JPanel verticalPanel(Color background)
-    {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(background);
-        return panel;
-    }
 }

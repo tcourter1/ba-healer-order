@@ -6,7 +6,6 @@ import java.awt.Dimension;
 import java.awt.GridLayout;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
@@ -20,7 +19,7 @@ final class TileMarkerLegendPanel
 	static JPanel create(int width)
 	{
 		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		panel.add(label("Legend", true));
+		panel.add(BaPanelUi.plainLabel("Legend", true));
 		panel.add(Box.createVerticalStrut(5));
 
 		JPanel grid = new JPanel(new GridLayout(5, 2, 8, 2));
@@ -56,20 +55,8 @@ final class TileMarkerLegendPanel
 		BaPanelUi.fixedSize(swatch, 12, 12);
 		row.add(swatch);
 		row.add(Box.createHorizontalStrut(6));
-		row.add(label(text, false));
+		row.add(BaPanelUi.plainLabel(text, false));
 		return row;
-	}
-
-	private static JLabel label(String text, boolean bold)
-	{
-		JLabel label = new JLabel(text);
-		label.setForeground(ColorScheme.TEXT_COLOR);
-		if (bold)
-		{
-			label.setFont(label.getFont().deriveFont(java.awt.Font.BOLD));
-		}
-		label.setAlignmentX(JLabel.LEFT_ALIGNMENT);
-		return label;
 	}
 
 }

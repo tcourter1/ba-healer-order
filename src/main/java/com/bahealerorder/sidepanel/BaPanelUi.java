@@ -1,33 +1,49 @@
 package com.bahealerorder.sidepanel;
 
+import com.bahealerorder.common.BaRole;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.util.List;
+import java.awt.Font;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTextArea;
+import javax.swing.JTextPane;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.plaf.basic.BasicButtonUI;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 import javax.swing.text.JTextComponent;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.SwingUtil;
 
 public final class BaPanelUi
 {
@@ -40,37 +56,33 @@ public final class BaPanelUi
 
 	public static JPanel section(String title, int contentWidth, int controlHeight)
 	{
+		return section(label(title, true), contentWidth, controlHeight);
+	}
+
+	public static JPanel section(JLabel title, int contentWidth, int controlHeight)
+	{
 		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		panel.setBorder(new EmptyBorder(8, 8, 8, 8));
 		panel.setMaximumSize(new Dimension(contentWidth, Integer.MAX_VALUE));
 		panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		panel.add(centeredLabelRow(title, true, ColorScheme.DARKER_GRAY_COLOR, contentWidth, controlHeight));
+		panel.add(centeredLabelRow(title, ColorScheme.DARKER_GRAY_COLOR, contentWidth, controlHeight));
 		panel.add(Box.createVerticalStrut(6));
 		return panel;
 	}
 
 	public static JPanel centeredLabelRow(String text, boolean bold, Color background, int contentWidth, int controlHeight)
 	{
-		JLabel label = label(text, bold);
+		return centeredLabelRow(label(text, bold), background, contentWidth, controlHeight);
+	}
+
+	public static JPanel centeredLabelRow(JLabel label, Color background, int contentWidth, int controlHeight)
+	{
 		label.setHorizontalAlignment(SwingConstants.CENTER);
 
 		JPanel row = new JPanel(new BorderLayout());
 		row.setBackground(background);
 		fixedSize(row, contentWidth - 16, controlHeight);
 		row.add(label, BorderLayout.CENTER);
-		return row;
-	}
-
-	public static JPanel comboRow(String text, JComboBox<?> comboBox, int contentWidth, int controlHeight, int labelWidth)
-	{
-		JLabel rowLabel = label(text);
-		fixedSize(rowLabel, labelWidth, controlHeight);
-
-		JPanel row = new JPanel(new BorderLayout(6, 0));
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(row, contentWidth - 16, controlHeight);
-		row.add(rowLabel, BorderLayout.WEST);
-		row.add(comboBox, BorderLayout.CENTER);
 		return row;
 	}
 
@@ -94,6 +106,79 @@ public final class BaPanelUi
 		button.addActionListener(event -> runnable.run());
 		styleActionButton(button, width, height);
 		return button;
+	}
+
+	public static JButton iconButton(ImageIcon icon, String tooltip, Runnable action, int size)
+	{
+		JButton button = new JButton(icon);
+		button.setToolTipText(tooltip);
+		button.addActionListener(event -> action.run());
+		SwingUtil.removeButtonDecorations(button);
+		button.setBorder(BorderFactory.createEmptyBorder());
+		button.setBorderPainted(false);
+		button.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		button.setUI(new BasicButtonUI());
+		button.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent event)
+			{
+				button.setBackground(ColorScheme.DARK_GRAY_HOVER_COLOR);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent event)
+			{
+				button.setBackground(ColorScheme.DARK_GRAY_COLOR);
+			}
+		});
+		fixedSize(button, size, size);
+		return button;
+	}
+
+	public static JPanel centeredHeader(String text, ImageIcon icon, String tooltip, Runnable action, int width, int height, int buttonSize)
+	{
+		JLabel label = new JLabel(text);
+		label.setForeground(ColorScheme.TEXT_COLOR);
+		label.setHorizontalAlignment(SwingConstants.CENTER);
+
+		JPanel spacer = new JPanel();
+		spacer.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		fixedSize(spacer, buttonSize, buttonSize);
+
+		JPanel row = new JPanel(new BorderLayout());
+		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		fixedSize(row, width, height);
+		row.add(iconButton(icon, tooltip, action, buttonSize), BorderLayout.WEST);
+		row.add(label, BorderLayout.CENTER);
+		row.add(spacer, BorderLayout.EAST);
+		return row;
+	}
+
+	public static JLabel roleIconLabel(ItemManager itemManager, String roleName, int width, int height)
+	{
+		JLabel label = new JLabel();
+		label.setPreferredSize(new Dimension(width, height));
+		label.setMaximumSize(new Dimension(width, height));
+		label.setHorizontalAlignment(SwingConstants.CENTER);
+
+		BaRole role = BaRole.fromDisplayName(roleName);
+		if (role != null)
+		{
+			AsyncBufferedImage icon = itemManager.getImage(role.getPlayerIconItemId());
+			icon.onLoaded(() -> SwingUtilities.invokeLater(() -> label.setIcon(
+					new ImageIcon(icon.getScaledInstance(width, width, java.awt.Image.SCALE_SMOOTH)))));
+		}
+		return label;
+	}
+
+	public static JLabel plainLabel(String text, boolean bold)
+	{
+		JLabel label = new JLabel(text);
+		label.setForeground(ColorScheme.TEXT_COLOR);
+		if (bold) label.setFont(label.getFont().deriveFont(Font.BOLD));
+		label.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return label;
 	}
 
 	public static void styleActionButton(AbstractButton button)
@@ -125,6 +210,34 @@ public final class BaPanelUi
 		return panel;
 	}
 
+	public static JPanel verticalPanel(Color background, int width)
+	{
+		JPanel panel = verticalPanel(background);
+		panel.setMaximumSize(new Dimension(width, Integer.MAX_VALUE));
+		panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return panel;
+	}
+
+	public static JTextPane textBlock(String text, int width, int height, int alignment)
+	{
+		JTextPane textPane = new JTextPane();
+		textPane.setText(text);
+		textPane.setForeground(ColorScheme.TEXT_COLOR);
+		textPane.setEditable(false);
+		textPane.setFocusable(false);
+		textPane.setOpaque(false);
+		textPane.setBorder(null);
+
+		StyledDocument document = textPane.getStyledDocument();
+		SimpleAttributeSet attributes = new SimpleAttributeSet();
+		StyleConstants.setAlignment(attributes, alignment);
+		StyleConstants.setBold(attributes, false);
+		document.setParagraphAttributes(0, document.getLength(), attributes, false);
+		document.setCharacterAttributes(0, document.getLength(), attributes, false);
+		fixedSize(textPane, width, height);
+		return textPane;
+	}
+
 	public static JScrollPane wrapTextArea(JTextArea area, int width, int height)
 	{
 		JScrollPane scrollPane = new JScrollPane(area);
@@ -149,6 +262,11 @@ public final class BaPanelUi
 	public static DefaultListCellRenderer comboOptionRenderer(int controlHeight)
 	{
 		return new ComboOptionRenderer(controlHeight);
+	}
+
+	public static DefaultListCellRenderer comboOptionRenderer()
+	{
+		return new ComboOptionRenderer(0);
 	}
 
 	public static void styleTextInput(JTextComponent component, int width, int height)
@@ -216,6 +334,15 @@ public final class BaPanelUi
 		component.setAlignmentX(Component.LEFT_ALIGNMENT);
 	}
 
+	public static String escapeHtml(String text)
+	{
+		return text == null ? "" : text
+				.replace("&", "&amp;")
+				.replace("<", "&lt;")
+				.replace(">", "&gt;")
+				.replace("\"", "&quot;");
+	}
+
 	public static void selectComboValue(JComboBox<ComboOption> comboBox, String id)
 	{
 		for (int i = 0; i < comboBox.getItemCount(); i++)
@@ -235,18 +362,14 @@ public final class BaPanelUi
 		}
 	}
 
-	public static void setComboItems(JComboBox<ComboOption> comboBox, List<ComboOption> items, String selectedId)
-	{
-		comboBox.setModel(new DefaultComboBoxModel<>(items.toArray(new ComboOption[0])));
-		selectComboValue(comboBox, selectedId);
-	}
-
 	public static String selectedId(JComboBox<ComboOption> comboBox)
 	{
 		ComboOption item = (ComboOption) comboBox.getSelectedItem();
 		return item == null ? null : item.getId();
 	}
 
+	@AllArgsConstructor
+	@Getter
 	public static class ComboOption
 	{
 		private final String id;
@@ -258,23 +381,6 @@ public final class BaPanelUi
 			this(id, label, false);
 		}
 
-		public ComboOption(String id, String label, boolean builtIn)
-		{
-			this.id = id;
-			this.label = label;
-			this.builtIn = builtIn;
-		}
-
-		public String getId()
-		{
-			return id;
-		}
-
-		public boolean isBuiltIn()
-		{
-			return builtIn;
-		}
-
 		@Override
 		public String toString()
 		{
@@ -282,14 +388,10 @@ public final class BaPanelUi
 		}
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	private static class ComboOptionRenderer extends DefaultListCellRenderer
 	{
 		private final int controlHeight;
-
-		private ComboOptionRenderer(int controlHeight)
-		{
-			this.controlHeight = controlHeight;
-		}
 
 		@Override
 		public Component getListCellRendererComponent(
@@ -306,7 +408,7 @@ public final class BaPanelUi
 					isSelected,
 					cellHasFocus
 			);
-			label.setPreferredSize(new Dimension(label.getPreferredSize().width, controlHeight));
+			if (controlHeight > 0) label.setPreferredSize(new Dimension(label.getPreferredSize().width, controlHeight));
 			if (!isSelected)
 			{
 				label.setForeground(value instanceof ComboOption && ((ComboOption) value).isBuiltIn()
@@ -317,15 +419,11 @@ public final class BaPanelUi
 		}
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	private static class FixedPopupWidthComboBox<T> extends JComboBox<T>
 	{
 		private final int popupWidth;
 		private boolean layingOut;
-
-		private FixedPopupWidthComboBox(int popupWidth)
-		{
-			this.popupWidth = popupWidth;
-		}
 
 		@Override
 		public void doLayout()

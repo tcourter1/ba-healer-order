@@ -9,7 +9,6 @@ import com.bahealerorder.common.BaWaveOverviewSnapshot;
 import com.bahealerorder.common.BaWaveOverviewStore;
 import com.bahealerorder.sidepanel.BaPanelUi;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
@@ -27,12 +26,14 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
-import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.util.SwingUtil;
@@ -113,10 +114,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	void refreshSelectors()
 	{
-		if (isPopupOpen(runCombo) || isPopupOpen(waveCombo))
-		{
-			return;
-		}
+		if (isPopupOpen(runCombo) || isPopupOpen(waveCombo)) return;
 
 		refreshingControls = true;
 
@@ -164,10 +162,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private boolean isPopupOpen(JComboBox<?> comboBox)
 	{
-		if (!comboBox.isDisplayable())
-		{
-			return false;
-		}
+		if (!comboBox.isDisplayable()) return false;
 
 		try
 		{
@@ -210,7 +205,7 @@ class WaveOverviewSelectorPanel extends JPanel
 		deleteRunButton.setIcon(BaIcons.trashIcon());
 		deleteRunButton.setToolTipText("Delete selected run");
 		SwingUtil.removeButtonDecorations(deleteRunButton);
-		fixedSize(deleteRunButton, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(deleteRunButton, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT);
 		deleteRunButton.addActionListener(event -> deleteSelectedRun());
 		return deleteRunButton;
 	}
@@ -292,20 +287,14 @@ class WaveOverviewSelectorPanel extends JPanel
 			SelectorItem item = model.getElementAt(i);
 			if (selectedRunId == null ? item.value == null : selectedRunId.equals(item.value))
 			{
-				if (selectedRunId != null || item.value instanceof String)
-				{
-					return item;
-				}
+				if (selectedRunId != null || item.value instanceof String) return item;
 			}
 		}
 
 		for (int i = 0; i < model.getSize(); i++)
 		{
 			SelectorItem item = model.getElementAt(i);
-			if (item.value instanceof String)
-			{
-				return item;
-			}
+			if (item.value instanceof String) return item;
 		}
 
 		return fallback;
@@ -328,11 +317,7 @@ class WaveOverviewSelectorPanel extends JPanel
 		BaWaveOverviewSnapshot snapshot = run.getSnapshot(wave);
 		if (snapshot == null || snapshot.getDuration() == null || snapshot.getDuration().isEmpty()) return null;
 
-		return formatWaveDropdownDuration(snapshot.getDuration());
-	}
-
-	private String formatWaveDropdownDuration(String duration)
-	{
+		String duration = snapshot.getDuration();
 		return duration.startsWith("0:") ? duration.substring(2) : duration;
 	}
 
@@ -345,7 +330,7 @@ class WaveOverviewSelectorPanel extends JPanel
 		String age = formatRunDropdownAge(run);
 		return "<html><table width=\"" + RUN_DROPDOWN_TABLE_WIDTH + "\" cellpadding=\"0\" cellspacing=\"0\"><tr>"
 				+ "<td>" + formatRoleHtml(role) + formatRunAgeHtml(age) + "</td>"
-				+ "<td width=\"" + RUN_STATUS_HTML_WIDTH + "\" align=\"right\">" + escapeHtml(status) + "</td>"
+				+ "<td width=\"" + RUN_STATUS_HTML_WIDTH + "\" align=\"right\">" + BaPanelUi.escapeHtml(status) + "</td>"
 				+ "</tr></table></html>";
 	}
 
@@ -359,15 +344,12 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private String formatRunAgeHtml(String age)
 	{
-		return age == null || age.isEmpty() ? "" : " <i>" + escapeHtml(age) + "</i>";
+		return age == null || age.isEmpty() ? "" : " <i>" + BaPanelUi.escapeHtml(age) + "</i>";
 	}
 
 	private String formatRunDropdownAge(BaWaveOverviewRun run)
 	{
-		if (run.isCurrent())
-		{
-			return run.isComplete() ? "" : "in progress";
-		}
+		if (run.isCurrent()) return run.isComplete() ? "" : "in progress";
 
 		String age = formatRunAge(run.getName());
 		return age;
@@ -381,14 +363,9 @@ class WaveOverviewSelectorPanel extends JPanel
 	private String formatRoleHtml(String roleName)
 	{
 		BaRole role = BaRole.fromDisplayName(roleName);
-		String escapedRoleName = escapeHtml(roleName == null || roleName.isEmpty() ? "Unknown" : roleName);
-		String color = getRoleHtmlColor(role);
+		String escapedRoleName = BaPanelUi.escapeHtml(roleName == null || roleName.isEmpty() ? "Unknown" : roleName);
+		String color = BaRoleColors.htmlColor(role);
 		return color == null ? escapedRoleName : "<font color=\"" + color + "\">" + escapedRoleName + "</font>";
-	}
-
-	private String getRoleHtmlColor(BaRole role)
-	{
-		return BaRoleColors.htmlColor(role);
 	}
 
 	private String formatRunAge(String runName)
@@ -425,27 +402,9 @@ class WaveOverviewSelectorPanel extends JPanel
 		}
 	}
 
-	private String escapeHtml(String text)
-	{
-		return text
-				.replace("&", "&amp;")
-				.replace("<", "&lt;")
-				.replace(">", "&gt;")
-				.replace("\"", "&quot;");
-	}
-
 	private static void styleCombo(JComboBox<?> comboBox, int width)
 	{
 		BaPanelUi.styleCombo(comboBox, width, CONTROL_HEIGHT);
-	}
-
-	private static void fixedSize(JComponent component, int width, int height)
-	{
-		Dimension size = new Dimension(width, height);
-		component.setPreferredSize(size);
-		component.setMinimumSize(size);
-		component.setMaximumSize(size);
-		component.setAlignmentX(Component.LEFT_ALIGNMENT);
 	}
 
 	private static class SelectorItemRenderer extends DefaultListCellRenderer
@@ -473,6 +432,8 @@ class WaveOverviewSelectorPanel extends JPanel
 		}
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	@EqualsAndHashCode(of = "value")
 	private static class SelectorItem
 	{
 		private final Object value;
@@ -484,29 +445,10 @@ class WaveOverviewSelectorPanel extends JPanel
 			this(value, label, label);
 		}
 
-		private SelectorItem(Object value, String label, String selectedLabel)
-		{
-			this.value = value;
-			this.label = label;
-			this.selectedLabel = selectedLabel;
-		}
-
 		@Override
 		public String toString()
 		{
 			return label;
-		}
-
-		@Override
-		public boolean equals(Object other)
-		{
-			return other instanceof SelectorItem && java.util.Objects.equals(value, ((SelectorItem) other).value);
-		}
-
-		@Override
-		public int hashCode()
-		{
-			return java.util.Objects.hashCode(value);
 		}
 	}
 }

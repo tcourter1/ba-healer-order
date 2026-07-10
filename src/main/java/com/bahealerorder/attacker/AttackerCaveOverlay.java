@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import javax.inject.Inject;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.Perspective;
@@ -26,11 +25,9 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
 
-@Slf4j
 public class AttackerCaveOverlay extends Overlay
 {
     private static final Color TEXT_SHADOW_COLOR = Color.BLACK;
-    private static final int OVERLAY_DEBUG_INTERVAL_TICKS = 25;
     private static final String PENANCE_CAVE_NAME = "penance cave";
     private static final int CAVE_LABEL_SCENE_Y_OFFSET = 2;
 
@@ -62,7 +59,6 @@ public class AttackerCaveOverlay extends Overlay
     private final BaUtilitiesConfig config;
 
     private AttackerController controller;
-    private int lastOverlayDebugTick = -OVERLAY_DEBUG_INTERVAL_TICKS;
 
     @Inject
     private AttackerCaveOverlay(Client client, BaUtilitiesConfig config)
@@ -82,79 +78,31 @@ public class AttackerCaveOverlay extends Overlay
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        if (controller == null)
-        {
-            return null;
-        }
+        if (controller == null) return null;
 
-        boolean shouldRender = controller.shouldRenderSpawnCountOverlay();
-        int tick = client.getTickCount();
-
-        if (tick - lastOverlayDebugTick >= OVERLAY_DEBUG_INTERVAL_TICKS)
-        {
-            lastOverlayDebugTick = tick;
-
-            log.debug(
-                    "Attacker cave overlay render: shouldRender={}, currentWave={}, rangerScene=({}, {}), fighterScene=({}, {}), textSize={}, textColor={}, heightOffset={}, horizontalOffset={}",
-                    shouldRender,
-                    controller.getCurrentWave(),
-                    getRangerSceneX(),
-                    getRangerSceneY(),
-                    getFighterSceneX(),
-                    getFighterSceneY(),
-                    config.attackerSpawnCountTextSize(),
-                    config.attackerSpawnCountTextColor(),
-                    config.attackerSpawnCountHeightOffset(),
-                    config.attackerSpawnCountHorizontalOffset()
-            );
-        }
-
-        if (!shouldRender)
-        {
-            return null;
-        }
+        if (!controller.shouldRenderSpawnCountOverlay()) return null;
 
         List<TileObject> caves = findPenanceCaves();
+        boolean wave10 = controller.getCurrentWave() == 10;
+        int horizontalOffset = config.attackerSpawnCountHorizontalOffset();
 
         renderText(
                 graphics,
                 caves.size() > 0 ? toLabelLocalPoint(caves.get(0)) : null,
-                getRangerSceneX(),
-                getRangerSceneY(),
+                (wave10 ? WAVE_10_RANGER_CAVE_SCENE_X : NORMAL_RANGER_CAVE_SCENE_X) + horizontalOffset,
+                wave10 ? WAVE_10_RANGER_CAVE_SCENE_Y : NORMAL_RANGER_CAVE_SCENE_Y,
                 controller.getRangersSpawned() + " / " + controller.getRangerTotal()
         );
 
         renderText(
                 graphics,
                 caves.size() > 1 ? toLabelLocalPoint(caves.get(1)) : null,
-                getFighterSceneX(),
-                getFighterSceneY(),
+                (wave10 ? WAVE_10_FIGHTER_CAVE_SCENE_X : NORMAL_FIGHTER_CAVE_SCENE_X) + horizontalOffset,
+                wave10 ? WAVE_10_FIGHTER_CAVE_SCENE_Y : NORMAL_FIGHTER_CAVE_SCENE_Y,
                 controller.getFightersSpawned() + " / " + controller.getFighterTotal()
         );
 
         return null;
-    }
-
-    private int getRangerSceneX()
-    {
-        return (controller.getCurrentWave() == 10 ? WAVE_10_RANGER_CAVE_SCENE_X : NORMAL_RANGER_CAVE_SCENE_X)
-                + config.attackerSpawnCountHorizontalOffset();
-    }
-
-    private int getRangerSceneY()
-    {
-        return controller.getCurrentWave() == 10 ? WAVE_10_RANGER_CAVE_SCENE_Y : NORMAL_RANGER_CAVE_SCENE_Y;
-    }
-
-    private int getFighterSceneX()
-    {
-        return (controller.getCurrentWave() == 10 ? WAVE_10_FIGHTER_CAVE_SCENE_X : NORMAL_FIGHTER_CAVE_SCENE_X)
-                + config.attackerSpawnCountHorizontalOffset();
-    }
-
-    private int getFighterSceneY()
-    {
-        return controller.getCurrentWave() == 10 ? WAVE_10_FIGHTER_CAVE_SCENE_Y : NORMAL_FIGHTER_CAVE_SCENE_Y;
     }
 
     private List<TileObject> findPenanceCaves()
@@ -169,22 +117,13 @@ public class AttackerCaveOverlay extends Overlay
         {
             for (Tile tile : column)
             {
-                if (tile == null)
-                {
-                    continue;
-                }
+                if (tile == null) continue;
 
                 TileObject cave = getPenanceCave(tile);
 
-                if (cave == null)
-                {
-                    continue;
-                }
+                if (cave == null) continue;
 
-                if (!seenCaves.add(cave.getHash()))
-                {
-                    continue;
-                }
+                if (!seenCaves.add(cave.getHash())) continue;
 
                 caves.add(cave);
             }
@@ -202,20 +141,14 @@ public class AttackerCaveOverlay extends Overlay
         {
             TileObject cave = getPenanceCave(object);
 
-            if (cave != null)
-            {
-                return cave;
-            }
+            if (cave != null) return cave;
         }
 
         for (TileObject object : tile.getGameObjects())
         {
             TileObject cave = getPenanceCave(object);
 
-            if (cave != null)
-            {
-                return cave;
-            }
+            if (cave != null) return cave;
         }
 
         return null;
@@ -223,10 +156,7 @@ public class AttackerCaveOverlay extends Overlay
 
     private TileObject getPenanceCave(TileObject object)
     {
-        if (object == null)
-        {
-            return null;
-        }
+        if (object == null) return null;
 
         ObjectComposition objectComposition = client.getObjectDefinition(object.getId());
 
@@ -249,10 +179,7 @@ public class AttackerCaveOverlay extends Overlay
 
     private void renderText(Graphics2D graphics, LocalPoint localPoint, int fallbackSceneX, int fallbackSceneY, String text)
     {
-        if (text == null)
-        {
-            return;
-        }
+        if (text == null) return;
 
         if (localPoint == null)
         {
@@ -261,12 +188,6 @@ public class AttackerCaveOverlay extends Overlay
 
         if (localPoint == null)
         {
-            log.debug(
-                    "Attacker cave overlay local point was null for scene=({}, {}), text='{}'",
-                    fallbackSceneX,
-                    fallbackSceneY,
-                    text
-            );
             return;
         }
 
@@ -285,26 +206,10 @@ public class AttackerCaveOverlay extends Overlay
 
             if (textLocation == null)
             {
-                log.debug(
-                        "Attacker cave overlay canvas text location was null for scene=({}, {}), localPoint={}, text='{}'",
-                        fallbackSceneX,
-                        fallbackSceneY,
-                        localPoint,
-                        text
-                );
                 return;
             }
 
             renderOutlinedText(graphics, textLocation, text, config.attackerSpawnCountTextColor());
-
-            log.debug(
-                    "Attacker cave overlay rendered text='{}' at scene=({}, {}), localPoint={}, canvas={}",
-                    text,
-                    fallbackSceneX,
-                    fallbackSceneY,
-                    localPoint,
-                    textLocation
-            );
         }
         finally
         {

@@ -6,6 +6,7 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.util.function.Consumer;
 import javax.swing.ImageIcon;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ImageUtil;
@@ -13,15 +14,16 @@ import net.runelite.client.util.ImageUtil;
 public final class BaIcons
 {
 	private static final ImageIcon EDIT_ICON = loadIcon("edit_icon.png");
-	private static final ImageIcon EDIT_HOVER_ICON = loadHoverIcon("edit_icon.png");
 	private static final ImageIcon VISIBLE_ICON = loadIcon("visible_icon.png");
-	private static final ImageIcon VISIBLE_HOVER_ICON = loadHoverIcon("visible_icon.png");
 	private static final ImageIcon INFO_ICON = loadIcon("info_icon.png");
 	private static final ImageIcon GLOBE_ICON = loadIcon("globe_icon.png");
 	private static final ImageIcon WAVE_OVERVIEW_ICON = loadIcon("wave_overview_icon.png");
 	private static final ImageIcon HEALER_CODE_ICON = loadIcon("healer_code_icon.png");
+	private static final ImageIcon TRASH_ICON = createTrashIcon();
+	private static final ImageIcon BACK_ICON = createBackIcon();
+	private static final ImageIcon CLOSE_ICON = createCloseIcon();
+	private static final ImageIcon POPOUT_ICON = createPopoutIcon();
 	private static final ImageIcon PLUS_ICON = createPlusIcon(Color.WHITE);
-	private static final ImageIcon PLUS_HOVER_ICON = createPlusIcon(Color.WHITE);
 	private static final ImageIcon VERTICAL_ELLIPSIS_ICON = createVerticalEllipsisIcon();
 	private static final ImageIcon IMPORT_ICON = loadIcon("import_icon.png");
 	private static final ImageIcon EXPORT_ICON = loadIcon("export_icon.png");
@@ -43,32 +45,39 @@ public final class BaIcons
 		return new ImageIcon(ImageUtil.loadImageResource(BaIcons.class, path));
 	}
 
-	private static ImageIcon loadHoverIcon(String path)
-	{
-		return new ImageIcon(ImageUtil.alphaOffset(ImageUtil.loadImageResource(BaIcons.class, path), -100));
-	}
-
 	private static ImageIcon scaledIcon(ImageIcon icon, int size)
 	{
 		return new ImageIcon(icon.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH));
 	}
 
-	public static ImageIcon trashIcon()
+	private static ImageIcon drawIcon(int size, Consumer<Graphics2D> draw)
 	{
-		int size = 14;
 		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D graphics = image.createGraphics();
 		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(ColorScheme.TEXT_COLOR);
-		graphics.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		graphics.drawLine(5, 3, 9, 3);
-		graphics.drawLine(6, 2, 8, 2);
-		graphics.drawLine(3, 5, 11, 5);
-		graphics.drawRoundRect(4, 6, 6, 6, 2, 2);
-		graphics.drawLine(6, 8, 6, 10);
-		graphics.drawLine(8, 8, 8, 10);
+		draw.accept(graphics);
 		graphics.dispose();
 		return new ImageIcon(image);
+	}
+
+	private static ImageIcon createTrashIcon()
+	{
+		return drawIcon(14, graphics ->
+		{
+			graphics.setColor(ColorScheme.TEXT_COLOR);
+			graphics.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			graphics.drawLine(5, 3, 9, 3);
+			graphics.drawLine(6, 2, 8, 2);
+			graphics.drawLine(3, 5, 11, 5);
+			graphics.drawRoundRect(4, 6, 6, 6, 2, 2);
+			graphics.drawLine(6, 8, 6, 10);
+			graphics.drawLine(8, 8, 8, 10);
+		});
+	}
+
+	public static ImageIcon trashIcon()
+	{
+		return TRASH_ICON;
 	}
 
 	public static ImageIcon pencilIcon()
@@ -76,29 +85,14 @@ public final class BaIcons
 		return EDIT_ICON;
 	}
 
-	public static ImageIcon pencilHoverIcon()
-	{
-		return EDIT_HOVER_ICON;
-	}
-
 	public static ImageIcon eyeIcon()
 	{
 		return VISIBLE_ICON;
 	}
 
-	public static ImageIcon eyeHoverIcon()
-	{
-		return VISIBLE_HOVER_ICON;
-	}
-
 	public static ImageIcon plusIcon()
 	{
 		return PLUS_ICON;
-	}
-
-	public static ImageIcon plusHoverIcon()
-	{
-		return PLUS_HOVER_ICON;
 	}
 
 	public static ImageIcon verticalEllipsisIcon()
@@ -138,16 +132,18 @@ public final class BaIcons
 
 	public static ImageIcon backIcon()
 	{
-		int size = 14;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(ColorScheme.TEXT_COLOR);
-		graphics.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		graphics.drawLine(9, 3, 4, 7);
-		graphics.drawLine(4, 7, 9, 11);
-		graphics.dispose();
-		return new ImageIcon(image);
+		return BACK_ICON;
+	}
+
+	private static ImageIcon createBackIcon()
+	{
+		return drawIcon(14, graphics ->
+		{
+			graphics.setColor(ColorScheme.TEXT_COLOR);
+			graphics.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			graphics.drawLine(9, 3, 4, 7);
+			graphics.drawLine(4, 7, 9, 11);
+		});
 	}
 
 	public static ImageIcon settingsIcon()
@@ -172,97 +168,84 @@ public final class BaIcons
 
 	private static ImageIcon createPlusIcon(Color color)
 	{
-		int size = 16;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(color);
-		graphics.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		graphics.drawLine(8, 4, 8, 12);
-		graphics.drawLine(4, 8, 12, 8);
-		graphics.dispose();
-		return new ImageIcon(image);
+		return drawIcon(16, graphics ->
+		{
+			graphics.setColor(color);
+			graphics.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			graphics.drawLine(8, 4, 8, 12);
+			graphics.drawLine(4, 8, 12, 8);
+		});
 	}
 
 	private static ImageIcon createCheckboxIcon(boolean selected)
 	{
-		int size = 18;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		graphics.setColor(Color.WHITE);
-		graphics.drawRoundRect(3, 3, 12, 12, 3, 3);
-		if (selected)
+		return drawIcon(18, graphics ->
 		{
-			graphics.setColor(ColorScheme.PROGRESS_COMPLETE_COLOR);
-			graphics.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-			graphics.drawLine(5, 9, 8, 12);
-			graphics.drawLine(8, 12, 14, 5);
-		}
-		graphics.dispose();
-		return new ImageIcon(image);
+			graphics.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			graphics.setColor(Color.WHITE);
+			graphics.drawRoundRect(3, 3, 12, 12, 3, 3);
+			if (selected)
+			{
+				graphics.setColor(ColorScheme.PROGRESS_COMPLETE_COLOR);
+				graphics.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+				graphics.drawLine(5, 9, 8, 12);
+				graphics.drawLine(8, 12, 14, 5);
+			}
+		});
 	}
 
 	private static ImageIcon createVerticalEllipsisIcon()
 	{
-		int size = 16;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(ColorScheme.TEXT_COLOR);
-		graphics.fillOval(7, 3, 2, 2);
-		graphics.fillOval(7, 7, 2, 2);
-		graphics.fillOval(7, 11, 2, 2);
-		graphics.dispose();
-		return new ImageIcon(image);
+		return drawIcon(16, graphics ->
+		{
+			graphics.setColor(ColorScheme.TEXT_COLOR);
+			graphics.fillOval(7, 3, 2, 2);
+			graphics.fillOval(7, 7, 2, 2);
+			graphics.fillOval(7, 11, 2, 2);
+		});
 	}
 
 	private static ImageIcon createClockIcon()
 	{
-		int size = 14;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(ColorScheme.TEXT_COLOR);
-		graphics.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		graphics.drawOval(2, 2, 10, 10);
-		graphics.drawLine(7, 7, 7, 4);
-		graphics.drawLine(7, 7, 10, 8);
-		graphics.dispose();
-		return new ImageIcon(image);
+		return drawIcon(14, graphics ->
+		{
+			graphics.setColor(ColorScheme.TEXT_COLOR);
+			graphics.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			graphics.drawOval(2, 2, 10, 10);
+			graphics.drawLine(7, 7, 7, 4);
+			graphics.drawLine(7, 7, 10, 8);
+		});
 	}
 
 	private static ImageIcon createNotesIcon()
 	{
-		int size = 16;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(ColorScheme.TEXT_COLOR);
-		graphics.setStroke(new BasicStroke(1.3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		graphics.drawRoundRect(3, 2, 10, 12, 2, 2);
-		graphics.drawLine(10, 2, 13, 5);
-		graphics.drawLine(10, 2, 10, 5);
-		graphics.drawLine(10, 5, 13, 5);
-		graphics.drawLine(5, 7, 11, 7);
-		graphics.drawLine(5, 10, 11, 10);
-		graphics.dispose();
-		return new ImageIcon(image);
+		return drawIcon(16, graphics ->
+		{
+			graphics.setColor(ColorScheme.TEXT_COLOR);
+			graphics.setStroke(new BasicStroke(1.3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			graphics.drawRoundRect(3, 2, 10, 12, 2, 2);
+			graphics.drawLine(10, 2, 13, 5);
+			graphics.drawLine(10, 2, 10, 5);
+			graphics.drawLine(10, 5, 13, 5);
+			graphics.drawLine(5, 7, 11, 7);
+			graphics.drawLine(5, 10, 11, 10);
+		});
 	}
 
 	public static ImageIcon closeIcon()
 	{
-		int size = 12;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(ColorScheme.TEXT_COLOR);
-		graphics.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		graphics.drawLine(3, 3, 9, 9);
-		graphics.drawLine(9, 3, 3, 9);
-		graphics.dispose();
-		return new ImageIcon(image);
+		return CLOSE_ICON;
+	}
+
+	private static ImageIcon createCloseIcon()
+	{
+		return drawIcon(12, graphics ->
+		{
+			graphics.setColor(ColorScheme.TEXT_COLOR);
+			graphics.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			graphics.drawLine(3, 3, 9, 9);
+			graphics.drawLine(9, 3, 3, 9);
+		});
 	}
 
 	public static ImageIcon infoIcon()
@@ -272,18 +255,20 @@ public final class BaIcons
 
 	public static ImageIcon popoutIcon()
 	{
-		int size = 14;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(ColorScheme.TEXT_COLOR);
-		graphics.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		graphics.drawRoundRect(1, 5, 8, 8, 2, 2);
-		graphics.drawLine(6, 1, 12, 1);
-		graphics.drawLine(12, 1, 12, 7);
-		graphics.drawLine(6, 7, 12, 1);
-		graphics.dispose();
-		return new ImageIcon(image);
+		return POPOUT_ICON;
+	}
+
+	private static ImageIcon createPopoutIcon()
+	{
+		return drawIcon(14, graphics ->
+		{
+			graphics.setColor(ColorScheme.TEXT_COLOR);
+			graphics.setStroke(new BasicStroke(1.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			graphics.drawRoundRect(1, 5, 8, 8, 2, 2);
+			graphics.drawLine(6, 1, 12, 1);
+			graphics.drawLine(12, 1, 12, 7);
+			graphics.drawLine(6, 7, 12, 1);
+		});
 	}
 
 	public static ImageIcon globeIcon(int size)
@@ -303,29 +288,27 @@ public final class BaIcons
 
 	public static ImageIcon tileMarkerIcon(int size)
 	{
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(ColorScheme.TEXT_COLOR);
-		graphics.setStroke(new BasicStroke(Math.max(1.4f, size / 14f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-
-		int margin = Math.max(3, size / 7);
-		int cell = Math.max(4, (size - margin * 2) / 3);
-		int gridSize = cell * 3;
-		int start = (size - gridSize) / 2;
-
-		for (int i = 0; i <= 3; i++)
+		return drawIcon(size, graphics ->
 		{
-			int position = start + i * cell;
-			graphics.drawLine(start, position, start + gridSize, position);
-			graphics.drawLine(position, start, position, start + gridSize);
-		}
+			graphics.setColor(ColorScheme.TEXT_COLOR);
+			graphics.setStroke(new BasicStroke(Math.max(1.4f, size / 14f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
-		graphics.setColor(ColorScheme.PROGRESS_COMPLETE_COLOR);
-		graphics.fillOval(start + cell + cell / 3, start + cell + cell / 3, Math.max(5, cell), Math.max(5, cell));
-		graphics.setColor(ColorScheme.DARK_GRAY_COLOR);
-		graphics.drawOval(start + cell + cell / 3, start + cell + cell / 3, Math.max(5, cell), Math.max(5, cell));
-		graphics.dispose();
-		return new ImageIcon(image);
+			int margin = Math.max(3, size / 7);
+			int cell = Math.max(4, (size - margin * 2) / 3);
+			int gridSize = cell * 3;
+			int start = (size - gridSize) / 2;
+
+			for (int i = 0; i <= 3; i++)
+			{
+				int position = start + i * cell;
+				graphics.drawLine(start, position, start + gridSize, position);
+				graphics.drawLine(position, start, position, start + gridSize);
+			}
+
+			graphics.setColor(ColorScheme.PROGRESS_COMPLETE_COLOR);
+			graphics.fillOval(start + cell + cell / 3, start + cell + cell / 3, Math.max(5, cell), Math.max(5, cell));
+			graphics.setColor(ColorScheme.DARK_GRAY_COLOR);
+			graphics.drawOval(start + cell + cell / 3, start + cell + cell / 3, Math.max(5, cell), Math.max(5, cell));
+		});
 	}
 }

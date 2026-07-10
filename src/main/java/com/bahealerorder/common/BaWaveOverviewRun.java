@@ -5,7 +5,9 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
 
+@Getter
 public class BaWaveOverviewRun
 {
 	private final String id;
@@ -34,29 +36,9 @@ public class BaWaveOverviewRun
 		this.current = current;
 	}
 
-	public String getId()
-	{
-		return id;
-	}
-
-	public String getName()
-	{
-		return name;
-	}
-
 	public BaWaveOverviewSnapshot getSnapshot(int wave)
 	{
 		return snapshotsByWave.get(wave);
-	}
-
-	public Map<Integer, BaWaveOverviewSnapshot> getSnapshotsByWave()
-	{
-		return snapshotsByWave;
-	}
-
-	public String getRoundDuration()
-	{
-		return roundDuration;
 	}
 
 	public List<String> getTeamNames()
@@ -69,21 +51,6 @@ public class BaWaveOverviewRun
 		}
 
 		return teamNames;
-	}
-
-	public List<BaTeamMember> getTeamMembers()
-	{
-		return teamMembers;
-	}
-
-	public String getPlayerRole()
-	{
-		return playerRole;
-	}
-
-	public boolean isCurrent()
-	{
-		return current;
 	}
 
 	public boolean isComplete()

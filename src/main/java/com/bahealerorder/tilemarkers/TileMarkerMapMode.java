@@ -1,5 +1,10 @@
 package com.bahealerorder.tilemarkers;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+@Getter
+@RequiredArgsConstructor
 public enum TileMarkerMapMode
 {
 	FULL_MAP("Full Map", true),
@@ -8,35 +13,13 @@ public enum TileMarkerMapMode
 	private final String displayName;
 	private final boolean fullArena;
 
-	TileMarkerMapMode(String displayName, boolean fullArena)
-	{
-		this.displayName = displayName;
-		this.fullArena = fullArena;
-	}
-
-	public String getDisplayName()
-	{
-		return displayName;
-	}
-
-	public boolean isFullArena()
-	{
-		return fullArena;
-	}
-
 	public static TileMarkerMapMode fromName(String name)
 	{
-		if (name == null)
-		{
-			return FULL_MAP;
-		}
+		if (name == null) return FULL_MAP;
 
 		for (TileMarkerMapMode mode : values())
 		{
-			if (mode.name().equals(name))
-			{
-				return mode;
-			}
+			if (mode.name().equals(name)) return mode;
 		}
 
 		throw new IllegalArgumentException("Unknown tile marker map mode: " + name);

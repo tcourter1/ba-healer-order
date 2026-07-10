@@ -9,9 +9,9 @@ import com.bahealerorder.common.BaWaveLifecycleService;
 import com.bahealerorder.common.BaWaveOverviewService;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Actor;
@@ -27,7 +27,6 @@ import net.runelite.api.TileItem;
 import net.runelite.api.events.ActorDeath;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ItemDespawned;
 import net.runelite.api.events.ItemSpawned;
 import net.runelite.api.events.NpcDespawned;
@@ -49,7 +48,7 @@ public class DefenderController
 	private final BaWaveLifecycleService waveLifecycleService;
 	private final BaRoleDetector roleDetector;
 	private final DefenderGroundItemOverlay groundItemOverlay;
-	private final Map<NPC, BaOverviewNpcType> visibleRunnerNpcs = new HashMap<>();
+	private final Set<NPC> visibleRunnerNpcs = new HashSet<>();
 	private final List<DefenderGroundItem> groundItems = new ArrayList<>();
 
 	@Inject
@@ -93,7 +92,7 @@ public class DefenderController
 		NPC npc = event.getNpc();
 		if (BaNpcIds.getOverviewType(npc) != BaOverviewNpcType.RUNNER) return;
 
-		visibleRunnerNpcs.put(npc, BaOverviewNpcType.RUNNER);
+		visibleRunnerNpcs.add(npc);
 		waveOverviewService.recordSpawn(BaOverviewNpcType.RUNNER, npc.getIndex());
 	}
 
@@ -117,32 +116,28 @@ public class DefenderController
 		}
 	}
 
-	public void onGameTick(GameTick event)
+	public void onGameTick()
 	{
 		if (!waveLifecycleService.isWaveActive()) return;
 
-		for (Map.Entry<NPC, BaOverviewNpcType> entry : visibleRunnerNpcs.entrySet())
+		for (NPC npc : visibleRunnerNpcs)
 		{
-			NPC npc = entry.getKey();
-			if (npc != null && npc.getHealthRatio() == 0)
+			if (npc.getHealthRatio() == 0)
 			{
-				waveOverviewService.recordDeath(entry.getValue(), npc.getIndex());
+				waveOverviewService.recordDeath(BaOverviewNpcType.RUNNER, npc.getIndex());
 			}
 		}
 	}
 
 	public void onWaveStarted()
 	{
-		resetWaveState();
+		resetState();
 		refreshGroundItems();
 	}
 
 	public void onItemSpawned(ItemSpawned event)
 	{
-		if (!waveLifecycleService.isWaveActive())
-		{
-			return;
-		}
+		if (!waveLifecycleService.isWaveActive()) return;
 
 		DefenderGroundItem groundItem = createGroundItem(event.getTile(), event.getItem());
 
@@ -154,51 +149,24 @@ public class DefenderController
 
 	public void onItemDespawned(ItemDespawned event)
 	{
-		if (!waveLifecycleService.isWaveActive())
-		{
-			return;
-		}
+		if (!waveLifecycleService.isWaveActive()) return;
 
 		removeGroundItem(event.getTile(), event.getItem());
 	}
 
 	public void onWaveEnded()
 	{
-		resetWaveState();
-	}
-
-	public boolean shouldShowGroundItemOverlay()
-	{
-		return isDefenderRole()
-				&& waveLifecycleService.isWaveActive()
-				&& !getHighlightedGroundItems().isEmpty();
+		resetState();
 	}
 
 	public List<DefenderGroundItem> getHighlightedGroundItems()
 	{
-		if (!isDefenderRole() || !waveLifecycleService.isWaveActive())
-		{
-			return Collections.emptyList();
-		}
-
-		boolean highlightHammer = config.highlightDefenderHammer() && !hasHammer();
-
-		if (!highlightHammer)
-		{
-			return Collections.emptyList();
-		}
-
-		List<DefenderGroundItem> highlighted = new ArrayList<>();
-
-		for (DefenderGroundItem groundItem : groundItems)
-		{
-			if (groundItem.getType() == DefenderGroundItem.Type.HAMMER && highlightHammer)
-			{
-				highlighted.add(groundItem);
-			}
-		}
-
-		return highlighted;
+		return isDefenderRole()
+				&& waveLifecycleService.isWaveActive()
+				&& config.highlightDefenderHammer()
+				&& !hasHammer()
+				? new ArrayList<>(groundItems)
+				: Collections.emptyList();
 	}
 
 	public void onGameStateChanged(GameStateChanged event)
@@ -216,21 +184,16 @@ public class DefenderController
 		if (!waveLifecycleService.isWaveActive() || !(actor instanceof NPC)) return;
 
 		NPC npc = (NPC) actor;
-		if (visibleRunnerNpcs.containsKey(npc))
+		if (visibleRunnerNpcs.contains(npc))
 		{
 			waveOverviewService.recordDeath(BaOverviewNpcType.RUNNER, npc.getIndex());
 		}
 	}
 
-	private void resetWaveState()
+	private void resetState()
 	{
 		visibleRunnerNpcs.clear();
 		groundItems.clear();
-	}
-
-	private void resetState()
-	{
-		resetWaveState();
 	}
 
 	public boolean isDefenderRole()
@@ -245,10 +208,7 @@ public class DefenderController
 		{
 			for (Item item : inventory.getItems())
 			{
-				if (isHammer(item))
-				{
-					return true;
-				}
+				if (isHammer(item)) return true;
 			}
 		}
 
@@ -257,10 +217,7 @@ public class DefenderController
 
 	private boolean isHammer(Item item)
 	{
-		if (item == null || item.getId() <= 0)
-		{
-			return false;
-		}
+		if (item == null || item.getId() <= 0) return false;
 
 		return DefenderInventory.isHammer(item.getId(), getItemName(item.getId()));
 	}
@@ -269,10 +226,7 @@ public class DefenderController
 	{
 		PlayerComposition composition = client.getLocalPlayer() == null ? null : client.getLocalPlayer().getPlayerComposition();
 
-		if (composition == null)
-		{
-			return false;
-		}
+		if (composition == null) return false;
 
 		int itemId = composition.getEquipmentId(kitType);
 
@@ -281,39 +235,23 @@ public class DefenderController
 
 	private DefenderGroundItem createGroundItem(Tile tile, TileItem item)
 	{
-		if (tile == null || item == null || item.getId() <= 0)
-		{
-			return null;
-		}
+		if (tile == null || item == null || item.getId() <= 0) return null;
 
 		String name = getItemName(item.getId());
 
-		if (DefenderInventory.isHammer(item.getId(), name))
-		{
-			return new DefenderGroundItem(tile, item, DefenderGroundItem.Type.HAMMER);
-		}
+		if (DefenderInventory.isHammer(item.getId(), name)) return new DefenderGroundItem(tile, item, DefenderGroundItem.Type.HAMMER);
 
 		return null;
 	}
 
 	private String getItemName(int itemId)
 	{
-		try
-		{
-			return Text.removeTags(itemManager.getItemComposition(itemId).getName());
-		}
-		catch (RuntimeException ex)
-		{
-			return null;
-		}
+		return Text.removeTags(itemManager.getItemComposition(itemId).getName());
 	}
 
 	private void removeGroundItem(Tile tile, TileItem item)
 	{
-		if (tile == null || item == null)
-		{
-			return;
-		}
+		if (tile == null || item == null) return;
 
 		for (int i = 0; i < groundItems.size(); i++)
 		{
@@ -321,7 +259,7 @@ public class DefenderController
 
 			if (groundItem.getItem() == item
 					|| groundItem.getItem().getId() == item.getId()
-					&& sameWorldTile(groundItem.getTile(), tile))
+					&& groundItem.getTile().getWorldLocation().equals(tile.getWorldLocation()))
 			{
 				groundItems.remove(i);
 				return;
@@ -329,45 +267,25 @@ public class DefenderController
 		}
 	}
 
-	private boolean sameWorldTile(Tile first, Tile second)
-	{
-		return first != null
-				&& second != null
-				&& first.getWorldLocation() != null
-				&& first.getWorldLocation().equals(second.getWorldLocation());
-	}
-
 	private void refreshGroundItems()
 	{
 		groundItems.clear();
 
-		if (client.getTopLevelWorldView() == null || client.getTopLevelWorldView().getScene() == null)
-		{
-			return;
-		}
+		if (client.getTopLevelWorldView() == null || client.getTopLevelWorldView().getScene() == null) return;
 
 		Tile[][][] tiles = client.getTopLevelWorldView().getScene().getTiles();
 
 		for (Tile[][] plane : tiles)
 		{
-			if (plane == null)
-			{
-				continue;
-			}
+			if (plane == null) continue;
 
 			for (Tile[] row : plane)
 			{
-				if (row == null)
-				{
-					continue;
-				}
+				if (row == null) continue;
 
 				for (Tile tile : row)
 				{
-					if (tile == null || tile.getGroundItems() == null)
-					{
-						continue;
-					}
+					if (tile == null || tile.getGroundItems() == null) continue;
 
 					for (TileItem item : tile.getGroundItems())
 					{

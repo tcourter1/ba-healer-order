@@ -4,7 +4,6 @@ import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.common.BaPartySyncMemberStatus;
 import com.bahealerorder.common.BaHealerFoodCounts;
 import com.bahealerorder.common.BaIcons;
-import com.bahealerorder.common.BaRole;
 import com.bahealerorder.sidepanel.healercodes.HealerCodePanel;
 import com.bahealerorder.sidepanel.onboarding.BaAssistancePresetManager;
 import com.bahealerorder.sidepanel.onboarding.BaAssistancePresetPanel;
@@ -15,10 +14,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.Image;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,7 +23,6 @@ import javax.inject.Singleton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
-import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -37,7 +31,8 @@ import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.basic.BasicButtonUI;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
@@ -46,9 +41,7 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
-import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.LinkBrowser;
-import net.runelite.client.util.SwingUtil;
 
 @Singleton
 public class BaUtilitiesPanel extends PluginPanel
@@ -83,7 +76,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	private final Map<String, MaterialTab> tabsById = new LinkedHashMap<>();
 	private final Map<String, JLabel> partySyncMemberStatusLabels = new LinkedHashMap<>();
 	private final JLabel partySyncStatus = label("Party Sync Off", true);
-	private final JPanel partySyncMembersPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+	private final JPanel partySyncMembersPanel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 	private String lastPartySyncMemberStructure;
 
 	@Inject
@@ -261,10 +254,7 @@ public class BaUtilitiesPanel extends PluginPanel
 
 	private String buildPartySyncMemberStructure(String status, List<BaPartySyncMemberStatus> memberStatuses)
 	{
-		if (memberStatuses.isEmpty())
-		{
-			return "Already in Party".equals(status) ? "message:already-in-party" : "empty";
-		}
+		if (memberStatuses.isEmpty()) return "Already in Party".equals(status) ? "message:already-in-party" : "empty";
 
 		StringBuilder builder = new StringBuilder();
 		for (BaPartySyncMemberStatus memberStatus : memberStatuses)
@@ -299,7 +289,7 @@ public class BaUtilitiesPanel extends PluginPanel
 
 	private JPanel createPartySyncSection()
 	{
-		JPanel section = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		JPanel section = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		section.setBorder(new EmptyBorder(8, 8, 8, 8));
 		section.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
 		section.setAlignmentX(LEFT_ALIGNMENT);
@@ -335,7 +325,7 @@ public class BaUtilitiesPanel extends PluginPanel
 		JPanel namePanel = new JPanel();
 		namePanel.setLayout(new BoxLayout(namePanel, BoxLayout.X_AXIS));
 		namePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		namePanel.add(roleIconLabel(memberStatus.getRole()));
+		namePanel.add(BaPanelUi.roleIconLabel(itemManager, memberStatus.getRole(), ROLE_ICON_SIZE, CONTROL_HEIGHT));
 		namePanel.add(Box.createHorizontalStrut(5));
 		namePanel.add(nameLabel);
 
@@ -352,10 +342,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	private String getPartySyncMemberStatusText(BaPartySyncMemberStatus memberStatus)
 	{
 		BaHealerFoodCounts counts = memberStatus.getHealerFoodCounts();
-		if (counts != null)
-		{
-			return formatHealerFoodCounts(counts);
-		}
+		if (counts != null) return formatHealerFoodCounts(counts);
 
 		return memberStatus.isInParty() ? "In Party" : "Not In Party";
 	}
@@ -384,24 +371,6 @@ public class BaUtilitiesPanel extends PluginPanel
 		return called ? "<font color=\"" + CALLED_FOOD_HTML_COLOR + "\">" + text + "</font>" : text;
 	}
 
-	private JLabel roleIconLabel(String roleName)
-	{
-		JLabel iconLabel = new JLabel();
-		iconLabel.setPreferredSize(new Dimension(ROLE_ICON_SIZE, CONTROL_HEIGHT));
-		iconLabel.setMaximumSize(new Dimension(ROLE_ICON_SIZE, CONTROL_HEIGHT));
-		iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
-
-		BaRole role = BaRole.fromDisplayName(roleName);
-
-		if (role != null)
-		{
-			AsyncBufferedImage icon = itemManager.getImage(role.getPlayerIconItemId());
-			icon.onLoaded(() -> SwingUtilities.invokeLater(() -> iconLabel.setIcon(scaledRoleIcon(icon))));
-		}
-
-		return iconLabel;
-	}
-
 	private JPanel createTabSection()
 	{
 		List<SidePanelTab> tabs = new ArrayList<>();
@@ -426,7 +395,7 @@ public class BaUtilitiesPanel extends PluginPanel
 		tabDisplayPanel.setAlignmentX(LEFT_ALIGNMENT);
 		tabDisplayPanel.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
 
-		JPanel panel = verticalPanel(ColorScheme.DARK_GRAY_COLOR);
+		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARK_GRAY_COLOR);
 		panel.setAlignmentX(LEFT_ALIGNMENT);
 		panel.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
 		panel.add(tabGroup);
@@ -494,6 +463,7 @@ public class BaUtilitiesPanel extends PluginPanel
 		return panel;
 	}
 
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	private static class SidePanelTab
 	{
 		private final String id;
@@ -505,19 +475,6 @@ public class BaUtilitiesPanel extends PluginPanel
 		{
 			return new SidePanelTab(id, icon, tooltip, content);
 		}
-
-		private SidePanelTab(String id, ImageIcon icon, String tooltip, JComponent content)
-		{
-			this.id = id;
-			this.icon = icon;
-			this.tooltip = tooltip;
-			this.content = content;
-		}
-	}
-
-	private ImageIcon scaledRoleIcon(BufferedImage image)
-	{
-		return new ImageIcon(image.getScaledInstance(ROLE_ICON_SIZE, ROLE_ICON_SIZE, Image.SCALE_SMOOTH));
 	}
 
 	private Color getPartySyncStatusColor(String status)
@@ -530,17 +487,6 @@ public class BaUtilitiesPanel extends PluginPanel
 		return ColorScheme.TEXT_COLOR;
 	}
 
-	private JPanel section(String title)
-	{
-		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setBorder(new EmptyBorder(8, 8, 8, 8));
-		panel.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-		panel.setAlignmentX(LEFT_ALIGNMENT);
-		panel.add(centeredLabelRow(title, true, ColorScheme.DARKER_GRAY_COLOR));
-		panel.add(Box.createVerticalStrut(6));
-		return panel;
-	}
-
 	private JPanel header(String text)
 	{
 		JSeparator separator = new JSeparator(SwingConstants.HORIZONTAL);
@@ -550,7 +496,7 @@ public class BaUtilitiesPanel extends PluginPanel
 		separator.setMaximumSize(new Dimension(CONTENT_WIDTH, 1));
 		separator.setAlignmentX(LEFT_ALIGNMENT);
 
-		JPanel panel = verticalPanel(ColorScheme.DARK_GRAY_COLOR);
+		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARK_GRAY_COLOR);
 		panel.setAlignmentX(LEFT_ALIGNMENT);
 		panel.setMaximumSize(new Dimension(CONTENT_WIDTH, 34));
 		panel.add(headerRow(text));
@@ -567,13 +513,13 @@ public class BaUtilitiesPanel extends PluginPanel
 		JPanel buttons = new JPanel();
 		buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
 		buttons.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		buttons.add(headerIconButton(BaIcons.settingsIcon(), "Choose a preset", this::showAssistancePresetPanel));
+		buttons.add(BaPanelUi.iconButton(BaIcons.settingsIcon(), "Choose a preset", this::showAssistancePresetPanel, HEADER_BUTTON_SIZE));
 		buttons.add(Box.createHorizontalStrut(2));
-		buttons.add(headerIconButton(BaIcons.notesIcon(), "Recent updates", this::showUpdatesPanel));
+		buttons.add(BaPanelUi.iconButton(BaIcons.notesIcon(), "Recent updates", this::showUpdatesPanel, HEADER_BUTTON_SIZE));
 		buttons.add(Box.createHorizontalStrut(2));
-		buttons.add(headerIconButton(BaIcons.discordIcon(), "Discord", () -> LinkBrowser.browse(DISCORD_URL)));
+		buttons.add(BaPanelUi.iconButton(BaIcons.discordIcon(), "Discord", () -> LinkBrowser.browse(DISCORD_URL), HEADER_BUTTON_SIZE));
 		buttons.add(Box.createHorizontalStrut(2));
-		buttons.add(headerIconButton(BaIcons.githubIcon(), "GitHub issues", () -> LinkBrowser.browse(GITHUB_ISSUES_URL)));
+		buttons.add(BaPanelUi.iconButton(BaIcons.githubIcon(), "GitHub issues", () -> LinkBrowser.browse(GITHUB_ISSUES_URL), HEADER_BUTTON_SIZE));
 
 		JPanel row = new JPanel(new BorderLayout());
 		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -582,46 +528,6 @@ public class BaUtilitiesPanel extends PluginPanel
 		row.setAlignmentX(LEFT_ALIGNMENT);
 		row.add(title, BorderLayout.WEST);
 		row.add(buttons, BorderLayout.EAST);
-		return row;
-	}
-
-	private JButton headerIconButton(ImageIcon icon, String tooltip, Runnable action)
-	{
-		JButton button = new JButton(icon);
-		button.setToolTipText(tooltip);
-		button.addActionListener(event -> action.run());
-		SwingUtil.removeButtonDecorations(button);
-		button.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		button.setUI(new BasicButtonUI());
-		button.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mouseEntered(MouseEvent event)
-			{
-				button.setBackground(ColorScheme.DARK_GRAY_HOVER_COLOR);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent event)
-			{
-				button.setBackground(ColorScheme.DARK_GRAY_COLOR);
-			}
-		});
-		BaPanelUi.fixedSize(button, HEADER_BUTTON_SIZE, HEADER_BUTTON_SIZE);
-		return button;
-	}
-
-	private JPanel centeredLabelRow(String text, boolean bold, Color background)
-	{
-		JLabel label = label(text, bold);
-		label.setHorizontalAlignment(SwingConstants.CENTER);
-
-		JPanel row = new JPanel(new BorderLayout());
-		row.setBackground(background);
-		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setAlignmentX(LEFT_ALIGNMENT);
-		row.add(label, BorderLayout.CENTER);
 		return row;
 	}
 
@@ -657,11 +563,4 @@ public class BaUtilitiesPanel extends PluginPanel
 		return label;
 	}
 
-	private static JPanel verticalPanel(Color background)
-	{
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		panel.setBackground(background);
-		return panel;
-	}
 }

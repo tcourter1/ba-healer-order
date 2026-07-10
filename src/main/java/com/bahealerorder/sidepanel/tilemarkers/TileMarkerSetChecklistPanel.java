@@ -59,7 +59,7 @@ class TileMarkerSetChecklistPanel extends JPanel
 		setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		setAlignmentX(LEFT_ALIGNMENT);
 
-		add(label("Tile Marker Sets", true));
+		add(BaPanelUi.plainLabel("Tile Marker Sets", true));
 		add(Box.createVerticalStrut(5));
 		add(createMarkerSetColumns());
 		refresh();
@@ -74,10 +74,7 @@ class TileMarkerSetChecklistPanel extends JPanel
 	void setSelectedMarkerSetIds(List<String> selectedIds)
 	{
 		selectedMarkerSetIds.clear();
-		if (selectedIds != null)
-		{
-			selectedMarkerSetIds.addAll(selectedIds);
-		}
+		selectedMarkerSetIds.addAll(selectedIds);
 		refresh();
 	}
 
@@ -132,7 +129,7 @@ class TileMarkerSetChecklistPanel extends JPanel
 		column.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		BaPanelUi.fixedSize(column, columnWidth, listHeight);
 
-		JLabel header = label(title, false);
+		JLabel header = BaPanelUi.plainLabel(title, false);
 		BaPanelUi.fixedSize(header, columnWidth, controlHeight);
 		column.add(header, BorderLayout.NORTH);
 
@@ -169,10 +166,7 @@ class TileMarkerSetChecklistPanel extends JPanel
 				selectedMarkerSetIds.remove(set.getId());
 			}
 
-			if (selectionChanged != null)
-			{
-				selectionChanged.run();
-			}
+			selectionChanged.run();
 		});
 		return checkBox;
 	}
@@ -189,10 +183,7 @@ class TileMarkerSetChecklistPanel extends JPanel
 		button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		button.addActionListener(event ->
 		{
-			if (openMarkerEditor != null)
-			{
-				openMarkerEditor.run();
-			}
+			openMarkerEditor.run();
 		});
 		BaPanelUi.fixedSize(button, columnWidth, controlHeight + 4);
 		return button;
@@ -200,20 +191,8 @@ class TileMarkerSetChecklistPanel extends JPanel
 
 	private static JLabel emptyMessage(String text)
 	{
-		JLabel empty = label(text, false);
+		JLabel empty = BaPanelUi.plainLabel(text, false);
 		empty.setBorder(new EmptyBorder(6, 6, 0, 0));
 		return empty;
-	}
-
-	private static JLabel label(String text, boolean bold)
-	{
-		JLabel label = new JLabel(text);
-		label.setForeground(ColorScheme.TEXT_COLOR);
-		if (bold)
-		{
-			label.setFont(label.getFont().deriveFont(java.awt.Font.BOLD));
-		}
-		label.setAlignmentX(LEFT_ALIGNMENT);
-		return label;
 	}
 }

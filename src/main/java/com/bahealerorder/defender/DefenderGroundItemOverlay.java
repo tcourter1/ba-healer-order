@@ -38,10 +38,7 @@ public class DefenderGroundItemOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (controller == null || !controller.shouldShowGroundItemOverlay())
-		{
-			return null;
-		}
+		if (controller == null) return null;
 
 		for (DefenderGroundItem groundItem : controller.getHighlightedGroundItems())
 		{
@@ -53,17 +50,11 @@ public class DefenderGroundItemOverlay extends Overlay
 
 	private void renderGroundItem(DefenderGroundItem groundItem)
 	{
-		if (groundItem == null || groundItem.getTile() == null)
-		{
-			return;
-		}
+		if (groundItem == null || groundItem.getTile() == null) return;
 
 		ItemLayer itemLayer = groundItem.getTile().getItemLayer();
 
-		if (itemLayer == null)
-		{
-			return;
-		}
+		if (itemLayer == null) return;
 
 		modelOutlineRenderer.drawOutline(itemLayer, groundItem.getItem(), ITEM_OUTLINE_WIDTH, GROUND_ITEM_HIGHLIGHT_COLOR, ITEM_OUTLINE_FEATHER);
 	}

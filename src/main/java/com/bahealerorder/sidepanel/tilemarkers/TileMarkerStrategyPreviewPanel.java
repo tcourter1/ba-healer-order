@@ -9,7 +9,6 @@ import com.bahealerorder.tilemarkers.TileMarkerStrategyPreset;
 import com.bahealerorder.tilemarkers.TileMarkerWaveMap;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.event.MouseWheelEvent;
 import java.util.Collections;
 import java.util.List;
@@ -24,7 +23,6 @@ import net.runelite.client.ui.ColorScheme;
 
 public class TileMarkerStrategyPreviewPanel extends JPanel
 {
-	private static final int CONTROL_HEIGHT = 24;
 	private static final int SIDE_WIDTH = 250;
 	private static final int MAP_VIEWPORT_WIDTH = 760;
 	private static final int MAP_VIEWPORT_HEIGHT = 660;
@@ -104,22 +102,11 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 
 	private static String strategyHeader(TileMarkerStrategyPreset strategy)
 	{
-		if (strategy == null || strategy.getName() == null || strategy.getName().trim().isEmpty())
-		{
-			return "This is a preview of the tile markers and notes that will be visible when using the current strategy.";
-		}
+		if (strategy == null || strategy.getName() == null || strategy.getName().isBlank()) return "This is a preview of the tile markers and notes that will be visible when using the current strategy.";
 
 		return "This is a preview of the tile markers and notes that will be visible when using the "
-				+ escapeHtml(strategy.getName().trim())
+				+ BaPanelUi.escapeHtml(strategy.getName().trim())
 				+ " strategy.";
-	}
-
-	private static String escapeHtml(String text)
-	{
-		return text
-				.replace("&", "&amp;")
-				.replace("<", "&lt;")
-				.replace(">", "&gt;");
 	}
 
 	private JPanel createHeader(String headerText)
@@ -161,7 +148,7 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 	{
 		JPanel panel = new JPanel(new BorderLayout(8, 0));
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		panel.add(label("Drag Slider or Scroll to Zoom", false), BorderLayout.WEST);
+		panel.add(BaPanelUi.plainLabel("Drag Slider or Scroll to Zoom", false), BorderLayout.WEST);
 
 		mapZoom.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		mapZoom.setFocusable(false);
@@ -181,7 +168,7 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 		JPanel top = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		top.add(TileMarkerLegendPanel.create(SIDE_WIDTH));
 		top.add(Box.createVerticalStrut(42));
-		top.add(label("Notes", true));
+		top.add(BaPanelUi.plainLabel("Notes", true));
 		top.add(Box.createVerticalStrut(5));
 		top.add(createNotesPreview(notes));
 		panel.add(top, BorderLayout.NORTH);
@@ -190,7 +177,7 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 
 	private JScrollPane createNotesPreview(String notes)
 	{
-		JTextArea textArea = new JTextArea(notes == null || notes.trim().isEmpty() ? "No notes configured." : notes);
+		JTextArea textArea = new JTextArea(notes == null || notes.isBlank() ? "No notes configured." : notes);
 		textArea.setEditable(false);
 		textArea.setLineWrap(true);
 		textArea.setWrapStyleWord(true);
@@ -222,18 +209,6 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 		mapScrollPane.getVerticalScrollBar().setUnitIncrement(mapPanel.getTileSize());
 		mapPanel.revalidate();
 		mapPanel.repaint();
-	}
-
-	private JLabel label(String text, boolean bold)
-	{
-		JLabel label = new JLabel(text);
-		label.setForeground(ColorScheme.TEXT_COLOR);
-		if (bold)
-		{
-			label.setFont(label.getFont().deriveFont(Font.BOLD));
-		}
-		label.setAlignmentX(LEFT_ALIGNMENT);
-		return label;
 	}
 
 }

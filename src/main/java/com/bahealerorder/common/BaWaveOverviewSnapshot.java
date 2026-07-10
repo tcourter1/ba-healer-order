@@ -7,14 +7,17 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import lombok.Getter;
 
 public class BaWaveOverviewSnapshot
 {
+	@Getter
 	private final int wave;
 	private final Map<BaOverviewNpcType, Set<Integer>> spawnedOrdersByType;
 	private final Map<BaOverviewNpcType, Map<Integer, Integer>> deathTicksByType;
 	private final Map<BaOverviewNpcType, Map<Integer, Integer>> predictedDeathTicksByType;
 	private final Map<BaOverviewNpcType, Set<Integer>> unknownTtkOrdersByType;
+	@Getter
 	private final String duration;
 
 	private BaWaveOverviewSnapshot(
@@ -111,34 +114,24 @@ public class BaWaveOverviewSnapshot
 		}
 	}
 
-	public int getWave()
-	{
-		return wave;
-	}
-
 	public boolean hasSpawned(BaOverviewNpcType type, int order)
 	{
-		return spawnedOrdersByType.getOrDefault(type, Collections.emptySet()).contains(order);
+		return spawnedOrdersByType.get(type).contains(order);
 	}
 
 	public Integer getDeathTick(BaOverviewNpcType type, int order)
 	{
-		return deathTicksByType.getOrDefault(type, Collections.emptyMap()).get(order);
+		return deathTicksByType.get(type).get(order);
 	}
 
 	public Integer getPredictedDeathTick(BaOverviewNpcType type, int order)
 	{
-		return predictedDeathTicksByType.getOrDefault(type, Collections.emptyMap()).get(order);
+		return predictedDeathTicksByType.get(type).get(order);
 	}
 
 	public boolean hasUnknownTtk(BaOverviewNpcType type, int order)
 	{
-		return unknownTtkOrdersByType.getOrDefault(type, Collections.emptySet()).contains(order);
-	}
-
-	public String getDuration()
-	{
-		return duration;
+		return unknownTtkOrdersByType.get(type).contains(order);
 	}
 
 	public BaWaveOverviewSnapshot withDuration(String duration)

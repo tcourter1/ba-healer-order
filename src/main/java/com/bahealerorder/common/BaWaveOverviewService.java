@@ -2,13 +2,14 @@ package com.bahealerorder.common;
 
 import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import com.bahealerorder.healer.HealerSharedState;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import lombok.extern.slf4j.Slf4j;
+import lombok.AllArgsConstructor;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.ChatMessage;
@@ -16,7 +17,6 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.party.events.UserJoin;
 import net.runelite.client.util.Text;
 
-@Slf4j
 @Singleton
 public class BaWaveOverviewService
 {
@@ -68,10 +68,6 @@ public class BaWaveOverviewService
 		String roundDuration = parseRoundDurationFromMessage(event.getMessage());
 		if (roundDuration != null)
 		{
-			log.debug("Parsed BA wave overview round duration: duration={}, type={}, message={}",
-					roundDuration,
-					event.getType(),
-					event.getMessage());
 			recordRoundDuration(roundDuration);
 			return;
 		}
@@ -79,17 +75,8 @@ public class BaWaveOverviewService
 		WaveDuration duration = parseWaveDurationFromMessage(event.getMessage());
 		if (duration != null)
 		{
-			log.debug("Parsed BA wave overview duration: wave={}, duration={}, type={}, message={}",
-					duration.wave,
-					duration.duration,
-					event.getType(),
-					event.getMessage());
 			recordWaveDuration(duration);
-			return;
 		}
-
-		logUnparsedDurationLikeMessage(event);
-
 	}
 
 	public void onGameStateChanged(GameStateChanged event)
@@ -104,8 +91,7 @@ public class BaWaveOverviewService
 
 	public void onBaWaveOverviewSyncMessage(BaWaveOverviewSyncMessage event)
 	{
-		if (event == null
-				|| partySyncService.isLocalPartyMember(event.getMemberId())
+		if (partySyncService.isLocalPartyMember(event.getMemberId())
 				|| event.getWorld() != client.getWorld()
 				|| !waveLifecycleService.isWaveActive()
 				|| event.getWave() != waveLifecycleService.getWave())
@@ -121,7 +107,7 @@ public class BaWaveOverviewService
 
 	public void onPartyUserJoin(UserJoin event)
 	{
-		if (event == null || partySyncService.isLocalPartyMember(event.getMemberId())) return;
+		if (partySyncService.isLocalPartyMember(event.getMemberId())) return;
 
 		sendSnapshot(true);
 	}
@@ -130,9 +116,6 @@ public class BaWaveOverviewService
 	{
 		if (shouldFallbackCompletePendingWave(wave))
 		{
-			log.debug("Saving pending BA wave overview snapshot for wave {} without duration because wave {} started",
-					pendingCompletionWave,
-					wave);
 			completePendingWave(null);
 		}
 		else if (pendingCompletionWave == wave || pendingCompletionWave > wave)
@@ -166,8 +149,8 @@ public class BaWaveOverviewService
 
 	public void onGameTick()
 	{
-		boolean metadataChanged = waveLifecycleService.isWaveActive() && saveCurrentRunMetadata();
 		boolean activeWaveTick = waveLifecycleService.isWaveActive();
+		boolean metadataChanged = activeWaveTick && saveCurrentRunMetadata();
 		if (!updatePending && !syncPending && !metadataChanged && !activeWaveTick) return;
 
 		boolean changed = updatePending && saveCurrentSnapshot();
@@ -260,18 +243,13 @@ public class BaWaveOverviewService
 	{
 		int wave = waveLifecycleService.getWave();
 
-		if (!BaWaveInfo.isValidWave(wave))
-		{
-			return false;
-		}
+		if (!BaWaveInfo.isValidWave(wave)) return false;
 
 		return store.saveSnapshot(BaWaveOverviewSnapshot.fromStates(wave, state, healerState));
 	}
 
 	private void recordWaveDuration(WaveDuration duration)
 	{
-		if (duration == null) return;
-
 		if (pendingCompletionSnapshot != null && pendingCompletionWave == duration.wave)
 		{
 			completePendingWave(duration.duration);
@@ -344,14 +322,14 @@ public class BaWaveOverviewService
 
 	private BaRole getLocalPlayerRole(List<BaTeamMember> teamMembers)
 	{
-		if (teamMembers == null || teamMembers.isEmpty() || client.getLocalPlayer() == null) return null;
+		if (teamMembers.isEmpty() || client.getLocalPlayer() == null) return null;
 
 		String localName = normalizePlayerName(client.getLocalPlayer().getName());
 		if (localName.isEmpty()) return null;
 
 		for (BaTeamMember member : teamMembers)
 		{
-			if (member == null || !localName.equals(normalizePlayerName(member.getName()))) continue;
+			if (!localName.equals(normalizePlayerName(member.getName()))) continue;
 
 			return BaRole.fromDisplayName(member.getRole());
 		}
@@ -390,16 +368,7 @@ public class BaWaveOverviewService
 
 		if (!matcher.matches()) return null;
 
-		try
-		{
-			int wave = Integer.parseInt(matcher.group(1));
-			return BaWaveInfo.isValidWave(wave) ? new WaveDuration(wave, matcher.group(2)) : null;
-		}
-		catch (NumberFormatException ex)
-		{
-			log.debug("Failed to parse BA wave duration from message: {}", message, ex);
-			return null;
-		}
+		return new WaveDuration(Integer.parseInt(matcher.group(1)), matcher.group(2));
 	}
 
 	private String parseRoundDurationFromMessage(String message)
@@ -409,32 +378,20 @@ public class BaWaveOverviewService
 		return matcher.matches() ? matcher.group(1) : null;
 	}
 
-	private void logUnparsedDurationLikeMessage(ChatMessage event)
-	{
-		String normalized = normalizeMessage(event.getMessage());
-
-		if (!normalized.contains("wave") || !normalized.contains("duration")) return;
-
-		log.debug("Saw BA wave overview duration-like message but could not parse it: type={}, message={}, normalized={}",
-				event.getType(),
-				event.getMessage(),
-				normalized);
-	}
-
 	private String normalizeMessage(String message)
 	{
-		return Text.removeTags(message == null ? "" : message).toLowerCase(Locale.ROOT);
+		return Text.removeTags(message == null ? "" : message);
 	}
 
 	private String buildSignature(BaWaveOverviewSyncMessage message)
 	{
 		return message.getWave()
-				+ ":" + java.util.Arrays.toString(message.getNpcTypes())
-				+ ":" + java.util.Arrays.toString(message.getNpcIndexes())
-				+ ":" + java.util.Arrays.toString(message.getNpcOrders())
-				+ ":" + java.util.Arrays.toString(message.getDeadNpcTypes())
-				+ ":" + java.util.Arrays.toString(message.getDeadNpcOrders())
-				+ ":" + java.util.Arrays.toString(message.getDeadNpcDeathTicks());
+				+ ":" + Arrays.toString(message.getNpcTypes())
+				+ ":" + Arrays.toString(message.getNpcIndexes())
+				+ ":" + Arrays.toString(message.getNpcOrders())
+				+ ":" + Arrays.toString(message.getDeadNpcTypes())
+				+ ":" + Arrays.toString(message.getDeadNpcOrders())
+				+ ":" + Arrays.toString(message.getDeadNpcDeathTicks());
 	}
 
 	private int getCurrentWaveTick()
@@ -442,15 +399,10 @@ public class BaWaveOverviewService
 		return waveStartTick < 0 ? -1 : Math.max(0, client.getTickCount() - waveStartTick);
 	}
 
+	@AllArgsConstructor
 	private static class WaveDuration
 	{
 		private final int wave;
 		private final String duration;
-
-		private WaveDuration(int wave, String duration)
-		{
-			this.wave = wave;
-			this.duration = duration;
-		}
 	}
 }

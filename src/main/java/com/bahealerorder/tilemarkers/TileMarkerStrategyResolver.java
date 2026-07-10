@@ -46,20 +46,14 @@ class TileMarkerStrategyResolver
 	private void addSelectionMarkers(List<TileMarker> markers, Set<String> seenSetIds, TileMarkerWaveSelection selection)
 	{
 		String strategyId = selection == null ? null : selection.getStrategyId();
-		if (isBlank(strategyId))
-		{
-			return;
-		}
+		if (isBlank(strategyId)) return;
 
 		addPresetMarkers(markers, seenSetIds, presetForSelection(selection));
 	}
 
 	private void addPresetMarkers(List<TileMarker> markers, Set<String> seenSetIds, TileMarkerStrategyPreset preset)
 	{
-		if (preset == null)
-		{
-			return;
-		}
+		if (preset == null) return;
 
 		for (String setId : preset.getMarkerSetIds())
 		{
@@ -69,10 +63,7 @@ class TileMarkerStrategyResolver
 
 	private void addMarkerSetMarkers(List<TileMarker> markers, Set<String> seenSetIds, String setId)
 	{
-		if (setId == null || !seenSetIds.add(setId))
-		{
-			return;
-		}
+		if (setId == null || !seenSetIds.add(setId)) return;
 
 		TileMarkerSet set = markerSetFinder.apply(setId);
 		if (set != null)
@@ -84,13 +75,10 @@ class TileMarkerStrategyResolver
 	private void addSelectionNotes(List<String> notes, TileMarkerWaveSelection selection)
 	{
 		TileMarkerStrategyPreset preset = presetForSelection(selection);
-		if (preset == null)
-		{
-			return;
-		}
+		if (preset == null) return;
 
 		String text = preset.getNotes();
-		if (text != null && !text.trim().isEmpty())
+		if (text != null && !text.isBlank())
 		{
 			notes.add(text.trim());
 		}
@@ -99,10 +87,7 @@ class TileMarkerStrategyResolver
 	private TileMarkerStrategyPreset presetForSelection(TileMarkerWaveSelection selection)
 	{
 		String strategyId = selection == null ? null : selection.getStrategyId();
-		if (isBlank(strategyId))
-		{
-			return null;
-		}
+		if (isBlank(strategyId)) return null;
 
 		TileMarkerStrategyPreset preset = presetFinder.apply(strategyId);
 		return preset != null && preset.getWaveMap() == TileMarkerWaveMap.fromWave(selection.getWave()) ? preset : null;
@@ -110,6 +95,6 @@ class TileMarkerStrategyResolver
 
 	private static boolean isBlank(String value)
 	{
-		return value == null || value.trim().isEmpty();
+		return value == null || value.isBlank();
 	}
 }

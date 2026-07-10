@@ -15,10 +15,7 @@ public final class BaRoleColors
 
 	public static Color color(BaRole role)
 	{
-		if (role == null)
-		{
-			return null;
-		}
+		if (role == null) return null;
 
 		switch (role)
 		{
@@ -38,10 +35,7 @@ public final class BaRoleColors
 	public static String htmlColor(BaRole role)
 	{
 		Color color = color(role);
-		if (color == null)
-		{
-			return null;
-		}
+		if (color == null) return null;
 
 		return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
 	}

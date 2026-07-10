@@ -1,21 +1,25 @@
 package com.bahealerorder.tilemarkers;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+@NoArgsConstructor
+@Getter
 public class TileMarkerSet
 {
+	@Setter
 	private String id;
+	@Setter
 	private String name;
 	private String mapMode;
 	private String waveMap;
+	@Setter
 	private boolean builtIn;
+	@Setter
 	private List<TileMarker> markers = new ArrayList<>();
-
-	public TileMarkerSet()
-	{
-	}
 
 	public TileMarkerSet(
 			String id,
@@ -43,26 +47,6 @@ public class TileMarkerSet
 		this.markers = markers == null ? new ArrayList<>() : new ArrayList<>(markers);
 	}
 
-	public String getId()
-	{
-		return id;
-	}
-
-	public void setId(String id)
-	{
-		this.id = id;
-	}
-
-	public String getName()
-	{
-		return name;
-	}
-
-	public void setName(String name)
-	{
-		this.name = name;
-	}
-
 	public TileMarkerMapMode getMapMode()
 	{
 		return TileMarkerMapMode.fromName(mapMode);
@@ -83,29 +67,9 @@ public class TileMarkerSet
 		this.waveMap = (waveMap == null ? TileMarkerWaveMap.WAVES_1_TO_9 : waveMap).name();
 	}
 
-	public boolean isBuiltIn()
-	{
-		return builtIn;
-	}
-
-	public void setBuiltIn(boolean builtIn)
-	{
-		this.builtIn = builtIn;
-	}
-
-	public List<TileMarker> getMarkers()
-	{
-		return markers == null ? Collections.emptyList() : markers;
-	}
-
-	public void setMarkers(List<TileMarker> markers)
-	{
-		this.markers = markers == null ? new ArrayList<>() : new ArrayList<>(markers);
-	}
-
 	@Override
 	public String toString()
 	{
-		return name == null || name.trim().isEmpty() ? "Unnamed set" : name;
+		return name == null || name.isBlank() ? "Unnamed set" : name;
 	}
 }

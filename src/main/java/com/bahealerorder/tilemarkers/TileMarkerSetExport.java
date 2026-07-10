@@ -1,16 +1,13 @@
 package com.bahealerorder.tilemarkers;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@AllArgsConstructor
+@Getter
+@NoArgsConstructor
 public class TileMarkerSetExport
 {
 	private TileMarkerSet markerSet;
-
-	public TileMarkerSet getMarkerSet()
-	{
-		return markerSet;
-	}
-
-	public void setMarkerSet(TileMarkerSet markerSet)
-	{
-		this.markerSet = markerSet;
-	}
 }

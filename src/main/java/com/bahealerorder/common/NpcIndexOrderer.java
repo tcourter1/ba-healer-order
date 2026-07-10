@@ -65,10 +65,7 @@ public final class NpcIndexOrderer
 
 	public static int normalize(int npcIndex, int indexBase)
 	{
-		if (indexBase < 0)
-		{
-			return npcIndex;
-		}
+		if (indexBase < 0) return npcIndex;
 
 		return Math.floorMod(npcIndex - indexBase, NPC_INDEX_MODULUS);
 	}

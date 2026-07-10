@@ -118,19 +118,13 @@ public final class HealerCodeParser
 	{
 		List<HealerInstruction> instructions = new ArrayList<>();
 
-		if (line == null || line.trim().isEmpty())
-		{
-			return instructions;
-		}
+		if (line == null || line.isBlank()) return instructions;
 
 		for (String rawPart : splitInstructionParts(line))
 		{
 			String part = rawPart.trim();
 
-			if (part.isEmpty())
-			{
-				continue;
-			}
+			if (part.isEmpty()) continue;
 
 			instructions.add(parseInstruction(part));
 		}
@@ -202,25 +196,16 @@ public final class HealerCodeParser
 
 	private static CommentSplit splitComment(String rawLine)
 	{
-		if (rawLine == null)
-		{
-			return new CommentSplit("", "");
-		}
+		if (rawLine == null) return new CommentSplit("", "");
 
 		int commentIndex = rawLine.indexOf("//");
-		if (commentIndex < 0)
-		{
-			return new CommentSplit(rawLine, "");
-		}
+		if (commentIndex < 0) return new CommentSplit(rawLine, "");
 		return new CommentSplit(rawLine.substring(0, commentIndex), rawLine.substring(commentIndex + 2).trim());
 	}
 
 	private static boolean looksLikeCodeLine(String line)
 	{
-		if (line == null || line.isEmpty())
-		{
-			return false;
-		}
+		if (line == null || line.isEmpty()) return false;
 
 		List<String> parts = splitInstructionParts(line);
 		String firstToken = parts.isEmpty() ? "" : parts.get(0).trim();
@@ -265,10 +250,7 @@ public final class HealerCodeParser
 	{
 		Matcher matcher = pattern.matcher(value);
 
-		if (!matcher.find())
-		{
-			return null;
-		}
+		if (!matcher.find()) return null;
 
 		try
 		{
@@ -283,36 +265,18 @@ public final class HealerCodeParser
 	private static HealerCodeOverstock overstockFromText(String value)
 	{
 		String text = value == null ? "" : value.toLowerCase();
-		if (text.contains("5x"))
-		{
-			return HealerCodeOverstock.FIVE_X;
-		}
-		if (text.contains("4x"))
-		{
-			return HealerCodeOverstock.FOUR_X;
-		}
-		if (text.contains("3x"))
-		{
-			return HealerCodeOverstock.THREE_X;
-		}
-		if (text.contains("2x"))
-		{
-			return HealerCodeOverstock.TWO_X;
-		}
-		if (text.contains("1x"))
-		{
-			return HealerCodeOverstock.ONE_X;
-		}
+		if (text.contains("5x")) return HealerCodeOverstock.FIVE_X;
+		if (text.contains("4x")) return HealerCodeOverstock.FOUR_X;
+		if (text.contains("3x")) return HealerCodeOverstock.THREE_X;
+		if (text.contains("2x")) return HealerCodeOverstock.TWO_X;
+		if (text.contains("1x")) return HealerCodeOverstock.ONE_X;
 		return HealerCodeOverstock.REGULAR;
 	}
 
 	private static HealerCodeOverstock overstockFromHeader(String value)
 	{
 		String text = value == null ? "" : value.trim().toLowerCase();
-		if (text.startsWith("restock") || !text.contains("os"))
-		{
-			return HealerCodeOverstock.REGULAR;
-		}
+		if (text.startsWith("restock") || !text.contains("os")) return HealerCodeOverstock.REGULAR;
 		return overstockFromText(text);
 	}
 
@@ -335,10 +299,7 @@ public final class HealerCodeParser
 	private static Integer parseExpectedWaveEnd(String line)
 	{
 		Matcher matcher = EXPECTED_WAVE_END_PATTERN.matcher(line == null ? "" : line.trim());
-		if (!matcher.find())
-		{
-			return null;
-		}
+		if (!matcher.find()) return null;
 
 		try
 		{

@@ -8,13 +8,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -23,7 +21,6 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
@@ -35,13 +32,13 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.party.PartyMember;
 import net.runelite.client.party.PartyService;
 import net.runelite.client.party.WSClient;
+import net.runelite.client.party.messages.PartyMemberMessage;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginInstantiationException;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.party.PartyPlugin;
 import net.runelite.client.util.Text;
 
-@Slf4j
 @Singleton
 public class BaPartySyncService
 {
@@ -86,7 +83,6 @@ public class BaPartySyncService
 
 	private int baPartySyncJoinAttemptTick = -1;
 	private int baPartySyncPendingDoorExitTick = -1;
-	private int baPartySyncPendingDoorExitObjectId = -1;
 	private String baPartySyncStatus = "Off";
 	private String baPartySyncProgenitorName;
 	private String baPartySyncPassphrase;
@@ -134,7 +130,7 @@ public class BaPartySyncService
 
 	public void shutDown()
 	{
-		leaveBaSyncParty("plugin shutdown");
+		leaveBaSyncParty();
 		wsClient.unregisterMessage(BaHealerSyncMessage.class);
 		wsClient.unregisterMessage(BaHealerFoodCountMessage.class);
 		wsClient.unregisterMessage(BaWaveOverviewSyncMessage.class);
@@ -152,11 +148,6 @@ public class BaPartySyncService
 		return localMember != null && localMember.getMemberId() == memberId;
 	}
 
-	public List<String> getBaPartySyncTeamNames()
-	{
-		return new ArrayList<>(baPartySyncTeamNames);
-	}
-
 	public List<BaTeamMember> getBaPartySyncTeamMembers()
 	{
 		return new ArrayList<>(baPartySyncTeamMembers);
@@ -166,24 +157,6 @@ public class BaPartySyncService
 	{
 		return !baPartySyncTeamMembers.isEmpty()
 				&& isLocalPlayer(baPartySyncTeamMembers.get(0).getName());
-	}
-
-	public boolean isBaTeamMemberRole(String playerName, BaRole role)
-	{
-		if (role == null) return false;
-
-		String normalizedPlayerName = normalizePlayerName(playerName);
-
-		for (BaTeamMember member : baPartySyncTeamMembers)
-		{
-			if (normalizePlayerName(member.getName()).equals(normalizedPlayerName)
-					&& role.getDisplayName().equals(member.getRole()))
-			{
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	public boolean hasIncompleteDuoHealerParty()
@@ -215,19 +188,15 @@ public class BaPartySyncService
 
 	public void sendHealerSync(BaHealerSyncMessage message)
 	{
-		if (!isBaPartySyncConnected() || message == null) return;
-
-		try
-		{
-			partyService.send(message);
-		}
-		catch (RuntimeException ex)
-		{
-			log.debug("Failed to send BA healer sync message", ex);
-		}
+		sendPartyMessage(message);
 	}
 
 	public void sendWaveOverviewSync(BaWaveOverviewSyncMessage message)
+	{
+		sendPartyMessage(message);
+	}
+
+	private void sendPartyMessage(PartyMemberMessage message)
 	{
 		if (!isBaPartySyncConnected() || message == null) return;
 
@@ -235,9 +204,8 @@ public class BaPartySyncService
 		{
 			partyService.send(message);
 		}
-		catch (RuntimeException ex)
+		catch (RuntimeException ignored)
 		{
-			log.debug("Failed to send BA wave overview sync message", ex);
 		}
 	}
 
@@ -267,35 +235,17 @@ public class BaPartySyncService
 				counts.getCalledFood()
 		);
 
-		try
-		{
-			partyService.send(message);
-		}
-		catch (RuntimeException ex)
-		{
-			log.debug("Failed to send BA healer food count message", ex);
-		}
+		sendPartyMessage(message);
 	}
 
 	public void onBaHealerFoodCountMessage(BaHealerFoodCountMessage event)
 	{
-		if (event == null) return;
-
 		String playerName = event.getPlayerName();
-		if (playerName == null || playerName.isEmpty())
-		{
-			return;
-		}
+		if (playerName == null || playerName.isEmpty()) return;
 
-		if (isLocalPartyMember(event.getMemberId()))
-		{
-			return;
-		}
+		if (isLocalPartyMember(event.getMemberId())) return;
 
-		if (event.getWorld() != client.getWorld())
-		{
-			return;
-		}
+		if (event.getWorld() != client.getWorld()) return;
 
 		BaHealerFoodCounts counts = new BaHealerFoodCounts(
 				event.getTofu(),
@@ -314,7 +264,7 @@ public class BaPartySyncService
 
 	public void onChatMessage(ChatMessage event)
 	{
-		if (event == null || !isPartyChatEnabled() || !isRealWaveActive()) return;
+		if (!isPartyChatEnabled() || !isRealWaveActive()) return;
 		if (!isPublicChatType(event.getType())) return;
 
 		String playerName = client.getLocalPlayer() == null ? null : client.getLocalPlayer().getName();
@@ -323,19 +273,12 @@ public class BaPartySyncService
 		String message = cleanPartyChatMessage(event.getMessage());
 		if (message.isEmpty()) return;
 
-		try
-		{
-			partyService.send(new BaPartyChatMessage(client.getWorld(), message));
-		}
-		catch (RuntimeException ex)
-		{
-			log.debug("Failed to send BA party chat message", ex);
-		}
+		sendPartyMessage(new BaPartyChatMessage(client.getWorld(), message));
 	}
 
 	public void onBaPartyChatMessage(BaPartyChatMessage event)
 	{
-		if (event == null || !isPartyChatEnabled() || !isRealWaveActive()) return;
+		if (!isPartyChatEnabled() || !isRealWaveActive()) return;
 		if (isLocalPartyMember(event.getMemberId())) return;
 		if (event.getWorld() != client.getWorld()) return;
 
@@ -358,7 +301,7 @@ public class BaPartySyncService
 				.build());
 	}
 
-	public void onGameTick(GameTick event)
+	public void onGameTick()
 	{
 		updateBaPartySyncDoorExit();
 		updateBaPartySync();
@@ -366,7 +309,7 @@ public class BaPartySyncService
 
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		debugBaDoorClick(event, event.getMenuOption(), event.getMenuTarget());
+		armBaPartySyncDoorExit(event);
 	}
 
 	public void onWaveEnded(int wave)
@@ -376,7 +319,7 @@ public class BaPartySyncService
 
 		if (wave == 10)
 		{
-			leaveBaSyncParty("BA wave 10 ended");
+			leaveBaSyncParty();
 		}
 	}
 
@@ -386,7 +329,7 @@ public class BaPartySyncService
 
 		if (gameState == GameState.LOGIN_SCREEN || gameState == GameState.HOPPING)
 		{
-			leaveBaSyncParty("game state changed to " + gameState);
+			leaveBaSyncParty();
 		}
 	}
 
@@ -426,9 +369,8 @@ public class BaPartySyncService
 					pluginManager.startPlugin(plugin);
 				}
 			}
-			catch (PluginInstantiationException ex)
+			catch (PluginInstantiationException ignored)
 			{
-				log.debug("Failed to enable Party plugin for BA Party Sync", ex);
 			}
 		});
 	}
@@ -445,7 +387,7 @@ public class BaPartySyncService
 		{
 			if (baSyncManagedParty)
 			{
-				leaveBaSyncParty("BA Party Sync disabled");
+				leaveBaSyncParty();
 			}
 
 			setBaPartySyncStatus("Off", null);
@@ -464,12 +406,6 @@ public class BaPartySyncService
 
 			if (baSyncManagedParty && baPartySyncPassphrase != null && !baPartySyncPassphrase.equals(currentPassphrase))
 			{
-				log.debug(
-						"Current Party passphrase no longer matches managed BA sync party. Managed={}, current={}",
-						baPartySyncPassphrase,
-						currentPassphrase
-				);
-
 				baSyncManagedParty = false;
 				baPartySyncPassphrase = null;
 				baPartySyncJoinAttemptTick = -1;
@@ -484,15 +420,12 @@ public class BaPartySyncService
 
 		if (baSyncManagedParty && baPartySyncPassphrase != null)
 		{
-			int ticksSinceJoinAttempt = client.getTickCount() - baPartySyncJoinAttemptTick;
-
-			if (baPartySyncJoinAttemptTick >= 0 && ticksSinceJoinAttempt <= 10)
+			if (baPartySyncJoinAttemptTick >= 0 && client.getTickCount() - baPartySyncJoinAttemptTick <= 10)
 			{
 				setBaPartySyncStatus("Connecting", baPartySyncProgenitorName);
 				return;
 			}
 
-			log.debug("Managed BA sync party did not connect after {} ticks. Allowing a fresh join attempt.", ticksSinceJoinAttempt);
 			baSyncManagedParty = false;
 			baPartySyncPassphrase = null;
 			baPartySyncJoinAttemptTick = -1;
@@ -516,7 +449,7 @@ public class BaPartySyncService
 
 		baPartySyncProgenitorName = progenitorName;
 		setBaPartySyncTeam(teamRoster.get());
-		String passphrase = buildBaPartySyncPassphrase(progenitorName);
+		String passphrase = progenitorName + BA_SYNC_PASSPHRASE_SUFFIX;
 
 		if (baSyncManagedParty && passphrase.equals(baPartySyncPassphrase))
 		{
@@ -535,72 +468,28 @@ public class BaPartySyncService
 			partyService.changeParty(passphrase);
 
 			setBaPartySyncStatus("Connecting", progenitorName);
-
-			log.debug(
-					"Joined or created BA sync party using progenitor {} and passphrase {}. Team roster: {}",
-					progenitorName,
-					passphrase,
-					teamRoster.get().members
-			);
 		}
-		catch (RuntimeException ex)
+		catch (RuntimeException ignored)
 		{
 			baSyncManagedParty = false;
 			baPartySyncPassphrase = null;
 			baPartySyncJoinAttemptTick = -1;
 			setBaPartySyncStatus("Join failed", progenitorName);
-			log.debug("Failed to join BA sync party using passphrase {}", passphrase, ex);
 		}
 	}
 
-	private void debugBaDoorClick(MenuOptionClicked event, String option, String target)
+	private void armBaPartySyncDoorExit(MenuOptionClicked event)
 	{
-		if (client.getLocalPlayer() == null) return;
-
-		String optionText = Text.removeTags(option == null ? "" : option).toLowerCase(Locale.ROOT);
-		String targetText = Text.removeTags(target == null ? "" : target).toLowerCase(Locale.ROOT);
-
-		if (!isBaWaveDoorClick(event, optionText, targetText)) return;
-
-		WorldPoint worldPoint = client.getLocalPlayer().getWorldLocation();
-
-		log.debug(
-				"BA door debug: option='{}', target='{}', id={}, menuAction={}, param0={}, param1={}, world=({}, {}, {}), regionId={}, regionLocal=({}, {}), areaExitPending={}, wave={}, managedParty={}, inParty={}",
-				option,
-				target,
-				event.getId(),
-				event.getMenuAction(),
-				event.getParam0(),
-				event.getParam1(),
-				worldPoint.getX(),
-				worldPoint.getY(),
-				worldPoint.getPlane(),
-				worldPoint.getRegionID(),
-				worldPoint.getRegionX(),
-				worldPoint.getRegionY(),
-				client.getVarbitValue(VarbitID.BARBASSAULT_AREAEXIT_PENDING),
-				waveLifecycleService.getWave(),
-				baSyncManagedParty,
-				partyService.isInParty()
-		);
-
-		if (baSyncManagedParty && partyService.isInParty())
+		if (baSyncManagedParty && partyService.isInParty() && isBaWaveDoorClick(event))
 		{
 			baPartySyncPendingDoorExitTick = client.getTickCount();
-			baPartySyncPendingDoorExitObjectId = event.getId();
-
-			log.debug(
-					"Armed BA sync door-exit check from door id {} at world=({}, {}, {})",
-					event.getId(),
-					worldPoint.getX(),
-					worldPoint.getY(),
-					worldPoint.getPlane()
-			);
 		}
 	}
 
-	private boolean isBaWaveDoorClick(MenuOptionClicked event, String optionText, String targetText)
+	private boolean isBaWaveDoorClick(MenuOptionClicked event)
 	{
+		String optionText = Text.removeTags(event.getMenuOption() == null ? "" : event.getMenuOption()).toLowerCase(Locale.ROOT);
+		String targetText = Text.removeTags(event.getMenuTarget() == null ? "" : event.getMenuTarget()).toLowerCase(Locale.ROOT);
 		return event.getMenuAction() == MenuAction.GAME_OBJECT_FIRST_OPTION
 				&& "pass".equals(optionText)
 				&& "door".equals(targetText)
@@ -614,7 +503,7 @@ public class BaPartySyncService
 
 		if (!baSyncManagedParty || !partyService.isInParty())
 		{
-			clearBaPartySyncPendingDoorExit();
+			baPartySyncPendingDoorExitTick = -1;
 			return;
 		}
 
@@ -622,8 +511,7 @@ public class BaPartySyncService
 
 		if (ticksSinceDoorClick > BA_WAVE_DOOR_EXIT_CONFIRM_TICKS)
 		{
-			log.debug("BA sync door-exit check expired after {} ticks", ticksSinceDoorClick);
-			clearBaPartySyncPendingDoorExit();
+			baPartySyncPendingDoorExitTick = -1;
 			return;
 		}
 
@@ -633,21 +521,13 @@ public class BaPartySyncService
 
 		if (!isBaWaveDoorExitLandingTile(worldPoint)) return;
 
-		log.debug(
-				"Confirmed BA sync door exit from door id {} at world=({}, {}, {}). Leaving managed party.",
-				baPartySyncPendingDoorExitObjectId,
-				worldPoint.getX(),
-				worldPoint.getY(),
-				worldPoint.getPlane()
-		);
-
-		clearBaPartySyncPendingDoorExit();
-		leaveBaSyncParty("left BA room through wave door");
+		baPartySyncPendingDoorExitTick = -1;
+		leaveBaSyncParty();
 	}
 
 	private boolean isBaWaveDoorExitLandingTile(WorldPoint worldPoint)
 	{
-		if (worldPoint == null || worldPoint.getRegionID() != BA_LOBBY_REGION_ID) return false;
+		if (worldPoint.getRegionID() != BA_LOBBY_REGION_ID) return false;
 
 		for (int[] tile : BA_WAVE_DOOR_EXIT_TILES)
 		{
@@ -662,28 +542,11 @@ public class BaPartySyncService
 		return false;
 	}
 
-	private void clearBaPartySyncPendingDoorExit()
-	{
-		baPartySyncPendingDoorExitTick = -1;
-		baPartySyncPendingDoorExitObjectId = -1;
-	}
-
-	private String buildBaPartySyncPassphrase(String progenitorName)
-	{
-		return progenitorName + BA_SYNC_PASSPHRASE_SUFFIX;
-	}
-
-	private void leaveBaSyncParty(String reason)
+	private void leaveBaSyncParty()
 	{
 		if (!baSyncManagedParty)
 		{
-			baPartySyncPassphrase = null;
-			baPartySyncProgenitorName = null;
-			baPartySyncTeamNames = new ArrayList<>();
-			baPartySyncTeamMembers = new ArrayList<>();
-			healerFoodCountsByPlayerName.clear();
-			baPartySyncJoinAttemptTick = -1;
-			clearBaPartySyncPendingDoorExit();
+			clearBaSyncState();
 			updateBaPartySyncPanelStatus();
 			return;
 		}
@@ -692,26 +555,29 @@ public class BaPartySyncService
 		{
 			if (partyService.isInParty())
 			{
-				log.debug("Leaving managed BA sync party. Reason: {}", reason);
 				partyService.changeParty(null);
 			}
 		}
-		catch (RuntimeException ex)
+		catch (RuntimeException ignored)
 		{
-			log.debug("Failed to leave managed BA sync party. Reason: {}", reason, ex);
 		}
 		finally
 		{
-			baSyncManagedParty = false;
-			baPartySyncPassphrase = null;
-			baPartySyncProgenitorName = null;
-			baPartySyncTeamNames = new ArrayList<>();
-			baPartySyncTeamMembers = new ArrayList<>();
-			healerFoodCountsByPlayerName.clear();
-			baPartySyncJoinAttemptTick = -1;
-			clearBaPartySyncPendingDoorExit();
+			clearBaSyncState();
 			setBaPartySyncStatus(config.enableBaPartySync() ? "Waiting for Team" : "Off", null);
 		}
+	}
+
+	private void clearBaSyncState()
+	{
+		baSyncManagedParty = false;
+		baPartySyncPassphrase = null;
+		baPartySyncProgenitorName = null;
+		baPartySyncTeamNames = new ArrayList<>();
+		baPartySyncTeamMembers = new ArrayList<>();
+		healerFoodCountsByPlayerName.clear();
+		baPartySyncJoinAttemptTick = -1;
+		baPartySyncPendingDoorExitTick = -1;
 	}
 
 	private void setBaPartySyncStatus(String status, String progenitorName)
@@ -727,7 +593,7 @@ public class BaPartySyncService
 
 		if (baPartySyncStatus != null
 				&& baPartySyncStatus.equals(lastDisplayedBaPartySyncStatus)
-				&& memberStatusesEqual(memberStatuses, lastDisplayedBaPartySyncMemberStatuses))
+				&& memberStatuses.equals(lastDisplayedBaPartySyncMemberStatuses))
 		{
 			return;
 		}
@@ -756,41 +622,11 @@ public class BaPartySyncService
 		return statuses;
 	}
 
-	private boolean memberStatusesEqual(List<BaPartySyncMemberStatus> left, List<BaPartySyncMemberStatus> right)
-	{
-		if (left.size() != right.size())
-		{
-			return false;
-		}
-
-		for (int i = 0; i < left.size(); i++)
-		{
-			BaPartySyncMemberStatus leftStatus = left.get(i);
-			BaPartySyncMemberStatus rightStatus = right.get(i);
-
-			if (!leftStatus.getName().equals(rightStatus.getName())
-					|| !Objects.equals(leftStatus.getRole(), rightStatus.getRole())
-					|| leftStatus.isInParty() != rightStatus.isInParty()
-					|| !Objects.equals(leftStatus.getHealerFoodCounts(), rightStatus.getHealerFoodCounts()))
-			{
-				return false;
-			}
-		}
-
-		return true;
-	}
-
 	private BaHealerFoodCounts getDisplayableHealerFoodCounts(String playerName, String role, boolean inParty)
 	{
-		if (!isRealWaveActive() || BaRole.fromDisplayName(role) != BaRole.HEALER)
-		{
-			return null;
-		}
+		if (!isRealWaveActive() || BaRole.fromDisplayName(role) != BaRole.HEALER) return null;
 
-		if (!isLocalPlayer(playerName) && !inParty)
-		{
-			return null;
-		}
+		if (!isLocalPlayer(playerName) && !inParty) return null;
 
 		return healerFoodCountsByPlayerName.get(normalizePlayerName(playerName));
 	}
@@ -827,7 +663,7 @@ public class BaPartySyncService
 		{
 			if (baSyncManagedParty)
 			{
-				leaveBaSyncParty("BA team cleared");
+				leaveBaSyncParty();
 			}
 
 			return Optional.empty();
@@ -848,10 +684,7 @@ public class BaPartySyncService
 		String rosterText = cleanWidgetText(text);
 		String expectedPrefix = playerIndex == 0 ? "Leader" : "Player " + playerIndex;
 
-		if (rosterText.isEmpty())
-		{
-			return null;
-		}
+		if (rosterText.isEmpty()) return null;
 
 		String name = rosterText.toLowerCase(Locale.ROOT).startsWith(expectedPrefix.toLowerCase(Locale.ROOT) + ":")
 				? rosterText.substring(rosterText.indexOf(':') + 1).trim()
@@ -908,10 +741,7 @@ public class BaPartySyncService
 
 		for (String teamName : baPartySyncTeamNames)
 		{
-			if (normalizePlayerName(teamName).equals(normalizedPlayerName))
-			{
-				return true;
-			}
+			if (normalizePlayerName(teamName).equals(normalizedPlayerName)) return true;
 		}
 
 		return false;
@@ -921,10 +751,7 @@ public class BaPartySyncService
 	{
 		for (BaTeamMember member : baPartySyncTeamMembers)
 		{
-			if (member.getName().equals(name))
-			{
-				return member;
-			}
+			if (member.getName().equals(name)) return member;
 		}
 
 		return null;
@@ -946,10 +773,7 @@ public class BaPartySyncService
 
 		for (MessageNode messageNode : messages)
 		{
-			if (isMatchingNativePublicChatMessage(messageNode, senderName, message))
-			{
-				return true;
-			}
+			if (isMatchingNativePublicChatMessage(messageNode, senderName, message)) return true;
 		}
 
 		return false;

@@ -12,19 +12,13 @@ public final class HealerCodeProgress
 
 	public static int getExpectedFoodForOrder(WaveCode waveCode, int healerOrder, int currentCallIndex)
 	{
-		if (waveCode == null)
-		{
-			return 0;
-		}
+		if (waveCode == null) return 0;
 
 		int expected = 0;
 
 		for (CallCode call : waveCode.getCalls())
 		{
-			if (call.getCallIndex() > currentCallIndex)
-			{
-				continue;
-			}
+			if (call.getCallIndex() > currentCallIndex) continue;
 
 			HealerInstruction instruction = call.getInstruction(healerOrder);
 			if (instruction != null && instruction.hasTarget())
@@ -36,60 +30,6 @@ public final class HealerCodeProgress
 		return expected;
 	}
 
-	public static HealerCodeStatus getCurrentStatus(WaveCode waveCode, int healerOrder, int currentCallIndex, List<FeedEvent> feedEvents)
-	{
-		if (waveCode == null)
-		{
-			return null;
-		}
-
-		CallCode call = waveCode.getCall(currentCallIndex);
-		if (call == null)
-		{
-			return null;
-		}
-
-		HealerInstruction instruction = call.getInstruction(healerOrder);
-		if (instruction == null || !instruction.hasTarget())
-		{
-			return null;
-		}
-
-		int foodThisCall = countFoodForCall(healerOrder, currentCallIndex, feedEvents);
-		int lastFoodElapsed = lastFoodElapsed(healerOrder, currentCallIndex, feedEvents);
-		return displayStatus(instruction, getOverallState(instruction, foodThisCall, lastFoodElapsed), foodThisCall, lastFoodElapsed);
-	}
-
-	public static HealerCodeStatus getPreviousStatus(WaveCode waveCode, int healerOrder, int currentCallIndex, List<FeedEvent> feedEvents)
-	{
-		if (waveCode == null)
-		{
-			return null;
-		}
-
-		int previousCallIndex = currentCallIndex - 1;
-		if (previousCallIndex < 0)
-		{
-			return null;
-		}
-
-		CallCode call = waveCode.getCall(previousCallIndex);
-		if (call == null)
-		{
-			return null;
-		}
-
-		HealerInstruction instruction = call.getInstruction(healerOrder);
-		if (instruction == null || !instruction.hasTarget())
-		{
-			return null;
-		}
-
-		int foodThisCall = countFoodForCall(healerOrder, previousCallIndex, feedEvents);
-		int lastFoodElapsed = lastFoodElapsed(healerOrder, previousCallIndex, feedEvents);
-		return displayStatus(instruction, CodeDisplayState.PREVIOUS, foodThisCall, lastFoodElapsed);
-	}
-
 	public static HealerCodeStatus getDisplayStatus(WaveCode waveCode, int healerOrder, int currentCallIndex, List<FeedEvent> feedEvents)
 	{
 		List<InstructionProgress> progresses = getInstructionProgresses(waveCode, healerOrder, currentCallIndex, feedEvents);
@@ -99,10 +39,7 @@ public final class HealerCodeProgress
 
 		for (InstructionProgress progress : progresses)
 		{
-			if (!progress.hasTarget())
-			{
-				continue;
-			}
+			if (!progress.hasTarget()) continue;
 
 			mostRecentProgress = progress;
 
@@ -112,16 +49,10 @@ public final class HealerCodeProgress
 			}
 
 			CodeDisplayState state = getOverallState(progress.instruction, progress.foodFed, progress.lastFoodElapsed);
-			if (progress.callIndex < currentCallIndex && state != CodeDisplayState.COMPLETE)
-			{
-				return progress.status(CodeDisplayState.IN_PROGRESS);
-			}
+			if (progress.callIndex < currentCallIndex && state != CodeDisplayState.COMPLETE) return progress.status(CodeDisplayState.IN_PROGRESS);
 		}
 
-		if (currentProgress != null)
-		{
-			return currentProgress.status(getOverallState(currentProgress.instruction, currentProgress.foodFed, currentProgress.lastFoodElapsed));
-		}
+		if (currentProgress != null) return currentProgress.status(getOverallState(currentProgress.instruction, currentProgress.foodFed, currentProgress.lastFoodElapsed));
 
 		return mostRecentProgress == null ? null : mostRecentProgress.status(CodeDisplayState.PREVIOUS);
 	}
@@ -138,16 +69,13 @@ public final class HealerCodeProgress
 			CallCode call = waveCode == null ? null : waveCode.getCall(panelCallIndex);
 			HealerInstruction instruction = call == null ? null : call.getInstruction(healerOrder);
 			return instruction != null && instruction.hasTarget()
-					? displayStatus(instruction, CodeDisplayState.NOT_STARTED, 0, -1)
+					? displayStatus(instruction, CodeDisplayState.NOT_STARTED, 0)
 					: null;
 		}
 
 		for (InstructionProgress progress : getInstructionProgresses(waveCode, healerOrder, currentCallIndex, feedEvents))
 		{
-			if (progress.callIndex == panelCallIndex)
-			{
-				return progress.hasTarget() ? progress.status(getOverallState(progress.instruction, progress.foodFed, progress.lastFoodElapsed)) : null;
-			}
+			if (progress.callIndex == panelCallIndex) return progress.hasTarget() ? progress.status(getOverallState(progress.instruction, progress.foodFed, progress.lastFoodElapsed)) : null;
 		}
 
 		return null;
@@ -162,10 +90,7 @@ public final class HealerCodeProgress
 	{
 		for (InstructionProgress progress : getInstructionProgresses(waveCode, healerOrder, currentCallIndex, feedEvents))
 		{
-			if (progress.callIndex == panelCallIndex)
-			{
-				return progress.foodFed;
-			}
+			if (progress.callIndex == panelCallIndex) return progress.foodFed;
 		}
 
 		return 0;
@@ -177,10 +102,7 @@ public final class HealerCodeProgress
 			int currentCallIndex,
 			List<FeedEvent> feedEvents)
 	{
-		if (waveCode == null)
-		{
-			return new ArrayList<>();
-		}
+		if (waveCode == null) return new ArrayList<>();
 
 		List<InstructionProgress> progresses = new ArrayList<>();
 
@@ -192,7 +114,7 @@ public final class HealerCodeProgress
 		}
 
 		List<FeedEvent> events = new ArrayList<>();
-		for (FeedEvent event : safeEvents(feedEvents))
+		for (FeedEvent event : feedEvents)
 		{
 			if (event.getHealerOrder() == healerOrder)
 			{
@@ -232,46 +154,28 @@ public final class HealerCodeProgress
 
 	private static CodeDisplayState getOverallState(HealerInstruction instruction, int foodFed, int lastFoodElapsed)
 	{
-		if (foodFed <= 0)
-		{
-			return CodeDisplayState.NOT_STARTED;
-		}
+		if (foodFed <= 0) return CodeDisplayState.NOT_STARTED;
 
-		if (foodFed < instruction.getTotalTargetFoodCount())
-		{
-			return CodeDisplayState.IN_PROGRESS;
-		}
+		if (foodFed < instruction.getTotalTargetFoodCount()) return CodeDisplayState.IN_PROGRESS;
 
-		if (instruction.getAfterSeconds() != null && lastFoodElapsed < instruction.getAfterSeconds())
-		{
-			return CodeDisplayState.IN_PROGRESS;
-		}
+		if (instruction.getAfterSeconds() != null && lastFoodElapsed < instruction.getAfterSeconds()) return CodeDisplayState.IN_PROGRESS;
 
-		if (instruction.getBeforeSeconds() != null && lastFoodElapsed >= instruction.getBeforeSeconds())
-		{
-			return CodeDisplayState.IN_PROGRESS;
-		}
+		if (instruction.getBeforeSeconds() != null && lastFoodElapsed >= instruction.getBeforeSeconds()) return CodeDisplayState.IN_PROGRESS;
 
-		if (instruction.getExactSeconds() != null && lastFoodElapsed != instruction.getExactSeconds())
-		{
-			return CodeDisplayState.IN_PROGRESS;
-		}
+		if (instruction.getExactSeconds() != null && lastFoodElapsed != instruction.getExactSeconds()) return CodeDisplayState.IN_PROGRESS;
 
 		return CodeDisplayState.COMPLETE;
 	}
 
-	private static HealerCodeStatus displayStatus(HealerInstruction instruction, CodeDisplayState state, int totalFoodFed, int lastFoodElapsed)
+	private static HealerCodeStatus displayStatus(HealerInstruction instruction, CodeDisplayState state, int totalFoodFed)
 	{
 		DisplayPhase phase = displayPhase(instruction, totalFoodFed);
-		return new HealerCodeStatus(phase.instruction, state, phase.foodFed, lastFoodElapsed);
+		return new HealerCodeStatus(phase.instruction, state, phase.foodFed);
 	}
 
 	private static DisplayPhase displayPhase(HealerInstruction instruction, int totalFoodFed)
 	{
-		if (instruction == null || !instruction.hasPostRestockFoodCount())
-		{
-			return new DisplayPhase(instruction, totalFoodFed);
-		}
+		if (instruction == null || !instruction.hasPostRestockFoodCount()) return new DisplayPhase(instruction, totalFoodFed);
 
 		int firstTarget = instruction.getTargetFoodCount();
 		if (totalFoodFed < firstTarget)
@@ -291,41 +195,6 @@ public final class HealerCodeProgress
 				null
 		);
 		return new DisplayPhase(secondPhase, totalFoodFed - firstTarget);
-	}
-
-	private static int countFoodForCall(int healerOrder, int callIndex, List<FeedEvent> feedEvents)
-	{
-		int count = 0;
-
-		for (FeedEvent event : safeEvents(feedEvents))
-		{
-			if (event.getHealerOrder() == healerOrder && event.getCallIndex() == callIndex)
-			{
-				count++;
-			}
-		}
-
-		return count;
-	}
-
-	private static int lastFoodElapsed(int healerOrder, int callIndex, List<FeedEvent> feedEvents)
-	{
-		int last = -1;
-
-		for (FeedEvent event : safeEvents(feedEvents))
-		{
-			if (event.getHealerOrder() == healerOrder && event.getCallIndex() == callIndex)
-			{
-				last = Math.max(last, event.getElapsedSeconds());
-			}
-		}
-
-		return last;
-	}
-
-	private static List<FeedEvent> safeEvents(List<FeedEvent> feedEvents)
-	{
-		return feedEvents == null ? new ArrayList<>() : feedEvents;
 	}
 
 	private static class DisplayPhase
@@ -355,7 +224,7 @@ public final class HealerCodeProgress
 
 		private HealerCodeStatus status(CodeDisplayState state)
 		{
-			return displayStatus(instruction, state, foodFed, lastFoodElapsed);
+			return displayStatus(instruction, state, foodFed);
 		}
 
 		private void addFood(int elapsedSeconds)
@@ -371,15 +240,9 @@ public final class HealerCodeProgress
 
 		private boolean acceptsMoreFood()
 		{
-			if (!hasTarget())
-			{
-				return false;
-			}
+			if (!hasTarget()) return false;
 
-			if (foodFed < instruction.getTotalTargetFoodCount())
-			{
-				return true;
-			}
+			if (foodFed < instruction.getTotalTargetFoodCount()) return true;
 
 			return getOverallState(instruction, foodFed, lastFoodElapsed) != CodeDisplayState.COMPLETE;
 		}

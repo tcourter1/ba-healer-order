@@ -20,20 +20,14 @@ public final class HealerCodeFormatter
 
 	public static String formatDisplay(WaveCode code)
 	{
-		if (code == null)
-		{
-			return "";
-		}
+		if (code == null) return "";
 
 		return stripDisplayOnlyLines(format(code, false), code.getName(), code.getWave());
 	}
 
 	private static String format(WaveCode code, boolean includeExpectedTimes)
 	{
-		if (code == null)
-		{
-			return "";
-		}
+		if (code == null) return "";
 
 		List<String> lines = new ArrayList<>();
 		List<String> headerParts = new ArrayList<>();
@@ -97,27 +91,18 @@ public final class HealerCodeFormatter
 
 	private static boolean hasCallText(CallCode call)
 	{
-		if (call == null)
-		{
-			return false;
-		}
+		if (call == null) return false;
 
 		for (HealerInstruction instruction : call.getHealerInstructions())
 		{
-			if (hasMeaningfulInstruction(instruction))
-			{
-				return true;
-			}
+			if (hasMeaningfulInstruction(instruction)) return true;
 		}
 		return false;
 	}
 
 	public static String formatCall(CallCode call)
 	{
-		if (call == null || call.getHealerInstructions().isEmpty())
-		{
-			return "0";
-		}
+		if (call == null || call.getHealerInstructions().isEmpty()) return "0";
 
 		List<String> parts = new ArrayList<>();
 		for (HealerInstruction instruction : call.getHealerInstructions())
@@ -131,10 +116,7 @@ public final class HealerCodeFormatter
 	{
 		if (instruction == null || !instruction.hasTarget())
 		{
-			if (instruction != null && !isBlank(instruction.getRaw()))
-			{
-				return instruction.getRaw().trim();
-			}
+			if (instruction != null && !isBlank(instruction.getRaw())) return instruction.getRaw().trim();
 			return "0";
 		}
 		return instruction.formatTarget();
@@ -143,10 +125,7 @@ public final class HealerCodeFormatter
 	private static String formatExpectedTimes(WaveCode code)
 	{
 		Map<Integer, Integer> times = new TreeMap<>(code.getExpectedTimesSeconds());
-		if (times.isEmpty())
-		{
-			return "";
-		}
+		if (times.isEmpty()) return "";
 
 		List<String> parts = new ArrayList<>();
 		for (Map.Entry<Integer, Integer> entry : times.entrySet())
@@ -161,36 +140,21 @@ public final class HealerCodeFormatter
 
 	private static boolean isBlank(String value)
 	{
-		return value == null || value.trim().isEmpty();
+		return value == null || value.isBlank();
 	}
 
 	private static String stripDisplayOnlyLines(String sourceText, String codeName, int wave)
 	{
-		if (isBlank(sourceText))
-		{
-			return "";
-		}
+		if (isBlank(sourceText)) return "";
 
 		List<String> lines = new ArrayList<>();
 		for (String rawLine : sourceText.split("\\r?\\n", -1))
 		{
 			String line = rawLine.trim();
-			if (line.toLowerCase().startsWith("expected:"))
-			{
-				continue;
-			}
-			if (line.toLowerCase().startsWith("expected wave end:"))
-			{
-				continue;
-			}
-			if (isCodeNameLine(line, codeName, wave))
-			{
-				continue;
-			}
-			if (isAllZeroCallLine(line))
-			{
-				continue;
-			}
+			if (line.toLowerCase().startsWith("expected:")) continue;
+			if (line.toLowerCase().startsWith("expected wave end:")) continue;
+			if (isCodeNameLine(line, codeName, wave)) continue;
+			if (isAllZeroCallLine(line)) continue;
 			if (line.toLowerCase().startsWith("overstock:"))
 			{
 				lines.add(stripMetadataPrefix(line, "overstock:"));
@@ -204,37 +168,22 @@ public final class HealerCodeFormatter
 	private static boolean isAllZeroCallLine(String line)
 	{
 		String text = stripInlineComment(line).trim();
-		if (text.isEmpty())
-		{
-			return false;
-		}
+		if (text.isEmpty()) return false;
 
 		List<HealerInstruction> instructions = HealerCodeParser.parseCodeLine(text);
-		if (instructions.isEmpty())
-		{
-			return false;
-		}
+		if (instructions.isEmpty()) return false;
 
 		for (HealerInstruction instruction : instructions)
 		{
-			if (hasMeaningfulInstruction(instruction))
-			{
-				return false;
-			}
+			if (hasMeaningfulInstruction(instruction)) return false;
 		}
 		return true;
 	}
 
 	private static boolean hasMeaningfulInstruction(HealerInstruction instruction)
 	{
-		if (instruction == null)
-		{
-			return false;
-		}
-		if (instruction.hasTarget() || instruction.hasPostRestockFoodCount())
-		{
-			return true;
-		}
+		if (instruction == null) return false;
+		if (instruction.hasTarget() || instruction.hasPostRestockFoodCount()) return true;
 
 		String raw = instruction.getRaw();
 		return !isBlank(raw) && !raw.trim().matches("0+");
@@ -248,29 +197,17 @@ public final class HealerCodeFormatter
 
 	private static boolean isCodeNameLine(String line, String codeName, int wave)
 	{
-		if (isBlank(line) || isBlank(codeName))
-		{
-			return false;
-		}
+		if (isBlank(line) || isBlank(codeName)) return false;
 
 		String text = trimTrailingColon(line.trim());
 		String name = trimTrailingColon(codeName.trim());
-		if (text.equalsIgnoreCase(name))
-		{
-			return true;
-		}
+		if (text.equalsIgnoreCase(name)) return true;
 
-		if (text.toLowerCase().startsWith("code:"))
-		{
-			return trimTrailingColon(text.substring(5).trim()).equalsIgnoreCase(name);
-		}
+		if (text.toLowerCase().startsWith("code:")) return trimTrailingColon(text.substring(5).trim()).equalsIgnoreCase(name);
 
 		String wavePrefix = "wave " + wave;
 		String lower = text.toLowerCase();
-		if (!lower.startsWith(wavePrefix))
-		{
-			return false;
-		}
+		if (!lower.startsWith(wavePrefix)) return false;
 
 		String remainder = trimLeadingSeparators(text.substring(wavePrefix.length()).trim());
 		return remainder.equalsIgnoreCase(name);

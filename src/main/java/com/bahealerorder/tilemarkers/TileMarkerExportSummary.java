@@ -17,10 +17,7 @@ final class TileMarkerExportSummary
 			Function<String, String> strategyName)
 	{
 		List<String> lines = new ArrayList<>();
-		if (waveSelections == null || waveSelections.isEmpty())
-		{
-			return lines;
-		}
+		if (waveSelections == null || waveSelections.isEmpty()) return lines;
 
 		List<Integer> waves = new ArrayList<>(waveSelections.keySet());
 		Collections.sort(waves);
@@ -36,36 +33,22 @@ final class TileMarkerExportSummary
 
 	static List<String> markerSets(List<TileMarkerSet> markerSets)
 	{
-		List<String> lines = new ArrayList<>();
-		if (markerSets == null)
-		{
-			return lines;
-		}
-
-		for (TileMarkerSet set : markerSets)
-		{
-			if (set != null)
-			{
-				lines.add(markerSetDisplayName(set));
-			}
-		}
-		return lines;
+		return summaryLines(markerSets, TileMarkerExportSummary::markerSetDisplayName);
 	}
 
 	static List<String> strategies(List<TileMarkerStrategyPreset> presets)
 	{
-		List<String> lines = new ArrayList<>();
-		if (presets == null)
-		{
-			return lines;
-		}
+		return summaryLines(presets, TileMarkerExportSummary::strategyPresetDisplayName);
+	}
 
-		for (TileMarkerStrategyPreset preset : presets)
+	private static <T> List<String> summaryLines(List<T> values, Function<T, String> displayName)
+	{
+		List<String> lines = new ArrayList<>();
+		if (values == null) return lines;
+
+		for (T value : values)
 		{
-			if (preset != null)
-			{
-				lines.add(strategyPresetDisplayName(preset));
-			}
+			if (value != null) lines.add(displayName.apply(value));
 		}
 		return lines;
 	}
@@ -80,18 +63,18 @@ final class TileMarkerExportSummary
 		return lines;
 	}
 
-	private static String markerSetDisplayName(TileMarkerSet set)
+	static String markerSetDisplayName(TileMarkerSet set)
 	{
 		return set == null || isBlank(set.getName()) ? "unnamed tile marker set" : set.getName().trim();
 	}
 
-	private static String strategyPresetDisplayName(TileMarkerStrategyPreset preset)
+	static String strategyPresetDisplayName(TileMarkerStrategyPreset preset)
 	{
 		return preset == null || isBlank(preset.getName()) ? "unnamed wave strategy" : preset.getName().trim();
 	}
 
 	private static boolean isBlank(String value)
 	{
-		return value == null || value.trim().isEmpty();
+		return value == null || value.isBlank();
 	}
 }

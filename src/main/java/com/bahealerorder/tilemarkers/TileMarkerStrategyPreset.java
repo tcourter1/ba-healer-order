@@ -1,21 +1,26 @@
 package com.bahealerorder.tilemarkers;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+@NoArgsConstructor
+@Getter
 public class TileMarkerStrategyPreset
 {
+	@Setter
 	private String id;
+	@Setter
 	private String name;
+	@Setter
 	private String notes;
 	private String waveMap;
+	@Setter
 	private boolean builtIn;
+	@Setter
 	private List<String> markerSetIds = new ArrayList<>();
-
-	public TileMarkerStrategyPreset()
-	{
-	}
 
 	public TileMarkerStrategyPreset(
 			String id,
@@ -43,36 +48,6 @@ public class TileMarkerStrategyPreset
 		setMarkerSetIds(markerSetIds);
 	}
 
-	public String getId()
-	{
-		return id;
-	}
-
-	public void setId(String id)
-	{
-		this.id = id;
-	}
-
-	public String getName()
-	{
-		return name;
-	}
-
-	public void setName(String name)
-	{
-		this.name = name;
-	}
-
-	public String getNotes()
-	{
-		return notes;
-	}
-
-	public void setNotes(String notes)
-	{
-		this.notes = notes;
-	}
-
 	public TileMarkerWaveMap getWaveMap()
 	{
 		return TileMarkerWaveMap.fromName(waveMap);
@@ -83,29 +58,9 @@ public class TileMarkerStrategyPreset
 		this.waveMap = (waveMap == null ? TileMarkerWaveMap.WAVES_1_TO_9 : waveMap).name();
 	}
 
-	public boolean isBuiltIn()
-	{
-		return builtIn;
-	}
-
-	public void setBuiltIn(boolean builtIn)
-	{
-		this.builtIn = builtIn;
-	}
-
-	public List<String> getMarkerSetIds()
-	{
-		return markerSetIds == null ? Collections.emptyList() : markerSetIds;
-	}
-
-	public void setMarkerSetIds(List<String> markerSetIds)
-	{
-		this.markerSetIds = markerSetIds == null ? new ArrayList<>() : new ArrayList<>(markerSetIds);
-	}
-
 	@Override
 	public String toString()
 	{
-		return name == null || name.trim().isEmpty() ? "Unnamed strategy" : name;
+		return name == null || name.isBlank() ? "Unnamed strategy" : name;
 	}
 }

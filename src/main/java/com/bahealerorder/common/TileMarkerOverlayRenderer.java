@@ -23,17 +23,11 @@ public final class TileMarkerOverlayRenderer
 
 	public static void renderMarkers(Client client, Graphics2D graphics, Iterable<TileMarker> markers)
 	{
-		if (markers == null)
-		{
-			return;
-		}
+		if (markers == null) return;
 
 		for (TileMarker marker : markers)
 		{
-			if (marker == null || marker.getTile() == null)
-			{
-				continue;
-			}
+			if (marker == null || marker.getTile() == null) continue;
 
 			renderMarker(client, graphics, marker);
 		}
@@ -44,16 +38,10 @@ public final class TileMarkerOverlayRenderer
 		for (WorldPoint worldPoint : getWorldPoints(client, marker.getTile()))
 		{
 			LocalPoint localPoint = LocalPoint.fromWorld(client, worldPoint);
-			if (localPoint == null)
-			{
-				continue;
-			}
+			if (localPoint == null) continue;
 
 			Polygon tile = Perspective.getCanvasTilePoly(client, localPoint);
-			if (tile == null)
-			{
-				continue;
-			}
+			if (tile == null) continue;
 
 			Color color = TileMarkerStyle.parseColor(marker.getColor(), TileMarkerStyle.DEFAULT_MARKER_COLOR);
 			renderTile(graphics, tile, color, marker.getOpacityPercentOrDefault(), marker.getBorderWidthOrDefault());
@@ -90,16 +78,10 @@ public final class TileMarkerOverlayRenderer
 
 	private static void renderLabel(Client client, Graphics2D graphics, LocalPoint localPoint, String text, Color color)
 	{
-		if (text == null || text.trim().isEmpty())
-		{
-			return;
-		}
+		if (text == null || text.isBlank()) return;
 
 		Point textLocation = Perspective.getCanvasTextLocation(client, graphics, localPoint, text, 0);
-		if (textLocation == null)
-		{
-			return;
-		}
+		if (textLocation == null) return;
 
 		OverlayUtil.renderTextLocation(graphics, textLocation, text, color);
 	}

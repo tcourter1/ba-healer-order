@@ -8,7 +8,6 @@ import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import com.bahealerorder.tilemarkers.TileMarkerExportResult;
 import com.bahealerorder.tilemarkers.TileMarkerExportType;
 import com.bahealerorder.tilemarkers.TileMarkerRoleContext;
-import com.bahealerorder.tilemarkers.TileMarkerSet;
 import com.bahealerorder.tilemarkers.TileMarkerStrategyPreset;
 import com.bahealerorder.tilemarkers.TileMarkerWaveMap;
 import java.awt.BorderLayout;
@@ -128,18 +127,11 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		BaPanelUi.styleCombo(targetWaveCombo, HEADER_WAVE_WIDTH, CONTROL_HEIGHT);
 		selectTargetComboValues();
 
-		targetRoleCombo.addActionListener(event ->
+			targetRoleCombo.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
-			TileMarkerRoleContext selectedContext = (TileMarkerRoleContext) targetRoleCombo.getSelectedItem();
-			if (selectedContext != null)
-			{
-				targetRoleContext = selectedContext;
-			}
+			targetRoleContext = (TileMarkerRoleContext) targetRoleCombo.getSelectedItem();
 		});
 		targetWaveCombo.addActionListener(event -> changeTargetWave());
 
@@ -147,11 +139,11 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		BaPanelUi.fixedSize(row, EDITOR_WIDTH, CONTROL_HEIGHT);
-		row.add(label("Configuring", true));
+		row.add(BaPanelUi.plainLabel("Configuring", true));
 		row.add(Box.createHorizontalStrut(6));
 		row.add(targetRoleCombo);
 		row.add(Box.createHorizontalStrut(6));
-		row.add(label("strategy for wave", true));
+		row.add(BaPanelUi.plainLabel("strategy for wave", true));
 		row.add(Box.createHorizontalStrut(6));
 		row.add(targetWaveCombo);
 		row.add(Box.createHorizontalGlue());
@@ -174,16 +166,10 @@ class TileMarkerStrategyPresetEditor extends JPanel
 
 	private void changeTargetWave()
 	{
-		if (refreshing)
-		{
-			return;
-		}
+		if (refreshing) return;
 
 		Integer selectedWave = (Integer) targetWaveCombo.getSelectedItem();
-		if (selectedWave == null || selectedWave == targetWave)
-		{
-			return;
-		}
+		if (selectedWave == null || selectedWave == targetWave) return;
 
 		TileMarkerWaveMap nextWaveMap = TileMarkerWaveMap.fromWave(selectedWave);
 		if (nextWaveMap != waveMap && !confirmDiscard(this))
@@ -206,7 +192,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		panel.add(createStrategySelector());
 		panel.add(Box.createVerticalStrut(28));
-		panel.add(label("Name", true));
+		panel.add(BaPanelUi.plainLabel("Name", true));
 		panel.add(Box.createVerticalStrut(10));
 		BaPanelUi.styleTextInput(strategyName, EDITOR_WIDTH, CONTROL_HEIGHT);
 		panel.add(strategyName);
@@ -227,10 +213,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		strategyCombo.setRenderer(BaPanelUi.comboOptionRenderer(CONTROL_HEIGHT));
 		strategyCombo.addActionListener(event ->
 		{
-			if (refreshing)
-			{
-				return;
-			}
+			if (refreshing) return;
 
 			if (!confirmDiscard(this))
 			{
@@ -275,26 +258,6 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		return scrollPane;
 	}
 
-	private JButton createSaveButton()
-	{
-		return BaPanelUi.action("Save Strategy", this::saveStrategy, EDITOR_WIDTH, CONTROL_HEIGHT);
-	}
-
-	private JButton createPreviewButton(int width)
-	{
-		return BaPanelUi.action("Preview", this::openStrategyPreview, width, CONTROL_HEIGHT);
-	}
-
-	private JButton createExportButton(int width)
-	{
-		return BaPanelUi.action("Export", this::exportStrategyToClipboard, width, CONTROL_HEIGHT);
-	}
-
-	private JButton createImportButton(int width)
-	{
-		return BaPanelUi.action("Import", this::importStrategyFromClipboard, width, CONTROL_HEIGHT);
-	}
-
 	private JPanel createActionRow()
 	{
 		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
@@ -304,13 +267,13 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		JPanel row = new JPanel(new GridLayout(1, 3, 8, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		BaPanelUi.fixedSize(row, EDITOR_WIDTH, CONTROL_HEIGHT);
-		row.add(createImportButton(actionButtonWidth));
-		row.add(createExportButton(actionButtonWidth));
-		row.add(createPreviewButton(actionButtonWidth));
+		row.add(BaPanelUi.action("Import", this::importStrategyFromClipboard, actionButtonWidth, CONTROL_HEIGHT));
+		row.add(BaPanelUi.action("Export", this::exportStrategyToClipboard, actionButtonWidth, CONTROL_HEIGHT));
+		row.add(BaPanelUi.action("Preview", this::openStrategyPreview, actionButtonWidth, CONTROL_HEIGHT));
 
 		panel.add(row);
 		panel.add(Box.createVerticalStrut(8));
-		panel.add(createSaveButton());
+		panel.add(BaPanelUi.action("Save Strategy", this::saveStrategy, EDITOR_WIDTH, CONTROL_HEIGHT));
 		return panel;
 	}
 
@@ -367,10 +330,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 			String initialMarkerSetId,
 			Component parent)
 	{
-		if (!confirmDiscard(parent))
-		{
-			return false;
-		}
+		if (!confirmDiscard(parent)) return false;
 
 		targetRoleContext = roleContext == null ? TileMarkerRoleContext.DEFENDER : roleContext;
 		targetWave = requireWave(wave);
@@ -443,15 +403,8 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		refreshStrategyCombo(selectedStrategyId);
 		updateControls();
 		dirty = false;
-		if (strategiesChanged != null)
-		{
-			strategiesChanged.run();
-		}
-		Window window = SwingUtilities.getWindowAncestor(this);
-		if (window != null)
-		{
-			window.dispose();
-		}
+		strategiesChanged.run();
+		SwingUtilities.getWindowAncestor(this).dispose();
 	}
 
 	private void deleteStrategy()
@@ -470,18 +423,12 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		}
 
 		int result = JOptionPane.showConfirmDialog(this, "Delete this wave strategy?", "Delete Strategy", JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION)
-		{
-			return;
-		}
+		if (result != JOptionPane.OK_OPTION) return;
 
 		strategyManager.deleteStrategyPreset(selectedStrategyId);
 		refreshStrategyCombo(null);
 		clearDraft();
-		if (strategiesChanged != null)
-		{
-			strategiesChanged.run();
-		}
+		strategiesChanged.run();
 	}
 
 	private void exportStrategyToClipboard()
@@ -504,16 +451,10 @@ class TileMarkerStrategyPresetEditor extends JPanel
 
 	private void importStrategyFromClipboard()
 	{
-		if (!confirmDiscard(this))
-		{
-			return;
-		}
+		if (!confirmDiscard(this)) return;
 
 		String json = BaClipboard.readText(this, "Import Strategy");
-		if (json == null)
-		{
-			return;
-		}
+		if (json == null) return;
 
 		TileMarkerExportResult result;
 		try
@@ -544,19 +485,13 @@ class TileMarkerStrategyPresetEditor extends JPanel
 		{
 			loadStrategy(result.getId());
 		}
-		if (strategiesChanged != null)
-		{
-			strategiesChanged.run();
-		}
+		strategiesChanged.run();
 		BaTransferDialog.show(this, "Import Strategy", "Imported " + result.getTypedName() + ".", "Import", result.getSummaryLines());
 	}
 
 	boolean confirmDiscard(Component parent)
 	{
-		if (!dirty)
-		{
-			return true;
-		}
+		if (!dirty) return true;
 
 		int result = JOptionPane.showConfirmDialog(
 				parent,
@@ -594,7 +529,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 	{
 		return new TileMarkerStrategyPreset(
 				selectedStrategyId,
-				strategyName.getText() == null ? "" : strategyName.getText().trim(),
+				strategyName.getText().trim(),
 				notes.getText(),
 				waveMap,
 				collectSelectedMarkerSetIds()
@@ -642,22 +577,11 @@ class TileMarkerStrategyPresetEditor extends JPanel
 
 		JLabel info = new JLabel(BaIcons.infoIcon());
 		info.setToolTipText(NOTES_TOOLTIP);
-		row.add(label(text, true));
+		row.add(BaPanelUi.plainLabel(text, true));
 		row.add(Box.createHorizontalStrut(5));
 		row.add(info);
 		row.add(Box.createHorizontalGlue());
 		return row;
-	}
-
-	private JLabel label(String text, boolean bold)
-	{
-		JLabel label = new JLabel(text);
-		label.setForeground(ColorScheme.TEXT_COLOR);
-		if (bold)
-		{
-			label.setFont(label.getFont().deriveFont(java.awt.Font.BOLD));
-		}
-		return label;
 	}
 
 	private static int requireWave(int wave)
@@ -671,7 +595,7 @@ class TileMarkerStrategyPresetEditor extends JPanel
 
 	private static boolean isBlank(String value)
 	{
-		return value == null || value.trim().isEmpty();
+		return value == null || value.isBlank();
 	}
 
 }

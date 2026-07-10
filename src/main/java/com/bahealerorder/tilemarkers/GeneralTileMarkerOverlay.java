@@ -32,10 +32,7 @@ public class GeneralTileMarkerOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (controller == null || !controller.shouldShowTileMarkers())
-		{
-			return null;
-		}
+		if (controller == null || !controller.shouldShowTileMarkers()) return null;
 
 		TileMarkerOverlayRenderer.renderMarkers(client, graphics, controller.getCurrentMarkers());
 

@@ -1,40 +1,32 @@
 package com.bahealerorder.healer.codes;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.Getter;
+import lombok.Setter;
 
 public class StrategyStore
 {
+	@Getter
+	@Setter
 	private int version;
+	@Getter
+	@Setter
 	private String activeRunPresetId;
 	private Boolean codeEditorHelpVisible = true;
+	@Getter
 	private Map<Integer, String> activeWaveCodeIds = new HashMap<>();
+	@Getter
+	@Setter
 	private Map<HealerCodeDefaultRole, String> defaultRunPresetIds = new HashMap<>();
+	@Getter
+	@Setter
 	private List<RunPreset> runPresets = new ArrayList<>();
+	@Getter
+	@Setter
 	private List<WaveCode> waveCodes = new ArrayList<>();
-
-	public int getVersion()
-	{
-		return version;
-	}
-
-	public void setVersion(int version)
-	{
-		this.version = version;
-	}
-
-	public String getActiveRunPresetId()
-	{
-		return activeRunPresetId;
-	}
-
-	public void setActiveRunPresetId(String activeRunPresetId)
-	{
-		this.activeRunPresetId = activeRunPresetId;
-	}
 
 	public boolean isCodeEditorHelpVisible()
 	{
@@ -46,75 +38,25 @@ public class StrategyStore
 		this.codeEditorHelpVisible = codeEditorHelpVisible;
 	}
 
-	public Map<Integer, String> getActiveWaveCodeIds()
-	{
-		if (activeWaveCodeIds == null)
-		{
-			activeWaveCodeIds = new HashMap<>();
-		}
-
-		return activeWaveCodeIds;
-	}
-
 	public void setActiveWaveCodeIds(Map<Integer, String> activeWaveCodeIds)
 	{
-		this.activeWaveCodeIds = activeWaveCodeIds == null ? new HashMap<>() : new HashMap<>(activeWaveCodeIds);
+		this.activeWaveCodeIds = new HashMap<>(activeWaveCodeIds);
 	}
 
 	public String getDefaultRunPresetId(HealerCodeDefaultRole role)
 	{
-		return getDefaultRunPresetIds().get(role);
+		return defaultRunPresetIds.get(role);
 	}
 
 	public void setDefaultRunPresetId(HealerCodeDefaultRole role, String runPresetId)
 	{
-		if (role == null)
+		if (runPresetId == null || runPresetId.isBlank())
 		{
-			return;
-		}
-
-		if (runPresetId == null || runPresetId.trim().isEmpty())
-		{
-			getDefaultRunPresetIds().remove(role);
+			defaultRunPresetIds.remove(role);
 		}
 		else
 		{
-			getDefaultRunPresetIds().put(role, runPresetId);
+			defaultRunPresetIds.put(role, runPresetId);
 		}
-	}
-
-	public Map<HealerCodeDefaultRole, String> getDefaultRunPresetIds()
-	{
-		if (defaultRunPresetIds == null)
-		{
-			defaultRunPresetIds = new HashMap<>();
-		}
-
-		return defaultRunPresetIds;
-	}
-
-	public void setDefaultRunPresetIds(Map<HealerCodeDefaultRole, String> defaultRunPresetIds)
-	{
-		this.defaultRunPresetIds = defaultRunPresetIds == null ? new HashMap<>() : new HashMap<>(defaultRunPresetIds);
-	}
-
-	public List<RunPreset> getRunPresets()
-	{
-		return runPresets == null ? Collections.emptyList() : runPresets;
-	}
-
-	public void setRunPresets(List<RunPreset> runPresets)
-	{
-		this.runPresets = runPresets == null ? new ArrayList<>() : new ArrayList<>(runPresets);
-	}
-
-	public List<WaveCode> getWaveCodes()
-	{
-		return waveCodes == null ? Collections.emptyList() : waveCodes;
-	}
-
-	public void setWaveCodes(List<WaveCode> waveCodes)
-	{
-		this.waveCodes = waveCodes == null ? new ArrayList<>() : new ArrayList<>(waveCodes);
 	}
 }

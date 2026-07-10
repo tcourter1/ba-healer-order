@@ -59,10 +59,7 @@ public class HealerOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (controller == null)
-		{
-			return null;
-		}
+		if (controller == null) return null;
 
 		List<Map.Entry<NPC, Integer>> healers = new ArrayList<>(controller.getTrackedHealers().entrySet());
 		Map<NPC, Integer> xOffsets = getStackedLabelXOffsets(healers);
@@ -73,15 +70,9 @@ public class HealerOverlay extends Overlay
 			NPC npc = entry.getKey();
 			Integer order = entry.getValue();
 
-			if (npc == null || order == null)
-			{
-				continue;
-			}
+			if (npc == null || order == null) continue;
 
-			if (controller.shouldHideDeadNpc(npc))
-			{
-				continue;
-			}
+			if (controller.shouldHideDeadNpc(npc)) continue;
 
 			int xOffset = xOffsets.getOrDefault(npc, 0);
 
@@ -120,10 +111,7 @@ public class HealerOverlay extends Overlay
 	{
 		Map<NPC, Integer> offsets = new HashMap<>();
 
-		if (!config.spreadStackedLabels())
-		{
-			return offsets;
-		}
+		if (!config.spreadStackedLabels()) return offsets;
 
 		Map<WorldPoint, List<Map.Entry<NPC, Integer>>> healersByLocation = new HashMap<>();
 
@@ -131,10 +119,7 @@ public class HealerOverlay extends Overlay
 		{
 			NPC npc = entry.getKey();
 
-			if (npc == null || controller.shouldHideDeadNpc(npc))
-			{
-				continue;
-			}
+			if (npc == null || controller.shouldHideDeadNpc(npc)) continue;
 
 			WorldPoint location = npc.getWorldLocation();
 			healersByLocation.computeIfAbsent(location, key -> new ArrayList<>()).add(entry);
@@ -142,10 +127,7 @@ public class HealerOverlay extends Overlay
 
 		for (List<Map.Entry<NPC, Integer>> stack : healersByLocation.values())
 		{
-			if (stack.size() <= 1)
-			{
-				continue;
-			}
+			if (stack.size() <= 1) continue;
 
 			stack.sort(Comparator.comparingInt(Map.Entry::getValue));
 
@@ -153,17 +135,12 @@ public class HealerOverlay extends Overlay
 
 			for (int i = 0; i < stackSize; i++)
 			{
-				int xOffset = getStackedLabelXOffset(i, stackSize);
+				int xOffset = (int) Math.round((i - ((stackSize - 1) / 2.0)) * STACKED_LABEL_SPACING);
 				offsets.put(stack.get(i).getKey(), xOffset);
 			}
 		}
 
 		return offsets;
-	}
-
-	private int getStackedLabelXOffset(int stackIndex, int stackSize)
-	{
-		return (int) Math.round((stackIndex - ((stackSize - 1) / 2.0)) * STACKED_LABEL_SPACING);
 	}
 
 	private void renderHighlight(Graphics2D graphics, NPC npc)
@@ -190,10 +167,7 @@ public class HealerOverlay extends Overlay
 	{
 		Shape hull = npc.getConvexHull();
 
-		if (hull == null)
-		{
-			return;
-		}
+		if (hull == null) return;
 
 		Stroke originalStroke = graphics.getStroke();
 		Color originalColor = graphics.getColor();
@@ -210,10 +184,7 @@ public class HealerOverlay extends Overlay
 	{
 		Polygon tile = Perspective.getCanvasTilePoly(controller.getClient(), npc.getLocalLocation());
 
-		if (tile == null)
-		{
-			return;
-		}
+		if (tile == null) return;
 
 		renderTilePolygon(graphics, tile);
 	}
@@ -222,17 +193,11 @@ public class HealerOverlay extends Overlay
 	{
 		LocalPoint trueTileLocation = LocalPoint.fromWorld(controller.getClient(), npc.getWorldLocation());
 
-		if (trueTileLocation == null)
-		{
-			return;
-		}
+		if (trueTileLocation == null) return;
 
 		Polygon tile = Perspective.getCanvasTilePoly(controller.getClient(), trueTileLocation);
 
-		if (tile == null)
-		{
-			return;
-		}
+		if (tile == null) return;
 
 		renderTilePolygon(graphics, tile);
 	}
@@ -271,10 +236,7 @@ public class HealerOverlay extends Overlay
 				npc.getLogicalHeight() + HEALER_LABEL_Z_OFFSET
 		);
 
-		if (textLocation == null)
-		{
-			return;
-		}
+		if (textLocation == null) return;
 
 		Font originalFont = graphics.getFont();
 
@@ -293,10 +255,7 @@ public class HealerOverlay extends Overlay
 				(npc.getLogicalHeight() / 2) + config.foodCountHeight()
 		);
 
-		if (textLocation == null)
-		{
-			return;
-		}
+		if (textLocation == null) return;
 
 		Font originalFont = graphics.getFont();
 
@@ -316,10 +275,7 @@ public class HealerOverlay extends Overlay
 
 		Point textLocation = npc.getCanvasTextLocation(graphics, text, zOffset);
 
-		if (textLocation == null)
-		{
-			return;
-		}
+		if (textLocation == null) return;
 
 		Font originalFont = graphics.getFont();
 
@@ -340,10 +296,7 @@ public class HealerOverlay extends Overlay
 
 	private Point offsetPoint(Point point, int xOffset, int yOffset)
 	{
-		if (xOffset == 0 && yOffset == 0)
-		{
-			return point;
-		}
+		if (xOffset == 0 && yOffset == 0) return point;
 
 		return new Point(point.getX() + xOffset, point.getY() + yOffset);
 	}
