@@ -140,7 +140,7 @@ public final class HealerCodeFormatter
 
 	private static boolean isBlank(String value)
 	{
-		return value == null || value.trim().isEmpty();
+		return value == null || value.isBlank();
 	}
 
 	private static String stripDisplayOnlyLines(String sourceText, String codeName, int wave)

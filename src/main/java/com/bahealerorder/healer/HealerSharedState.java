@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.inject.Inject;
 import javax.inject.Singleton;
 
 @Singleton
@@ -22,11 +21,6 @@ public class HealerSharedState
 	private final Map<Integer, State> statesByOrder = new HashMap<>();
 	private int wave = -1;
 	private int currentCallIndex;
-
-	@Inject
-	public HealerSharedState()
-	{
-	}
 
 	void reset()
 	{
@@ -274,10 +268,10 @@ public class HealerSharedState
 
 		for (State state : statesByOrder.values())
 		{
-			for (int callIndex = 0; callIndex < state.callCount(); callIndex++)
+			for (int callIndex = 0; callIndex < state.localFoodFedByCall.length; callIndex++)
 			{
-				int count = state.foodFed(callIndex);
-				int elapsed = Math.max(state.lastFoodElapsed(callIndex), 0);
+				int count = state.localFoodFedByCall[callIndex];
+				int elapsed = Math.max(state.localLastFoodElapsedByCall[callIndex], 0);
 
 				for (int i = 0; i < count; i++)
 				{
@@ -391,28 +385,13 @@ public class HealerSharedState
 			this.healerOrder = healerOrder;
 		}
 
-		private int callCount()
-		{
-			return localFoodFedByCall.length;
-		}
-
-		private int foodFed(int callIndex)
-		{
-			return callIndex < localFoodFedByCall.length ? localFoodFedByCall[callIndex] : 0;
-		}
-
-		private int lastFoodElapsed(int callIndex)
-		{
-			return callIndex < localLastFoodElapsedByCall.length ? localLastFoodElapsedByCall[callIndex] : UNKNOWN_TICK;
-		}
-
 		private int totalFoodFed()
 		{
 			int total = 0;
 
-			for (int callIndex = 0; callIndex < callCount(); callIndex++)
+			for (int foodFed : localFoodFedByCall)
 			{
-				total += foodFed(callIndex);
+				total += foodFed;
 			}
 
 			return total;

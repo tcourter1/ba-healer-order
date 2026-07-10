@@ -111,21 +111,11 @@ public final class BaTransferDialog
 				+ "body { color:#" + hex(ColorScheme.TEXT_COLOR) + "; margin:0; width:" + WIDTH + "px; }"
 				+ "a { color:#" + hex(ColorScheme.BRAND_ORANGE) + "; }"
 				+ "</style></head><body>"
-				+ escapeHtml(message)
+				+ BaPanelUi.escapeHtml(message)
 				+ " <a href='summary'>"
-				+ escapeHtml(linkText)
+				+ BaPanelUi.escapeHtml(linkText)
 				+ "</a>"
 				+ "</body></html>";
-	}
-
-	private static String escapeHtml(String text)
-	{
-		if (text == null) return "";
-
-		return text
-				.replace("&", "&amp;")
-				.replace("<", "&lt;")
-				.replace(">", "&gt;");
 	}
 
 	private static String hex(java.awt.Color color)

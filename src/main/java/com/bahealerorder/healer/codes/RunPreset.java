@@ -8,10 +8,10 @@ import lombok.Setter;
 
 @NoArgsConstructor
 @Getter
-@Setter
 public class RunPreset
 {
 	private String id;
+	@Setter
 	private String name;
 	private boolean builtIn;
 	private Map<Integer, String> waveCodes = new HashMap<>();
@@ -37,17 +37,6 @@ public class RunPreset
 	public String getWaveCodeId(int wave)
 	{
 		return getWaveCodeIds().get(wave);
-	}
-
-	public void setWaveCodeId(int wave, String waveCodeId)
-	{
-		if (waveCodeId == null || waveCodeId.trim().isEmpty())
-		{
-			getWaveCodeIds().remove(wave);
-			return;
-		}
-
-		getWaveCodeIds().put(wave, waveCodeId);
 	}
 
 	@Override

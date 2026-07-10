@@ -8,7 +8,6 @@ import lombok.Setter;
 @EqualsAndHashCode
 @Getter
 @NoArgsConstructor
-@Setter
 public class HealerInstruction
 {
 	private int targetFoodCount;
@@ -16,7 +15,9 @@ public class HealerInstruction
 	private Integer afterSeconds;
 	private Integer beforeSeconds;
 	private Integer exactSeconds;
+	@Setter
 	private boolean advanced;
+	@Setter
 	private String raw;
 
 	public HealerInstruction(int targetFoodCount, Integer afterSeconds, Integer beforeSeconds, String raw)
@@ -31,11 +32,6 @@ public class HealerInstruction
 		this.beforeSeconds = beforeSeconds;
 		this.exactSeconds = exactSeconds;
 		this.raw = raw;
-	}
-
-	public void setTargetFoodCount(int targetFoodCount)
-	{
-		this.targetFoodCount = Math.max(0, targetFoodCount);
 	}
 
 	public void setPostRestockFoodCount(int postRestockFoodCount)
@@ -74,7 +70,7 @@ public class HealerInstruction
 
 	public String formatTarget()
 	{
-		if (advanced && raw != null && !raw.trim().isEmpty()) return raw.trim();
+		if (advanced && raw != null && !raw.isBlank()) return raw.trim();
 
 		if (!hasTarget()) return "";
 

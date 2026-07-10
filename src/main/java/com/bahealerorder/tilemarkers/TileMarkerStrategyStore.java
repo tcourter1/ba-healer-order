@@ -37,7 +37,6 @@ public class TileMarkerStrategyStore
 	@Setter
 	private List<TileMarkerStrategyPreset> strategyPresets = new ArrayList<>();
 	@Getter
-	@Setter
 	private List<TileMarkerAssignmentPreset> assignmentPresets = new ArrayList<>();
 	@Getter
 	@Setter
@@ -76,7 +75,7 @@ public class TileMarkerStrategyStore
 	public void setActiveAssignmentPresetId(TileMarkerRoleContext context, String presetId)
 	{
 		TileMarkerRoleContext resolved = context == null ? TileMarkerRoleContext.DEFENDER : context;
-		if (presetId == null || presetId.trim().isEmpty())
+		if (presetId == null || presetId.isBlank())
 		{
 			getActiveAssignmentPresetIds().remove(resolved.name());
 		}

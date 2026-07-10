@@ -20,14 +20,11 @@ import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.image.BufferedImage;
 import java.util.EnumMap;
-import java.util.List;
 import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -79,12 +76,12 @@ public class GeneralTileMarkerPanel extends JPanel
 	private final GeneralTileMarkerStrategyManager strategyManager;
 	private final ColorPickerManager colorPickerManager;
 	private final ItemManager itemManager;
-	private final JPanel contentPanel = new JPanel();
+	private final JPanel contentPanel = BaPanelUi.verticalPanel(ColorScheme.DARK_GRAY_COLOR);
 	private final JPanel waveRowsPanel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 	private final JPanel beginnerPromptPanel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 	private final MaterialTabGroup roleTabGroup = new MaterialTabGroup();
 	private final Map<TileMarkerRoleContext, MaterialTab> roleTabs = new EnumMap<>(TileMarkerRoleContext.class);
-	private final JLabel strategyTitle = new JLabel();
+	private final JLabel strategyTitle = BaPanelUi.plainLabel("", false);
 	private final JComboBox<BaPanelUi.ComboOption> assignmentPresetCombo =
 			BaPanelUi.fixedPopupWidthCombo(ASSIGNMENT_PRESET_POPUP_WIDTH);
 
@@ -110,8 +107,6 @@ public class GeneralTileMarkerPanel extends JPanel
 		setAlignmentX(LEFT_ALIGNMENT);
 		setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
 
-		contentPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
 		contentPanel.setBorder(new EmptyBorder(5, 5, 0, 5));
 		add(contentPanel, BorderLayout.NORTH);
 
@@ -150,23 +145,14 @@ public class GeneralTileMarkerPanel extends JPanel
 
 	private JPanel createStrategySection()
 	{
-		JPanel section = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		JPanel section = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR, CONTENT_WIDTH);
 		section.setBorder(new EmptyBorder(0, 0, STRATEGY_SECTION_BOTTOM_PADDING, 0));
-		section.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-		section.setAlignmentX(LEFT_ALIGNMENT);
 
-		JPanel controls = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		JPanel controls = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR, CONTENT_WIDTH);
 		controls.setBorder(new EmptyBorder(8, 8, 0, 8));
-		controls.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-		controls.setAlignmentX(LEFT_ALIGNMENT);
 
-		strategyTitle.setForeground(ColorScheme.TEXT_COLOR);
-		strategyTitle.setHorizontalAlignment(SwingConstants.CENTER);
-		JPanel titleRow = new JPanel(new BorderLayout());
-		titleRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		BaPanelUi.fixedSize(titleRow, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
-		titleRow.add(strategyTitle, BorderLayout.CENTER);
-		controls.add(titleRow);
+		controls.add(BaPanelUi.centeredLabelRow(
+				strategyTitle, ColorScheme.DARKER_GRAY_COLOR, CONTENT_WIDTH, CONTROL_HEIGHT));
 		controls.add(Box.createVerticalStrut(6));
 
 		controls.add(createRoleContextRow());
@@ -226,19 +212,13 @@ public class GeneralTileMarkerPanel extends JPanel
 		}
 
 		AsyncBufferedImage icon = itemManager.getImage(role.getPlayerIconItemId());
-		if (icon != null)
-		{
-			icon.onLoaded(() -> SwingUtilities.invokeLater(() -> tab.setIcon(scaledRoleIcon(icon))));
-		}
+		icon.onLoaded(() -> SwingUtilities.invokeLater(() -> tab.setIcon(new ImageIcon(
+				icon.getScaledInstance(ROLE_ICON_SIZE, ROLE_ICON_SIZE, Image.SCALE_SMOOTH)))));
 	}
 
 	private void refreshRoleTabs()
 	{
-		MaterialTab selectedTab = roleTabs.get(selectedContext);
-		if (selectedTab != null)
-		{
-			roleTabGroup.select(selectedTab);
-		}
+		roleTabGroup.select(roleTabs.get(selectedContext));
 		strategyTitle.setText(selectedContext.getDisplayName() + " Wave Strategies");
 	}
 
@@ -259,8 +239,7 @@ public class GeneralTileMarkerPanel extends JPanel
 
 	private JPanel createWaveRow(int wave)
 	{
-		JLabel waveLabel = new JLabel("Wave " + wave);
-		waveLabel.setForeground(ColorScheme.TEXT_COLOR);
+		JLabel waveLabel = BaPanelUi.plainLabel("Wave " + wave, false);
 		waveLabel.setBorder(new EmptyBorder(0, WAVE_LABEL_LEFT_PADDING, 0, 0));
 
 		JComboBox<BaPanelUi.ComboOption> comboBox = BaPanelUi.fixedPopupWidthCombo(WAVE_STRATEGY_POPUP_WIDTH);
@@ -302,8 +281,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		menu.add(menuItem("Add", BaIcons.plusIcon(), () -> openStrategyEditorDialog(wave, null)));
 		menu.add(menuItem("Edit", BaIcons.pencilIcon(), () ->
 		{
-			String strategyId = selectedWaveStrategyId(comboBox);
-			openStrategyEditorDialog(wave, strategyId);
+			openStrategyEditorDialog(wave, BaPanelUi.selectedId(comboBox));
 		}));
 		menu.add(menuItem("Delete", BaIcons.trashIcon(), () -> deleteSelectedWaveStrategy(comboBox)));
 		menu.add(menuItem("Import", BaIcons.importIcon(), () -> importWaveSelectionFromClipboard(wave)));
@@ -323,9 +301,7 @@ public class GeneralTileMarkerPanel extends JPanel
 
 	private JMenuItem menuItem(String text, Runnable action)
 	{
-		JMenuItem item = new JMenuItem(text);
-		item.addActionListener(event -> action.run());
-		return item;
+		return menuItem(text, null, action);
 	}
 
 	private JPanel createAssignmentPresetControls()
@@ -446,14 +422,7 @@ public class GeneralTileMarkerPanel extends JPanel
 
 	private void applyBeginnerAssignmentPreset()
 	{
-		String beginnerPresetId = beginnerAssignmentPresetId();
-		if (beginnerPresetId == null)
-		{
-			Toolkit.getDefaultToolkit().beep();
-			return;
-		}
-
-		strategyManager.applyAssignmentPreset(selectedContext, beginnerPresetId);
+		strategyManager.applyAssignmentPreset(selectedContext, beginnerAssignmentPresetId());
 		refreshAll();
 	}
 
@@ -461,7 +430,7 @@ public class GeneralTileMarkerPanel extends JPanel
 	{
 		for (TileMarkerAssignmentPreset preset : strategyManager.getAssignmentPresets(selectedContext))
 		{
-			if (preset != null && "Beginner".equalsIgnoreCase(preset.getName())) return preset.getId();
+			if ("Beginner".equalsIgnoreCase(preset.getName())) return preset.getId();
 		}
 		return null;
 	}
@@ -507,7 +476,7 @@ public class GeneralTileMarkerPanel extends JPanel
 
 	private void deleteSelectedWaveStrategy(JComboBox<BaPanelUi.ComboOption> comboBox)
 	{
-		String strategyId = selectedWaveStrategyId(comboBox);
+		String strategyId = BaPanelUi.selectedId(comboBox);
 		if (isBlank(strategyId))
 		{
 			Toolkit.getDefaultToolkit().beep();
@@ -552,7 +521,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		}
 
 		BaClipboard.copyText(result.getJson());
-		showTransferDialog("Export Wave", exportMessage(result), "Export", result);
+		showTransferDialog("Export Wave", "Exported " + result.getTypedName() + ".", "Export", result);
 	}
 
 	private void importWaveSelectionFromClipboard(int wave)
@@ -676,18 +645,13 @@ public class GeneralTileMarkerPanel extends JPanel
 		JTextField field = new JTextField(defaultValue);
 		BaPanelUi.fixedSize(field, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		int result = JOptionPane.showConfirmDialog(this, field, title, JOptionPane.OK_CANCEL_OPTION);
-		if (result != JOptionPane.OK_OPTION || field.getText().trim().isEmpty()) return null;
+		if (result != JOptionPane.OK_OPTION || field.getText().isBlank()) return null;
 		return field.getText().trim();
 	}
 
 	private void showTransferDialog(String title, String message, String action, TileMarkerExportResult result)
 	{
 		BaTransferDialog.show(this, title, message, action, result.getSummaryLines());
-	}
-
-	private String exportMessage(TileMarkerExportResult result)
-	{
-		return "Exported " + result.getTypedName() + ".";
 	}
 
 	private String importWaveMessage(TileMarkerExportResult result, int wave)
@@ -713,8 +677,7 @@ public class GeneralTileMarkerPanel extends JPanel
 				strategyEditorPanel.refreshMarkerSets();
 			}
 		}, (wave, context, markerSetId) -> openStrategyEditorDialog(wave, context, null, markerSetId));
-		Window owner = SwingUtilities.getWindowAncestor(this);
-		markerEditorDialog = new JDialog(owner, "Tile Marker Sets", java.awt.Dialog.ModalityType.MODELESS);
+		markerEditorDialog = createDialog("Tile Marker Sets", editor, 980, 720);
 		markerEditorDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 		markerEditorDialog.addWindowListener(new WindowAdapter()
 		{
@@ -727,10 +690,6 @@ public class GeneralTileMarkerPanel extends JPanel
 				}
 			}
 		});
-		markerEditorDialog.setContentPane(editor);
-		markerEditorDialog.pack();
-		markerEditorDialog.setMinimumSize(new Dimension(980, 720));
-		markerEditorDialog.setLocationRelativeTo(null);
 		markerEditorDialog.setVisible(true);
 	}
 
@@ -763,8 +722,7 @@ public class GeneralTileMarkerPanel extends JPanel
 				initialMarkerSetId
 		);
 		strategyEditorPanel = editor;
-		Window owner = SwingUtilities.getWindowAncestor(this);
-		strategyEditorDialog = new JDialog(owner, "Wave Strategies", java.awt.Dialog.ModalityType.MODELESS);
+		strategyEditorDialog = createDialog("Wave Strategies", editor, 520, 740);
 		strategyEditorDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 		strategyEditorDialog.addWindowListener(new WindowAdapter()
 		{
@@ -777,10 +735,6 @@ public class GeneralTileMarkerPanel extends JPanel
 				}
 			}
 		});
-		strategyEditorDialog.setContentPane(editor);
-		strategyEditorDialog.pack();
-		strategyEditorDialog.setMinimumSize(new Dimension(520, 740));
-		strategyEditorDialog.setLocationRelativeTo(null);
 		strategyEditorDialog.setVisible(true);
 	}
 
@@ -792,28 +746,24 @@ public class GeneralTileMarkerPanel extends JPanel
 		}
 
 		TileMarkerStrategyPreviewPanel previewPanel = new TileMarkerStrategyPreviewPanel(strategyManager, selectedContext, wave);
-		Window owner = SwingUtilities.getWindowAncestor(this);
-		previewDialog = new JDialog(owner, "Tile Marker Preview", java.awt.Dialog.ModalityType.MODELESS);
-		previewDialog.setContentPane(previewPanel);
-		previewDialog.pack();
-		previewDialog.setMinimumSize(new Dimension(980, 720));
-		previewDialog.setLocationRelativeTo(null);
+		previewDialog = createDialog("Tile Marker Preview", previewPanel, 980, 720);
 		previewDialog.setVisible(true);
 	}
 
-	private String selectedWaveStrategyId(JComboBox<BaPanelUi.ComboOption> comboBox)
+	private JDialog createDialog(String title, JPanel content, int width, int height)
 	{
-		return BaPanelUi.selectedId(comboBox);
+		Window owner = SwingUtilities.getWindowAncestor(this);
+		JDialog dialog = new JDialog(owner, title, java.awt.Dialog.ModalityType.MODELESS);
+		dialog.setContentPane(content);
+		dialog.pack();
+		dialog.setMinimumSize(new Dimension(width, height));
+		dialog.setLocationRelativeTo(null);
+		return dialog;
 	}
 
 	private static boolean isBlank(String value)
 	{
-		return value == null || value.trim().isEmpty();
-	}
-
-	private ImageIcon scaledRoleIcon(BufferedImage image)
-	{
-		return new ImageIcon(image.getScaledInstance(ROLE_ICON_SIZE, ROLE_ICON_SIZE, Image.SCALE_SMOOTH));
+		return value == null || value.isBlank();
 	}
 
 }

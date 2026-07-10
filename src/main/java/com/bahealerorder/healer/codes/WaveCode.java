@@ -18,7 +18,6 @@ public class WaveCode
 	@Setter
 	private String name;
 	@Getter
-	@Setter
 	private int wave;
 	@Getter
 	@Setter

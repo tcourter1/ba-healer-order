@@ -5,6 +5,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.MessageNode;
@@ -45,7 +48,7 @@ public class BaWaveLifecycleService
 
 	public WaveStart onChatMessage(ChatMessage event)
 	{
-		if (event == null || event.getType() != ChatMessageType.GAMEMESSAGE) return null;
+		if (event.getType() != ChatMessageType.GAMEMESSAGE) return null;
 		return start(event.getMessageNode(), event.getMessage(), "wave chat");
 	}
 
@@ -55,7 +58,7 @@ public class BaWaveLifecycleService
 
 		if (devWaveActive) return null;
 
-		if (isArenaVisible())
+		if (arenaVisible.getAsBoolean())
 		{
 			arenaConfirmed = true;
 			return null;
@@ -87,12 +90,8 @@ public class BaWaveLifecycleService
 		if (!BaWaveInfo.isValidWave(wave)) return null;
 
 		WaveStart waveStart = start(null, "---- Wave: " + wave + " ----", "dev command");
-
-		if (waveStart != null)
-		{
-			devWaveActive = true;
-			arenaConfirmed = true;
-		}
+		devWaveActive = true;
+		arenaConfirmed = true;
 
 		return waveStart;
 	}
@@ -145,12 +144,7 @@ public class BaWaveLifecycleService
 		startTimeMs = System.currentTimeMillis();
 		messageNodeId = nodeId;
 		arenaConfirmed = false;
-		return new WaveStart(wave, startTick, nodeId, source);
-	}
-
-	private boolean isArenaVisible()
-	{
-		return arenaVisible.getAsBoolean();
+		return new WaveStart(wave, startTick, source);
 	}
 
 	static Integer parseWave(String rawMessage)
@@ -159,39 +153,12 @@ public class BaWaveLifecycleService
 		return matcher.matches() ? Integer.valueOf(matcher.group(1)) : null;
 	}
 
+	@Getter
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
 	public static final class WaveStart
 	{
 		private final int wave;
 		private final int tick;
-		private final int messageNodeId;
 		private final String source;
-
-		private WaveStart(int wave, int tick, int messageNodeId, String source)
-		{
-			this.wave = wave;
-			this.tick = tick;
-			this.messageNodeId = messageNodeId;
-			this.source = source;
-		}
-
-		public int getWave()
-		{
-			return wave;
-		}
-
-		public int getTick()
-		{
-			return tick;
-		}
-
-		public int getMessageNodeId()
-		{
-			return messageNodeId;
-		}
-
-		public String getSource()
-		{
-			return source;
-		}
 	}
 }

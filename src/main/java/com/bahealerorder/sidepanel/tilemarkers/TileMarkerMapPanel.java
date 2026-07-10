@@ -437,7 +437,7 @@ class TileMarkerMapPanel extends JPanel
 	private void drawMarkerText(Graphics graphics, TileMarker marker, int x, int y)
 	{
 		String text = marker.getLabel();
-		if (text == null || text.trim().isEmpty()) return;
+		if (text == null || text.isBlank()) return;
 
 		drawCenteredText(
 				graphics,

@@ -56,6 +56,6 @@ public class TileMarkerAssignmentPreset
 	@Override
 	public String toString()
 	{
-		return name == null || name.trim().isEmpty() ? "Unnamed preset" : name;
+		return name == null || name.isBlank() ? "Unnamed preset" : name;
 	}
 }

@@ -15,13 +15,13 @@ import com.bahealerorder.healer.HealerCodeManager;
 import com.bahealerorder.healer.codes.HealerCodeFormatter;
 import com.bahealerorder.healer.codes.WaveCode;
 import com.bahealerorder.sidepanel.BaNotesPreviewPanel;
+import com.bahealerorder.sidepanel.BaPanelUi;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import com.bahealerorder.tilemarkers.TileMarkerRoleContext;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -39,7 +39,6 @@ import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
-import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -47,9 +46,7 @@ import javax.swing.JTextPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
-import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
-import javax.swing.text.StyledDocument;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import net.runelite.api.gameval.SpriteID;
@@ -60,7 +57,6 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
-import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.SwingUtil;
 
 @Singleton
@@ -98,7 +94,7 @@ public class WaveOverviewPanel extends JPanel
 	private final WaveOverviewSelectorPanel selectorPanel;
 	private final Map<BaOverviewNpcType, ImageIcon> overviewIcons = new EnumMap<>(BaOverviewNpcType.class);
 	private final JLabel titleLabel = label("Wave Overview", true);
-	private final JPanel contentPanel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+	private final JPanel contentPanel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR, CONTENT_WIDTH - 16);
 
 	private boolean loadingSkullIcon;
 	private ImageIcon skullIcon;
@@ -135,8 +131,6 @@ public class WaveOverviewPanel extends JPanel
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		setAlignmentX(LEFT_ALIGNMENT);
 		setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-		contentPanel.setAlignmentX(LEFT_ALIGNMENT);
-		contentPanel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, Integer.MAX_VALUE));
 		add(createWaveOverviewSection());
 		refreshAll();
 	}
@@ -203,7 +197,8 @@ public class WaveOverviewPanel extends JPanel
 		if (snapshot.getDuration() != null)
 		{
 			section.add(Box.createVerticalStrut(6));
-			section.add(centeredLabelRow("Duration: " + snapshot.getDuration(), false, ColorScheme.DARKER_GRAY_COLOR));
+			section.add(BaPanelUi.centeredLabelRow(
+					"Duration: " + snapshot.getDuration(), false, ColorScheme.DARKER_GRAY_COLOR, CONTENT_WIDTH, CONTROL_HEIGHT));
 		}
 
 		BaWaveOverviewRun selectedRun = store.getSelectedRun();
@@ -219,14 +214,12 @@ public class WaveOverviewPanel extends JPanel
 	private JPanel createWaveOverviewColumn(BaWaveOverviewSnapshot snapshot, BaOverviewNpcType type, int columnCount)
 	{
 		int columnWidth = getWaveOverviewColumnWidth(columnCount);
-		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR.darker());
+		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR.darker());
 		panel.setBorder(new EmptyBorder(4, 2, 4, 2));
 
 		JLabel icon = new JLabel(loadOverviewIcon(type));
 		icon.setHorizontalAlignment(SwingConstants.CENTER);
-		icon.setAlignmentX(LEFT_ALIGNMENT);
-		icon.setPreferredSize(new Dimension(columnWidth, OVERVIEW_ICON_SIZE));
-		icon.setMaximumSize(new Dimension(columnWidth, OVERVIEW_ICON_SIZE));
+		BaPanelUi.fixedSize(icon, columnWidth, OVERVIEW_ICON_SIZE);
 		panel.add(icon);
 		panel.add(Box.createVerticalStrut(OVERVIEW_HEADER_GAP));
 
@@ -257,10 +250,9 @@ public class WaveOverviewPanel extends JPanel
 				? ColorScheme.DARKER_GRAY_COLOR.darker()
 				: ColorScheme.DARKER_GRAY_COLOR.darker().darker();
 
-		JPanel content = verticalPanel(background);
+		JPanel content = BaPanelUi.verticalPanel(background);
 		content.setBorder(new EmptyBorder(4, 0, 2, 0));
-		content.setPreferredSize(new Dimension(width, OVERVIEW_CELL_HEIGHT));
-		content.setMaximumSize(new Dimension(width, OVERVIEW_CELL_HEIGHT));
+		BaPanelUi.fixedSize(content, width, OVERVIEW_CELL_HEIGHT);
 
 		if (entry.dead)
 		{
@@ -311,9 +303,7 @@ public class WaveOverviewPanel extends JPanel
 		JLabel label = label(text, bold);
 		label.setForeground(color);
 		label.setHorizontalAlignment(SwingConstants.CENTER);
-		label.setPreferredSize(new Dimension(width, height));
-		label.setMinimumSize(new Dimension(width, height));
-		label.setMaximumSize(new Dimension(width, height));
+		BaPanelUi.fixedSize(label, width, height);
 		return label;
 	}
 
@@ -322,7 +312,7 @@ public class WaveOverviewPanel extends JPanel
 		JButton menuButton = new JButton(createHamburgerIcon());
 		menuButton.setToolTipText("Choose NPC columns");
 		SwingUtil.removeButtonDecorations(menuButton);
-		fixedSize(menuButton, CONTROL_HEIGHT + 4, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(menuButton, CONTROL_HEIGHT + 4, CONTROL_HEIGHT);
 		menuButton.addActionListener(event -> createColumnMenu().show(menuButton, 0, menuButton.getHeight()));
 		return menuButton;
 	}
@@ -521,53 +511,18 @@ public class WaveOverviewPanel extends JPanel
 
 	private JPanel section()
 	{
-		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setBorder(new EmptyBorder(8, 8, 8, 8));
-		panel.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
-		panel.setAlignmentX(LEFT_ALIGNMENT);
-		panel.add(centeredLabelRow(titleLabel, ColorScheme.DARKER_GRAY_COLOR));
-		panel.add(Box.createVerticalStrut(6));
-		return panel;
-	}
-
-	private JPanel centeredLabelRow(String text, boolean bold, Color background)
-	{
-		JLabel label = label(text, bold);
-		return centeredLabelRow(label, background);
-	}
-
-	private JPanel centeredLabelRow(JLabel label, Color background)
-	{
-		label.setHorizontalAlignment(SwingConstants.CENTER);
-
-		JPanel row = new JPanel(new BorderLayout());
-		row.setBackground(background);
-		fixedSize(row, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
-		row.add(label, BorderLayout.CENTER);
-		return row;
+		return BaPanelUi.section(titleLabel, CONTENT_WIDTH, CONTROL_HEIGHT);
 	}
 
 	private JPanel centeredMessage(String text)
 	{
-		JTextPane message = new JTextPane();
-		message.setText(text);
-		message.setForeground(ColorScheme.TEXT_COLOR);
+		int height = getMessageHeight(text);
+		JTextPane message = BaPanelUi.textBlock(text, CONTENT_WIDTH - 16, height, StyleConstants.ALIGN_CENTER);
 		message.setFont(LABEL_FONT);
-		message.setEditable(false);
-		message.setFocusable(false);
-		message.setOpaque(false);
-
-		StyledDocument document = message.getStyledDocument();
-		SimpleAttributeSet center = new SimpleAttributeSet();
-		StyleConstants.setAlignment(center, StyleConstants.ALIGN_CENTER);
-		document.setParagraphAttributes(0, document.getLength(), center, false);
 
 		JPanel panel = new JPanel(new BorderLayout());
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		int height = getMessageHeight(text);
-		panel.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, height));
-		panel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, height));
-		panel.setAlignmentX(LEFT_ALIGNMENT);
+		BaPanelUi.fixedSize(panel, CONTENT_WIDTH - 16, height);
 		panel.add(message, BorderLayout.CENTER);
 		return panel;
 	}
@@ -578,7 +533,8 @@ public class WaveOverviewPanel extends JPanel
 		if (isBlank(notes)) return;
 
 		section.add(Box.createVerticalStrut(12));
-		section.add(createNotesPanel(getNotesHeading(snapshot), notes, getCurrentRoleColor(), getCurrentWaveTick()));
+		section.add(BaNotesPreviewPanel.create(
+				getNotesHeading(snapshot), notes, getCurrentRoleColor(), CONTENT_WIDTH - 16, getCurrentWaveTick()));
 	}
 
 	private String getActiveNotes(BaWaveOverviewSnapshot snapshot)
@@ -652,23 +608,16 @@ public class WaveOverviewPanel extends JPanel
 		return Math.max(0, Math.round(waveLifecycleService.getElapsedTimeMs() / 600f));
 	}
 
-	private JPanel createNotesPanel(String headingText, String notes, Color headingColor, int currentWaveTick)
-	{
-		return BaNotesPreviewPanel.create(headingText, notes, headingColor, CONTENT_WIDTH - 16, currentWaveTick);
-	}
-
 	private JPanel createRunMetadataPanel(BaWaveOverviewRun run, boolean showMissingDuration)
 	{
 		if (run == null) return centeredMessage("Select a wave to view.");
 
-		if (!showMissingDuration && run.getRoundDuration() == null) return verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		if (!showMissingDuration && run.getRoundDuration() == null) return BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 
 		List<BaTeamMember> members = run.getTeamMembers();
-		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		int height = Math.max(CONTROL_HEIGHT * 2, CONTROL_HEIGHT * (members.size() + 1) + (members.isEmpty() ? 0 : 10));
-		panel.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, height));
-		panel.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, height));
-		panel.setAlignmentX(LEFT_ALIGNMENT);
+		BaPanelUi.fixedSize(panel, CONTENT_WIDTH - 16, height);
 
 		for (BaTeamMember member : members)
 		{
@@ -692,7 +641,7 @@ public class WaveOverviewPanel extends JPanel
 
 	private static boolean isBlank(String value)
 	{
-		return value == null || value.trim().isEmpty();
+		return value == null || value.isBlank();
 	}
 
 	private JPanel metadataMemberRow(BaTeamMember member)
@@ -703,41 +652,16 @@ public class WaveOverviewPanel extends JPanel
 		JPanel namePanel = new JPanel();
 		namePanel.setLayout(new BoxLayout(namePanel, BoxLayout.X_AXIS));
 		namePanel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		namePanel.add(roleIconLabel(member.getRole()));
+		namePanel.add(BaPanelUi.roleIconLabel(itemManager, member.getRole(), ROLE_ICON_SIZE, CONTROL_HEIGHT));
 		namePanel.add(Box.createHorizontalStrut(5));
 		namePanel.add(nameLabel);
 
 		JPanel row = new JPanel(new BorderLayout());
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setAlignmentX(LEFT_ALIGNMENT);
+		BaPanelUi.fixedSize(row, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		row.add(namePanel, BorderLayout.CENTER);
 
 		return row;
-	}
-
-	private JLabel roleIconLabel(String roleName)
-	{
-		JLabel iconLabel = new JLabel();
-		iconLabel.setPreferredSize(new Dimension(ROLE_ICON_SIZE, CONTROL_HEIGHT));
-		iconLabel.setMaximumSize(new Dimension(ROLE_ICON_SIZE, CONTROL_HEIGHT));
-		iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
-
-		BaRole role = BaRole.fromDisplayName(roleName);
-
-		if (role != null)
-		{
-			AsyncBufferedImage icon = itemManager.getImage(role.getPlayerIconItemId());
-			icon.onLoaded(() -> SwingUtilities.invokeLater(() -> iconLabel.setIcon(scaledRoleIcon(icon))));
-		}
-
-		return iconLabel;
-	}
-
-	private ImageIcon scaledRoleIcon(BufferedImage image)
-	{
-		return new ImageIcon(image.getScaledInstance(ROLE_ICON_SIZE, ROLE_ICON_SIZE, Image.SCALE_SMOOTH));
 	}
 
 	private JPanel roundDurationRow(String duration)
@@ -749,9 +673,7 @@ public class WaveOverviewPanel extends JPanel
 		JPanel row = new JPanel();
 		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		row.setPreferredSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setMaximumSize(new Dimension(CONTENT_WIDTH - 16, CONTROL_HEIGHT));
-		row.setAlignmentX(LEFT_ALIGNMENT);
+		BaPanelUi.fixedSize(row, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
 		row.add(label);
 		row.add(value);
 		return row;
@@ -764,23 +686,6 @@ public class WaveOverviewPanel extends JPanel
 		label.setFont(bold ? TITLE_FONT : LABEL_FONT);
 		label.setAlignmentX(LEFT_ALIGNMENT);
 		return label;
-	}
-
-	private static JPanel verticalPanel(Color background)
-	{
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		panel.setBackground(background);
-		return panel;
-	}
-
-	private static void fixedSize(JComponent component, int width, int height)
-	{
-		Dimension size = new Dimension(width, height);
-		component.setPreferredSize(size);
-		component.setMinimumSize(size);
-		component.setMaximumSize(size);
-		component.setAlignmentX(Component.LEFT_ALIGNMENT);
 	}
 
 	@AllArgsConstructor(access = AccessLevel.PRIVATE)

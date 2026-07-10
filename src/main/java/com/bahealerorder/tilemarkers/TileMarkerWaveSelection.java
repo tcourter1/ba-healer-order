@@ -11,7 +11,6 @@ public class TileMarkerWaveSelection
 	@Setter
 	private String id;
 	private String roleContext;
-	@Setter
 	private int wave;
 	@Setter
 	private String strategyId;

@@ -29,7 +29,6 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Insets;
 import java.awt.Toolkit;
-import java.awt.Window;
 import java.awt.Cursor;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
@@ -42,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.ImageIcon;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -51,7 +49,6 @@ import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -113,7 +110,7 @@ class HealerCodeEditor extends JPanel
 
 	private final HealerCodeManager codeManager;
 	private final Runnable codesChanged;
-	private final JComboBox<CodeOption> codeCombo = BaPanelUi.fixedPopupWidthCombo(CODE_POPUP_WIDTH);
+	private final JComboBox<BaPanelUi.ComboOption> codeCombo = BaPanelUi.fixedPopupWidthCombo(CODE_POPUP_WIDTH);
 	private final JComboBox<Integer> waveCombo = new JComboBox<>();
 	private final JTextField codeName = new JTextField();
 	private final JTextArea codeTextSource = new JTextArea();
@@ -208,7 +205,7 @@ class HealerCodeEditor extends JPanel
 		waveCombo.addActionListener(event -> changeWave());
 
 		BaPanelUi.styleCombo(codeCombo, 300, CONTROL_HEIGHT);
-		codeCombo.setRenderer(new CodeOptionRenderer());
+		codeCombo.setRenderer(BaPanelUi.comboOptionRenderer());
 		codeCombo.addActionListener(event ->
 		{
 			if (refreshing) return;
@@ -219,8 +216,7 @@ class HealerCodeEditor extends JPanel
 				return;
 			}
 
-			CodeOption option = (CodeOption) codeCombo.getSelectedItem();
-			loadCode(option == null ? null : option.id);
+			loadCode(BaPanelUi.selectedId(codeCombo));
 		});
 
 		BaPanelUi.styleActionButton(codeActionButton, CODE_ACTION_BUTTON_WIDTH, CONTROL_HEIGHT);
@@ -445,13 +441,13 @@ class HealerCodeEditor extends JPanel
 
 	private String helpLink(String action, String text)
 	{
-		return "<a href='" + escapeHtml(action) + "'><b><font color='" + toHex(ColorScheme.BRAND_ORANGE) + "'>"
-				+ escapeHtml(text) + "</font></b></a>";
+		return "<a href='" + BaPanelUi.escapeHtml(action) + "'><b><font color='" + toHex(ColorScheme.BRAND_ORANGE) + "'>"
+				+ BaPanelUi.escapeHtml(text) + "</font></b></a>";
 	}
 
 	private String helpCode(String text)
 	{
-		return "<font color='" + toHex(BaPanelUi.ACTION_CONTROL_TEXT_COLOR) + "'><b>" + escapeHtml(text) + "</b></font>";
+		return "<font color='" + toHex(BaPanelUi.ACTION_CONTROL_TEXT_COLOR) + "'><b>" + BaPanelUi.escapeHtml(text) + "</b></font>";
 	}
 
 	private JPanel createOptionsRow()
@@ -685,7 +681,7 @@ class HealerCodeEditor extends JPanel
 
 	private Component createInactiveFoodCell(CellKey key)
 	{
-		JLabel value = new JLabel(formatCellInstruction(instructionForCell(key)));
+		JLabel value = new JLabel(HealerCodeFormatter.formatInstruction(instructionForCell(key)));
 		value.setForeground(ColorScheme.TEXT_COLOR);
 		value.setHorizontalAlignment(SwingConstants.CENTER);
 		value.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -971,26 +967,11 @@ class HealerCodeEditor extends JPanel
 
 	private void requestActiveEditorFocus()
 	{
-		if (activeAdvancedField != null)
-		{
-			activeAdvancedField.requestFocusInWindow();
-		}
-		else if (activeAfterField != null)
-		{
-			activeAfterField.requestFocusInWindow();
-		}
-		else if (activeBeforeField != null)
-		{
-			activeBeforeField.requestFocusInWindow();
-		}
-		else if (activeExactField != null)
-		{
-			activeExactField.requestFocusInWindow();
-		}
-		else if (activeFoodField != null)
-		{
-			activeFoodField.requestFocusInWindow();
-		}
+		Component field = activeAdvancedField != null ? activeAdvancedField
+				: activeAfterField != null ? activeAfterField
+				: activeBeforeField != null ? activeBeforeField
+				: activeExactField != null ? activeExactField : activeFoodField;
+		if (field != null) field.requestFocusInWindow();
 	}
 
 	private void activateCell(CellKey key)
@@ -1025,7 +1006,7 @@ class HealerCodeEditor extends JPanel
 			String text = activeAdvancedField == null ? "" : activeAdvancedField.getText();
 			HealerInstruction instruction = HealerCodeParser.parseInstruction(text);
 			instruction.setAdvanced(true);
-			instruction.setRaw(text == null ? "" : text.trim());
+			instruction.setRaw(text.trim());
 			return instruction;
 		}
 
@@ -1039,14 +1020,14 @@ class HealerCodeEditor extends JPanel
 				? readOptionalSeconds(activeBeforeField)
 				: null;
 		Integer exact = activeTimingOption == CellTimingOption.EXACT ? readOptionalSeconds(activeExactField) : null;
-		HealerInstruction existing = activeCell == null ? null : cellInstructions.get(activeCell);
+		HealerInstruction existing = cellInstructions.get(activeCell);
 		String raw = food == 0
 				&& after == null
 				&& before == null
 				&& exact == null
 				&& existing != null
 				&& existing.getRaw() != null
-				&& !existing.getRaw().trim().isEmpty()
+				&& !existing.getRaw().isBlank()
 				? existing.getRaw()
 				: null;
 		return new HealerInstruction(food, after, before, exact, raw);
@@ -1071,11 +1052,6 @@ class HealerCodeEditor extends JPanel
 	{
 		HealerInstruction instruction = cellInstructions.get(key);
 		return instruction == null ? new HealerInstruction() : instruction;
-	}
-
-	private static String formatCellInstruction(HealerInstruction instruction)
-	{
-		return HealerCodeFormatter.formatInstruction(instruction);
 	}
 
 	private static String advancedText(HealerInstruction instruction)
@@ -1145,10 +1121,10 @@ class HealerCodeEditor extends JPanel
 		try
 		{
 			codeCombo.removeAllItems();
-			codeCombo.addItem(new CodeOption(null, "-- New --", false));
+			codeCombo.addItem(new BaPanelUi.ComboOption(null, "-- New --"));
 			for (WaveCode code : codeManager.getWaveCodesForWave(selectedWave))
 			{
-				codeCombo.addItem(new CodeOption(code.getId(), HealerCodeManager.waveCodeDisplayName(code), code.isBuiltIn()));
+				codeCombo.addItem(new BaPanelUi.ComboOption(code.getId(), HealerCodeManager.waveCodeDisplayName(code)));
 			}
 			selectCodeComboValue(selectedId);
 			selectWaveComboValue();
@@ -1272,7 +1248,7 @@ class HealerCodeEditor extends JPanel
 				{
 					WaveCode parsed = HealerCodeParser.parseWaveCode(
 							selectedCodeId,
-							codeName.getText() == null ? "" : codeName.getText().trim(),
+							codeName.getText().trim(),
 							selectedWave,
 							false,
 							codeTextSource.getText()
@@ -1355,26 +1331,13 @@ class HealerCodeEditor extends JPanel
 		}
 
 		WaveCode saved = codeManager.saveWaveCode(selectedCodeId, draft);
-		if (saved == null)
-		{
-			Toolkit.getDefaultToolkit().beep();
-			return;
-		}
-
 		selectedCodeId = saved.getId();
 		codeManager.setActiveWaveCodeId(saved.getWave(), saved.getId());
 		refreshCodeCombo(selectedCodeId);
 		loadCode(selectedCodeId);
 		dirty = false;
-		if (codesChanged != null)
-		{
-			codesChanged.run();
-		}
-		Window window = SwingUtilities.getWindowAncestor(this);
-		if (window != null)
-		{
-			window.dispose();
-		}
+		codesChanged.run();
+		SwingUtilities.getWindowAncestor(this).dispose();
 	}
 
 	private void exportCurrentWaveToClipboard()
@@ -1411,10 +1374,7 @@ class HealerCodeEditor extends JPanel
 			return;
 		}
 
-		if (codesChanged != null)
-		{
-			codesChanged.run();
-		}
+		codesChanged.run();
 		refreshCodeCombo(result.getId());
 		loadCode(result.getId());
 		BaTransferDialog.show(this, "Import Wave", "Imported and selected " + result.getTypedName() + ".", "Import", result.getSummaryLines());
@@ -1422,7 +1382,7 @@ class HealerCodeEditor extends JPanel
 
 	private WaveCode draftCode()
 	{
-		String name = codeName.getText() == null ? "" : codeName.getText().trim();
+		String name = codeName.getText().trim();
 		if (name.isEmpty()) return null;
 
 		if (textMode) return HealerCodeParser.parseWaveCode(selectedCodeId, name, selectedWave, false, codeTextSource.getText());
@@ -1433,7 +1393,7 @@ class HealerCodeEditor extends JPanel
 	private WaveCode advancedDraft(boolean requireName)
 	{
 		commitActiveCell();
-		String name = codeName.getText() == null ? "" : codeName.getText().trim();
+		String name = codeName.getText().trim();
 		if (requireName && name.isEmpty()) return null;
 
 		WaveCode code = new WaveCode(selectedCodeId, name, selectedWave, false, collectCalls());
@@ -1461,7 +1421,7 @@ class HealerCodeEditor extends JPanel
 			{
 				for (int healerOrder = 1; healerOrder <= getHealerCount(); healerOrder++)
 				{
-					instructions.add(readInstruction(callIndex, healerOrder));
+					instructions.add(instructionForCell(new CellKey(callIndex, healerOrder)).copy());
 				}
 			}
 			calls.add(new CallCode(callIndex, instructions, null));
@@ -1469,16 +1429,11 @@ class HealerCodeEditor extends JPanel
 		return calls;
 	}
 
-	private HealerInstruction readInstruction(int callIndex, int healerOrder)
-	{
-		return instructionForCell(new CellKey(callIndex, healerOrder)).copy();
-	}
-
 	private Integer readOptionalSeconds(JTextField field)
 	{
 		if (field == null) return null;
 
-		String value = field.getText() == null ? "" : field.getText().trim();
+		String value = field.getText().trim();
 		if (value.isEmpty()) return null;
 		try
 		{
@@ -1516,10 +1471,7 @@ class HealerCodeEditor extends JPanel
 		codeManager.deleteUserWaveCode(selectedCodeId);
 		refreshCodeCombo(null);
 		clearDraft();
-		if (codesChanged != null)
-		{
-			codesChanged.run();
-		}
+		codesChanged.run();
 	}
 
 	private void resetCode()
@@ -1537,10 +1489,7 @@ class HealerCodeEditor extends JPanel
 		codeManager.resetBuiltInWaveCode(resetCodeId);
 		refreshCodeCombo(resetCodeId);
 		loadCode(resetCodeId);
-		if (codesChanged != null)
-		{
-			codesChanged.run();
-		}
+		codesChanged.run();
 	}
 
 	boolean confirmDiscard(Component parent)
@@ -1624,19 +1573,7 @@ class HealerCodeEditor extends JPanel
 		refreshing = true;
 		try
 		{
-			for (int i = 0; i < codeCombo.getItemCount(); i++)
-			{
-				CodeOption option = codeCombo.getItemAt(i);
-				if ((id == null && option.id == null) || (id != null && id.equals(option.id)))
-				{
-					codeCombo.setSelectedIndex(i);
-					return;
-				}
-			}
-			if (codeCombo.getItemCount() > 0)
-			{
-				codeCombo.setSelectedIndex(0);
-			}
+			BaPanelUi.selectComboValue(codeCombo, id);
 		}
 		finally
 		{
@@ -1712,13 +1649,6 @@ class HealerCodeEditor extends JPanel
 		return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
 	}
 
-	private static String escapeHtml(String text)
-	{
-		return text.replace("&", "&amp;")
-				.replace("<", "&lt;")
-				.replace(">", "&gt;");
-	}
-
 	private static String labelForHealer(List<String> labels, int healerOrder)
 	{
 		if (healerOrder <= 0 || healerOrder > labels.size()) return String.valueOf(healerOrder);
@@ -1764,39 +1694,6 @@ class HealerCodeEditor extends JPanel
 	{
 		private final int callIndex;
 		private final int healerOrder;
-	}
-
-	@AllArgsConstructor(access = AccessLevel.PRIVATE)
-	private static class CodeOption
-	{
-		private final String id;
-		private final String label;
-		private final boolean builtIn;
-
-		@Override
-		public String toString()
-		{
-			return label;
-		}
-	}
-
-	private static class CodeOptionRenderer extends DefaultListCellRenderer
-	{
-		@Override
-		public Component getListCellRendererComponent(
-				JList<?> list,
-				Object value,
-				int index,
-				boolean isSelected,
-			boolean cellHasFocus)
-		{
-			Component component = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-			if (!isSelected)
-			{
-				component.setForeground(BaPanelUi.ACTION_CONTROL_TEXT_COLOR);
-			}
-			return component;
-		}
 	}
 
 	@RequiredArgsConstructor
@@ -1848,7 +1745,7 @@ class HealerCodeEditor extends JPanel
 		protected void paintComponent(Graphics graphics)
 		{
 			super.paintComponent(graphics);
-			if (placeholder == null || placeholder.isEmpty() || getText() == null || !getText().isEmpty()) return;
+			if (placeholder == null || placeholder.isEmpty() || !getText().isEmpty()) return;
 
 			Graphics2D graphics2D = (Graphics2D) graphics.create();
 			graphics2D.setColor(new Color(140, 140, 140));

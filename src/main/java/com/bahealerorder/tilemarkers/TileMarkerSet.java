@@ -70,6 +70,6 @@ public class TileMarkerSet
 	@Override
 	public String toString()
 	{
-		return name == null || name.trim().isEmpty() ? "Unnamed set" : name;
+		return name == null || name.isBlank() ? "Unnamed set" : name;
 	}
 }

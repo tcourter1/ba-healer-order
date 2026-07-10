@@ -2,7 +2,6 @@ package com.bahealerorder.healer.ttk;
 
 import java.util.HashMap;
 import java.util.Map;
-import javax.inject.Inject;
 import lombok.Getter;
 
 public class HealerTtkTracker
@@ -13,11 +12,6 @@ public class HealerTtkTracker
 	@Getter
 	private int waveStartTick = -1;
 	private int healerMaxHp = -1;
-
-	@Inject
-	public HealerTtkTracker()
-	{
-	}
 
 	public void startWave(int tick, int wave)
 	{
@@ -56,22 +50,12 @@ public class HealerTtkTracker
 
 	public boolean observeHp(int npcIndex, int tick, int healthRatio, int healthScale)
 	{
-		HealerTtkState state = statesByNpcIndex.computeIfAbsent(
-				npcIndex,
-				key -> new HealerTtkState(tick, healerMaxHp)
-		);
-
-		return state.observeHp(tick, healthRatio, healthScale);
+		return state(npcIndex, tick).observeHp(tick, healthRatio, healthScale);
 	}
 
 	public boolean switchToHealthRatioTtk(int npcIndex, int tick, int healthRatio, int healthScale)
 	{
-		HealerTtkState state = statesByNpcIndex.computeIfAbsent(
-				npcIndex,
-				key -> new HealerTtkState(tick, healerMaxHp)
-		);
-
-		return state.switchToHealthRatioTtk(tick, healthRatio, healthScale);
+		return state(npcIndex, tick).switchToHealthRatioTtk(tick, healthRatio, healthScale);
 	}
 
 	public HealerTtkPrediction getPrediction(int npcIndex)
@@ -89,6 +73,11 @@ public class HealerTtkTracker
 	HealerTtkState getState(int npcIndex)
 	{
 		return statesByNpcIndex.get(npcIndex);
+	}
+
+	private HealerTtkState state(int npcIndex, int tick)
+	{
+		return statesByNpcIndex.computeIfAbsent(npcIndex, key -> new HealerTtkState(tick, healerMaxHp));
 	}
 
 	static int getHealerMaxHp(int wave)

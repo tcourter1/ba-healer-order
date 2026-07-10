@@ -135,17 +135,12 @@ public class HealerOverlay extends Overlay
 
 			for (int i = 0; i < stackSize; i++)
 			{
-				int xOffset = getStackedLabelXOffset(i, stackSize);
+				int xOffset = (int) Math.round((i - ((stackSize - 1) / 2.0)) * STACKED_LABEL_SPACING);
 				offsets.put(stack.get(i).getKey(), xOffset);
 			}
 		}
 
 		return offsets;
-	}
-
-	private int getStackedLabelXOffset(int stackIndex, int stackSize)
-	{
-		return (int) Math.round((stackIndex - ((stackSize - 1) / 2.0)) * STACKED_LABEL_SPACING);
 	}
 
 	private void renderHighlight(Graphics2D graphics, NPC npc)

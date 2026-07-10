@@ -10,5 +10,4 @@ public class HealerCodeStatus
 	private final HealerInstruction instruction;
 	private final CodeDisplayState state;
 	private final int foodFed;
-	private final int lastFoodElapsedSeconds;
 }

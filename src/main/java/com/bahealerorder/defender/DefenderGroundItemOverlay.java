@@ -38,7 +38,7 @@ public class DefenderGroundItemOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (controller == null || !controller.shouldShowGroundItemOverlay()) return null;
+		if (controller == null) return null;
 
 		for (DefenderGroundItem groundItem : controller.getHighlightedGroundItems())
 		{

@@ -44,7 +44,6 @@ import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.PostMenuSort;
-import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.callback.ClientThread;
@@ -173,17 +172,9 @@ public class BaHealerOrderPlugin extends Plugin
 	}
 
 	@Subscribe
-	public void onVarbitChanged(VarbitChanged event)
-	{
-		scrollerController.onVarbitChanged(event);
-	}
-
-	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
 		partySyncService.onMenuOptionClicked(event);
-		scrollerController.onMenuOptionClicked(event);
-		attackerController.onMenuOptionClicked(event);
 		healerController.onMenuOptionClicked(event);
 	}
 
@@ -197,13 +188,13 @@ public class BaHealerOrderPlugin extends Plugin
 	public void onPostMenuSort(PostMenuSort event)
 	{
 		dispenserMenuService.apply();
-		healerController.onPostMenuSort(event);
+		healerController.onPostMenuSort();
 	}
 
 	@Subscribe
 	public void onMenuOpened(MenuOpened event)
 	{
-		healerController.onMenuOpened(event);
+		healerController.onMenuOpened();
 	}
 
 	@Subscribe
@@ -233,11 +224,11 @@ public class BaHealerOrderPlugin extends Plugin
 			endWave(endedWave);
 		}
 
-		roleDetector.onGameTick(event);
-		partySyncService.onGameTick(event);
-		scrollerController.onGameTick(event);
-		defenderController.onGameTick(event);
-		healerController.onGameTick(event);
+		roleDetector.onGameTick();
+		partySyncService.onGameTick();
+		scrollerController.onGameTick();
+		defenderController.onGameTick();
+		healerController.onGameTick();
 		waveOverviewService.onGameTick();
 
 		handleOnboardingAutoOpen();
@@ -364,7 +355,7 @@ public class BaHealerOrderPlugin extends Plugin
 	{
 		applyDefaultHealerCodePreset(waveStart);
 		waveOverviewService.onWaveStarted(waveStart.getWave());
-		attackerController.onWaveStarted(waveStart.getWave());
+		attackerController.onWaveStarted();
 		defenderController.onWaveStarted();
 		healerController.onWaveStarted(waveStart);
 	}
@@ -381,19 +372,17 @@ public class BaHealerOrderPlugin extends Plugin
 				partySyncService.getBaPartySyncTeamMembers()
 		);
 
-		if (defaultRole != null)
-		{
-			RunPreset preset = healerCodeManager.applyDefaultRunPreset(defaultRole);
-			if (preset != null)
-			{
-				panel.refreshLater();
-				addChatMessage("BA Utilities swapping to "
-						+ HealerCodeManager.runPresetDisplayName(preset)
-						+ " because it is marked as the default for "
-						+ defaultRole.getDisplayName()
-						+ ".");
-			}
-		}
+		if (defaultRole == null) return;
+
+		RunPreset preset = healerCodeManager.applyDefaultRunPreset(defaultRole);
+		if (preset == null) return;
+
+		panel.refreshLater();
+		addChatMessage("BA Utilities swapping to "
+				+ HealerCodeManager.runPresetDisplayName(preset)
+				+ " because it is marked as the default for "
+				+ defaultRole.getDisplayName()
+				+ ".");
 	}
 
 	private void endWave(int wave)
@@ -441,7 +430,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		for (int i = 1; i < arguments.length; i++)
 		{
-			String option = arguments[i] == null ? "" : arguments[i].trim().toLowerCase(Locale.ROOT);
+			String option = arguments[i].trim().toLowerCase(Locale.ROOT);
 			if (option.isEmpty()) continue;
 
 			if ("queen".equals(option))
@@ -508,7 +497,7 @@ public class BaHealerOrderPlugin extends Plugin
 		boolean reset = false;
 		for (String argument : arguments)
 		{
-			String option = argument == null ? "" : argument.trim().toLowerCase(Locale.ROOT);
+			String option = argument.trim().toLowerCase(Locale.ROOT);
 			if (option.isEmpty()) continue;
 
 			if ("onboard".equals(option))
@@ -552,11 +541,8 @@ public class BaHealerOrderPlugin extends Plugin
 		addChatMessage("Roles: attacker, collector, defender, healer, scroller. Use wave 0 to clear.");
 	}
 
-	private BaRole parseBaWaveRole(String rawRole)
+	private BaRole parseBaWaveRole(String role)
 	{
-		if (rawRole == null || rawRole.trim().isEmpty()) return null;
-
-		String role = rawRole.trim().toLowerCase();
 		if (role.startsWith("a")) return BaRole.ATTACKER;
 		if (role.startsWith("h")) return BaRole.HEALER;
 		if (role.startsWith("c")) return BaRole.COLLECTOR;

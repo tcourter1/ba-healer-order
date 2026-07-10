@@ -4,11 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @NoArgsConstructor
 @Getter
-@Setter
 public class CallCode
 {
 	private int callIndex;
@@ -20,11 +18,6 @@ public class CallCode
 		this.callIndex = Math.max(0, callIndex);
 		this.healerInstructions = healerInstructions == null ? new ArrayList<>() : new ArrayList<>(healerInstructions);
 		this.note = note;
-	}
-
-	public void setCallIndex(int callIndex)
-	{
-		this.callIndex = Math.max(0, callIndex);
 	}
 
 	public HealerInstruction getInstruction(int healerOrder)

@@ -50,7 +50,7 @@ public class StrategyStore
 
 	public void setDefaultRunPresetId(HealerCodeDefaultRole role, String runPresetId)
 	{
-		if (runPresetId == null || runPresetId.trim().isEmpty())
+		if (runPresetId == null || runPresetId.isBlank())
 		{
 			defaultRunPresetIds.remove(role);
 		}

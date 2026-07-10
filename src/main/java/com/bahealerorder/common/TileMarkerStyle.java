@@ -18,7 +18,7 @@ public final class TileMarkerStyle
 	{
 		try
 		{
-			return color == null || color.trim().isEmpty() ? fallback : Color.decode(color);
+			return color == null || color.isBlank() ? fallback : Color.decode(color);
 		}
 		catch (RuntimeException ex)
 		{

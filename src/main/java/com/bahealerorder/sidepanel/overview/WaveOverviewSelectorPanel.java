@@ -9,7 +9,6 @@ import com.bahealerorder.common.BaWaveOverviewSnapshot;
 import com.bahealerorder.common.BaWaveOverviewStore;
 import com.bahealerorder.sidepanel.BaPanelUi;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Dimension;
@@ -27,7 +26,6 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
-import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -207,7 +205,7 @@ class WaveOverviewSelectorPanel extends JPanel
 		deleteRunButton.setIcon(BaIcons.trashIcon());
 		deleteRunButton.setToolTipText("Delete selected run");
 		SwingUtil.removeButtonDecorations(deleteRunButton);
-		fixedSize(deleteRunButton, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(deleteRunButton, ACTION_BUTTON_WIDTH, CONTROL_HEIGHT);
 		deleteRunButton.addActionListener(event -> deleteSelectedRun());
 		return deleteRunButton;
 	}
@@ -319,11 +317,7 @@ class WaveOverviewSelectorPanel extends JPanel
 		BaWaveOverviewSnapshot snapshot = run.getSnapshot(wave);
 		if (snapshot == null || snapshot.getDuration() == null || snapshot.getDuration().isEmpty()) return null;
 
-		return formatWaveDropdownDuration(snapshot.getDuration());
-	}
-
-	private String formatWaveDropdownDuration(String duration)
-	{
+		String duration = snapshot.getDuration();
 		return duration.startsWith("0:") ? duration.substring(2) : duration;
 	}
 
@@ -336,7 +330,7 @@ class WaveOverviewSelectorPanel extends JPanel
 		String age = formatRunDropdownAge(run);
 		return "<html><table width=\"" + RUN_DROPDOWN_TABLE_WIDTH + "\" cellpadding=\"0\" cellspacing=\"0\"><tr>"
 				+ "<td>" + formatRoleHtml(role) + formatRunAgeHtml(age) + "</td>"
-				+ "<td width=\"" + RUN_STATUS_HTML_WIDTH + "\" align=\"right\">" + escapeHtml(status) + "</td>"
+				+ "<td width=\"" + RUN_STATUS_HTML_WIDTH + "\" align=\"right\">" + BaPanelUi.escapeHtml(status) + "</td>"
 				+ "</tr></table></html>";
 	}
 
@@ -350,7 +344,7 @@ class WaveOverviewSelectorPanel extends JPanel
 
 	private String formatRunAgeHtml(String age)
 	{
-		return age == null || age.isEmpty() ? "" : " <i>" + escapeHtml(age) + "</i>";
+		return age == null || age.isEmpty() ? "" : " <i>" + BaPanelUi.escapeHtml(age) + "</i>";
 	}
 
 	private String formatRunDropdownAge(BaWaveOverviewRun run)
@@ -369,14 +363,9 @@ class WaveOverviewSelectorPanel extends JPanel
 	private String formatRoleHtml(String roleName)
 	{
 		BaRole role = BaRole.fromDisplayName(roleName);
-		String escapedRoleName = escapeHtml(roleName == null || roleName.isEmpty() ? "Unknown" : roleName);
-		String color = getRoleHtmlColor(role);
+		String escapedRoleName = BaPanelUi.escapeHtml(roleName == null || roleName.isEmpty() ? "Unknown" : roleName);
+		String color = BaRoleColors.htmlColor(role);
 		return color == null ? escapedRoleName : "<font color=\"" + color + "\">" + escapedRoleName + "</font>";
-	}
-
-	private String getRoleHtmlColor(BaRole role)
-	{
-		return BaRoleColors.htmlColor(role);
 	}
 
 	private String formatRunAge(String runName)
@@ -413,27 +402,9 @@ class WaveOverviewSelectorPanel extends JPanel
 		}
 	}
 
-	private String escapeHtml(String text)
-	{
-		return text
-				.replace("&", "&amp;")
-				.replace("<", "&lt;")
-				.replace(">", "&gt;")
-				.replace("\"", "&quot;");
-	}
-
 	private static void styleCombo(JComboBox<?> comboBox, int width)
 	{
 		BaPanelUi.styleCombo(comboBox, width, CONTROL_HEIGHT);
-	}
-
-	private static void fixedSize(JComponent component, int width, int height)
-	{
-		Dimension size = new Dimension(width, height);
-		component.setPreferredSize(size);
-		component.setMinimumSize(size);
-		component.setMaximumSize(size);
-		component.setAlignmentX(Component.LEFT_ALIGNMENT);
 	}
 
 	private static class SelectorItemRenderer extends DefaultListCellRenderer

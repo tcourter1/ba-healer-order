@@ -5,7 +5,6 @@ import javax.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
 import net.runelite.api.events.WidgetLoaded;
 
 @Singleton
@@ -51,7 +50,7 @@ public class BaRoleDetector
 		return false;
 	}
 
-	public void onGameTick(GameTick event)
+	public void onGameTick()
 	{
 		if (currentRole == null)
 		{

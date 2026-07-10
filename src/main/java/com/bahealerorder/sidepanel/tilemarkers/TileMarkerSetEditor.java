@@ -13,7 +13,6 @@ import com.bahealerorder.tilemarkers.TileMarkerMapLayout;
 import com.bahealerorder.tilemarkers.TileMarkerMapMode;
 import com.bahealerorder.tilemarkers.TileMarkerRoleContext;
 import com.bahealerorder.tilemarkers.TileMarkerSet;
-import com.bahealerorder.tilemarkers.TileMarkerTile;
 import com.bahealerorder.tilemarkers.TileMarkerWaveMap;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -33,12 +32,10 @@ import java.util.Set;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLayeredPane;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -79,13 +76,11 @@ public class TileMarkerSetEditor extends JPanel
 	private static final int MARKER_LABEL_WIDTH = 82;
 	private static final int TRASH_BUTTON_WIDTH = 24;
 	private static final int IMPORT_EXPORT_BUTTON_WIDTH = 140;
-	private static final Color BUILT_IN_SET_COLOR = new Color(120, 120, 120);
-
 	private final GeneralTileMarkerStrategyManager strategyManager;
 	private final ColorPickerManager colorPickerManager;
 	private final Runnable setsChanged;
 	private final StrategyEditorOpener strategyEditorOpener;
-	private final JComboBox<SetOption> setCombo = new JComboBox<>();
+	private final JComboBox<BaPanelUi.ComboOption> setCombo = new JComboBox<>();
 	private final JComboBox<MarkerOption> markerCombo = new JComboBox<>();
 	private final JComboBox<WaveOption> applyWaveCombo = new JComboBox<>();
 	private final JComboBox<TileMarkerRoleContext> applyRoleCombo = new JComboBox<>();
@@ -316,12 +311,11 @@ public class TileMarkerSetEditor extends JPanel
 	private JPanel createFloatingSetControls()
 	{
 		BaPanelUi.styleCombo(setCombo, 230, CONTROL_HEIGHT);
-		setCombo.setRenderer(new MarkerSetRenderer());
+		setCombo.setRenderer(BaPanelUi.comboOptionRenderer());
 		setCombo.addActionListener(event ->
 		{
 			if (refreshing) return;
 
-			SetOption item = (SetOption) setCombo.getSelectedItem();
 			if (!confirmDiscard(this))
 			{
 				refreshing = true;
@@ -335,7 +329,7 @@ public class TileMarkerSetEditor extends JPanel
 				}
 				return;
 			}
-			loadSet(item == null ? null : item.id);
+			loadSet(BaPanelUi.selectedId(setCombo));
 		});
 
 		deleteSetButton.setToolTipText("Delete selected marker set");
@@ -445,7 +439,7 @@ public class TileMarkerSetEditor extends JPanel
 		BaPanelUi.fixedSize(panel, SIDE_WIDTH, MAP_VIEWPORT_HEIGHT);
 
 		JPanel top = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		legendPanel = createLegendPanel();
+		legendPanel = TileMarkerLegendPanel.create(SIDE_WIDTH);
 		legendPanel.setVisible(legendVisible);
 		top.add(legendPanel);
 		legendMarkerGap = Box.createVerticalStrut(SECTION_GAP * 3);
@@ -456,11 +450,6 @@ public class TileMarkerSetEditor extends JPanel
 
 		wrapper.add(panel, BorderLayout.NORTH);
 		return wrapper;
-	}
-
-	private JPanel createLegendPanel()
-	{
-		return TileMarkerLegendPanel.create(SIDE_WIDTH);
 	}
 
 	private JPanel createMarkerControlsPanel()
@@ -631,10 +620,10 @@ public class TileMarkerSetEditor extends JPanel
 		try
 		{
 			setCombo.removeAllItems();
-			setCombo.addItem(new SetOption(null, "Select a tile marker set...", false));
+			setCombo.addItem(new BaPanelUi.ComboOption(null, "Select a tile marker set..."));
 			for (TileMarkerSet set : strategyManager.getMarkerSets(waveMap))
 			{
-				setCombo.addItem(new SetOption(set.getId(), set.toString(), set.isBuiltIn()));
+				setCombo.addItem(new BaPanelUi.ComboOption(set.getId(), set.toString(), set.isBuiltIn()));
 			}
 			selectSetComboValue(selectedId);
 		}
@@ -662,7 +651,7 @@ public class TileMarkerSetEditor extends JPanel
 			selectSetComboValue(selectedSetId);
 			mapMode = set.getMapMode();
 			waveMap = set.getWaveMap();
-			markers = copyMarkers(set.getMarkers());
+			markers = TileMarker.copyAll(set.getMarkers());
 			selectedMarkerIds.clear();
 			mapZoom.setValue(defaultTileSize(mapMode));
 			selectMapModeButton();
@@ -714,30 +703,27 @@ public class TileMarkerSetEditor extends JPanel
 		TileMarkerSet saved;
 		if (selectedSetId != null
 				&& !selectedSetBuiltIn
-				&& strategyManager.updateMarkerSet(selectedSetId, name, mapMode, waveMap, copyMarkers(markers)))
+				&& strategyManager.updateMarkerSet(selectedSetId, name, mapMode, waveMap, TileMarker.copyAll(markers)))
 		{
 			saved = strategyManager.findMarkerSet(selectedSetId);
 		}
 		else
 		{
-			saved = strategyManager.createMarkerSet(name, mapMode, waveMap, copyMarkers(markers));
+			saved = strategyManager.createMarkerSet(name, mapMode, waveMap, TileMarker.copyAll(markers));
 		}
 
-		selectedSetId = saved == null ? selectedSetId : saved.getId();
+		selectedSetId = saved.getId();
 		selectedSetBuiltIn = false;
-		currentSetName = saved == null ? name : saved.getName();
+		currentSetName = saved.getName();
 		refreshSetCombo(selectedSetId);
 		dirty = false;
 		updateSetControls();
-		if (setsChanged != null)
-		{
-			setsChanged.run();
-		}
+		setsChanged.run();
 	}
 
 	private String promptMarkerSetName()
 	{
-		JTextField nameField = new JTextField(currentSetName == null ? "" : currentSetName);
+		JTextField nameField = new JTextField(currentSetName);
 		BaPanelUi.fixedSize(nameField, 260, CONTROL_HEIGHT);
 
 		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
@@ -748,7 +734,7 @@ public class TileMarkerSetEditor extends JPanel
 		int result = JOptionPane.showConfirmDialog(this, panel, "Save Markers", JOptionPane.OK_CANCEL_OPTION);
 		if (result != JOptionPane.OK_OPTION) return null;
 
-		String name = nameField.getText() == null ? "" : nameField.getText().trim();
+		String name = nameField.getText().trim();
 		if (name.isEmpty())
 		{
 			Toolkit.getDefaultToolkit().beep();
@@ -773,10 +759,7 @@ public class TileMarkerSetEditor extends JPanel
 		strategyManager.deleteMarkerSet(selectedSetId);
 		refreshSetCombo(null);
 		clearDraft();
-		if (setsChanged != null)
-		{
-			setsChanged.run();
-		}
+		setsChanged.run();
 	}
 
 	private void exportSetToClipboard()
@@ -832,10 +815,7 @@ public class TileMarkerSetEditor extends JPanel
 		{
 			loadSet(result.getId());
 		}
-		if (setsChanged != null)
-		{
-			setsChanged.run();
-		}
+		setsChanged.run();
 		BaTransferDialog.show(this, "Import Marker Set", markerSetImportMessage(result), "Import", result.getSummaryLines());
 	}
 
@@ -849,10 +829,10 @@ public class TileMarkerSetEditor extends JPanel
 	{
 		return new TileMarkerSet(
 				selectedSetBuiltIn ? null : selectedSetId,
-				currentSetName == null ? "" : currentSetName.trim(),
+				currentSetName.trim(),
 				mapMode,
 				waveMap,
-				copyMarkers(markers),
+				TileMarker.copyAll(markers),
 				false
 		);
 	}
@@ -891,17 +871,12 @@ public class TileMarkerSetEditor extends JPanel
 		exportMarkersButton.setEnabled(!markers.isEmpty());
 		saveMarkersButton.setEnabled(!markers.isEmpty());
 		boolean canApply = savedMarkerSetReady();
-		applyInstructionLabel.setText(applyInstructionText(canApply
+		applyInstructionLabel.setText("<html><div width='" + SIDE_WIDTH + "'>" + (canApply
 				? "Select a wave and role to apply your markers to."
-				: "Save your markers to apply them to a wave."));
+				: "Save your markers to apply them to a wave.") + "</div></html>");
 		applyWaveCombo.setEnabled(canApply);
 		applyRoleCombo.setEnabled(canApply);
 		applyMarkersButton.setEnabled(canApply);
-	}
-
-	private String applyInstructionText(String text)
-	{
-		return "<html><div width='" + SIDE_WIDTH + "'>" + text + "</div></html>";
 	}
 
 	private void beginNewSet()
@@ -948,10 +923,7 @@ public class TileMarkerSetEditor extends JPanel
 			return;
 		}
 
-		if (strategyEditorOpener != null)
-		{
-			strategyEditorOpener.open(wave.wave, role, selectedSetId);
-		}
+		strategyEditorOpener.open(wave.wave, role, selectedSetId);
 	}
 
 	private boolean savedMarkerSetReady()
@@ -1337,20 +1309,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	private void selectSetComboValue(String id)
 	{
-		for (int i = 0; i < setCombo.getItemCount(); i++)
-		{
-			SetOption item = setCombo.getItemAt(i);
-			if ((id == null && item.id == null) || (id != null && id.equals(item.id)))
-			{
-				setCombo.setSelectedIndex(i);
-				return;
-			}
-		}
-
-		if (setCombo.getItemCount() > 0)
-		{
-			setCombo.setSelectedIndex(0);
-		}
+		BaPanelUi.selectComboValue(setCombo, id);
 	}
 
 	private void selectMarkerComboValue(String id)
@@ -1412,41 +1371,9 @@ public class TileMarkerSetEditor extends JPanel
 		return "marker:" + waveMap.name() + ":" + mapMode.name() + ":" + mapX + ":" + mapY + ":" + System.nanoTime();
 	}
 
-	private static List<TileMarker> copyMarkers(List<TileMarker> source)
-	{
-		List<TileMarker> copies = new ArrayList<>();
-		if (source == null) return copies;
-
-		for (TileMarker marker : source)
-		{
-			if (marker != null)
-			{
-				copies.add(copyMarker(marker));
-			}
-		}
-		return copies;
-	}
-
-	private static TileMarker copyMarker(TileMarker marker)
-	{
-		TileMarkerTile tile = marker.getTile();
-		TileMarkerTile tileCopy = tile == null
-				? null
-				: new TileMarkerTile(tile.getRegionId(), tile.getRegionX(), tile.getRegionY(), tile.getZ());
-		return new TileMarker(
-				marker.getId(),
-				tileCopy,
-				marker.getName(),
-				marker.getLabel(),
-				marker.getColor(),
-				marker.getOpacityPercent(),
-				marker.getBorderWidth()
-		);
-	}
-
 	private static int defaultTileSize(TileMarkerMapMode mapMode)
 	{
-		if (mapMode != null && mapMode.isFullArena()) return Math.max(MAP_MIN_TILE_SIZE, MAP_DEFAULT_TILE_SIZE - FULL_ARENA_DEFAULT_ZOOM_STEPS_OUT);
+		if (mapMode.isFullArena()) return Math.max(MAP_MIN_TILE_SIZE, MAP_DEFAULT_TILE_SIZE - FULL_ARENA_DEFAULT_ZOOM_STEPS_OUT);
 
 		return Math.min(MAP_MAX_TILE_SIZE, MAP_DEFAULT_TILE_SIZE + EAST_SIDE_DEFAULT_ZOOM_STEPS_IN);
 	}
@@ -1458,24 +1385,17 @@ public class TileMarkerSetEditor extends JPanel
 
 	private JLabel label(String text)
 	{
-		return label(text, false);
+		return BaPanelUi.plainLabel(text, false);
 	}
 
 	private JLabel label(String text, boolean bold)
 	{
-		JLabel label = new JLabel(text);
-		label.setForeground(ColorScheme.TEXT_COLOR);
-		if (bold)
-		{
-			label.setFont(label.getFont().deriveFont(Font.BOLD));
-		}
-		label.setAlignmentX(LEFT_ALIGNMENT);
-		return label;
+		return BaPanelUi.plainLabel(text, bold);
 	}
 
 	private static boolean isBlank(String value)
 	{
-		return value == null || value.trim().isEmpty();
+		return value == null || value.isBlank();
 	}
 
 	interface StrategyEditorOpener
@@ -1492,39 +1412,6 @@ public class TileMarkerSetEditor extends JPanel
 		public String toString()
 		{
 			return "Wave " + wave;
-		}
-	}
-
-	@AllArgsConstructor(access = AccessLevel.PRIVATE)
-	private static class SetOption
-	{
-		private final String id;
-		private final String label;
-		private final boolean builtIn;
-
-		@Override
-		public String toString()
-		{
-			return label;
-		}
-	}
-
-	private static class MarkerSetRenderer extends DefaultListCellRenderer
-	{
-		@Override
-		public Component getListCellRendererComponent(
-				JList<?> list,
-				Object value,
-				int index,
-				boolean isSelected,
-				boolean cellHasFocus)
-		{
-			Component component = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-			if (value instanceof SetOption && ((SetOption) value).builtIn)
-			{
-				component.setForeground(BUILT_IN_SET_COLOR);
-			}
-			return component;
 		}
 	}
 

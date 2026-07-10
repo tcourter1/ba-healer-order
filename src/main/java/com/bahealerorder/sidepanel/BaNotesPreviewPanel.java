@@ -5,12 +5,9 @@ import com.bahealerorder.tilemarkers.TimedStrategyNotes;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.Insets;
 import java.util.List;
 import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
@@ -44,13 +41,13 @@ public final class BaNotesPreviewPanel
 	{
 		int notesHeight = getMessageHeight(notes, textTopPadding, textBottomPadding, lineHeight);
 		int height = notesHeight + CONTROL_HEIGHT + 6;
-		JPanel panel = verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(panel, width, height);
+		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
+		BaPanelUi.fixedSize(panel, width, height);
 
 		panel.add(notesHeadingRow(headingText, headingColor, width));
 		panel.add(Box.createVerticalStrut(4));
 		JTextPane notesText = createNotesText(notes, currentWaveTick, textTopPadding, textBottomPadding);
-		fixedSize(notesText, width, notesHeight);
+		BaPanelUi.fixedSize(notesText, width, notesHeight);
 		panel.add(notesText);
 		return panel;
 	}
@@ -64,7 +61,7 @@ public final class BaNotesPreviewPanel
 
 		JPanel row = new JPanel(new BorderLayout());
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		fixedSize(row, width, CONTROL_HEIGHT);
+		BaPanelUi.fixedSize(row, width, CONTROL_HEIGHT);
 		row.add(heading, BorderLayout.CENTER);
 		return row;
 	}
@@ -114,20 +111,4 @@ public final class BaNotesPreviewPanel
 		return Math.max(CONTROL_HEIGHT * 2, textTopPadding + textBottomPadding + lineHeight * lines);
 	}
 
-	private static JPanel verticalPanel(Color background)
-	{
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		panel.setBackground(background);
-		return panel;
-	}
-
-	private static void fixedSize(JComponent component, int width, int height)
-	{
-		Dimension size = new Dimension(width, height);
-		component.setPreferredSize(size);
-		component.setMinimumSize(size);
-		component.setMaximumSize(size);
-		component.setAlignmentX(Component.LEFT_ALIGNMENT);
-	}
 }

@@ -78,7 +78,7 @@ public final class TileMarkerOverlayRenderer
 
 	private static void renderLabel(Client client, Graphics2D graphics, LocalPoint localPoint, String text, Color color)
 	{
-		if (text == null || text.trim().isEmpty()) return;
+		if (text == null || text.isBlank()) return;
 
 		Point textLocation = Perspective.getCanvasTextLocation(client, graphics, localPoint, text, 0);
 		if (textLocation == null) return;

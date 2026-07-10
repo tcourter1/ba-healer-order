@@ -45,6 +45,6 @@ public class HealerCodeExportResult
 
 	private static boolean isBlank(String value)
 	{
-		return value == null || value.trim().isEmpty();
+		return value == null || value.isBlank();
 	}
 }

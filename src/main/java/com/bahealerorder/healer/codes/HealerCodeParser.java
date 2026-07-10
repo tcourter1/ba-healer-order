@@ -118,7 +118,7 @@ public final class HealerCodeParser
 	{
 		List<HealerInstruction> instructions = new ArrayList<>();
 
-		if (line == null || line.trim().isEmpty()) return instructions;
+		if (line == null || line.isBlank()) return instructions;
 
 		for (String rawPart : splitInstructionParts(line))
 		{

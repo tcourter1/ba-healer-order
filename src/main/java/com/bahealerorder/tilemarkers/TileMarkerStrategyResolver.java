@@ -78,7 +78,7 @@ class TileMarkerStrategyResolver
 		if (preset == null) return;
 
 		String text = preset.getNotes();
-		if (text != null && !text.trim().isEmpty())
+		if (text != null && !text.isBlank())
 		{
 			notes.add(text.trim());
 		}
@@ -95,6 +95,6 @@ class TileMarkerStrategyResolver
 
 	private static boolean isBlank(String value)
 	{
-		return value == null || value.trim().isEmpty();
+		return value == null || value.isBlank();
 	}
 }
