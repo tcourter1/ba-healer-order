@@ -971,6 +971,14 @@ class HealerCodeEditor extends JPanel
 				: activeAfterField != null ? activeAfterField
 				: activeBeforeField != null ? activeBeforeField
 				: activeExactField != null ? activeExactField : activeFoodField;
+		if (field == activeFoodField && activeFoodField.getEditor() instanceof JSpinner.DefaultEditor)
+		{
+			JTextField textField = ((JSpinner.DefaultEditor) activeFoodField.getEditor()).getTextField();
+			textField.requestFocusInWindow();
+			textField.selectAll();
+			return;
+		}
+
 		if (field != null) field.requestFocusInWindow();
 	}
 
