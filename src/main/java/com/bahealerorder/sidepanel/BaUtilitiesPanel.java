@@ -53,7 +53,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	private static final int ROLE_ICON_SIZE = 18;
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
-	private static final String DISCORD_URL = "https://discord.gg/2HrwVWf8Cx";
+	public static final String DISCORD_URL = "https://discord.gg/2HrwVWf8Cx";
 	private static final String GITHUB_ISSUES_URL = "https://github.com/tcourter1/ba-healer-order/issues";
 	private static final String CALLED_FOOD_HTML_COLOR = "#00dc00";
 	private static final String OVERVIEW_TAB = "overview";
@@ -224,6 +224,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	private void showUpdatesPanel()
 	{
 		setContent(updatesPanel);
+		SwingUtilities.updateComponentTreeUI(updatesPanel);
 	}
 
 	private void showAssistancePresetPanel()
