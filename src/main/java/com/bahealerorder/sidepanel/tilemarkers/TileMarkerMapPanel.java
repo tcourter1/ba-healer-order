@@ -50,7 +50,7 @@ class TileMarkerMapPanel extends JPanel
 	private static final int HORN_OF_GLORY_Y = 10;
 	private static final int PRIORITY_CHUNK_SIZE = 8;
 	private static final int PRIORITY_CHUNK_ORIGIN_X = 40;
-	private static final int PRIORITY_CHUNK_ORIGIN_Y = 39;
+	private static final int PRIORITY_CHUNK_ORIGIN_Y = 40;
 
 	private final Supplier<TileMarkerMapLayout> layoutSupplier;
 	private final Supplier<TileMarkerMapMode> mapModeSupplier;
