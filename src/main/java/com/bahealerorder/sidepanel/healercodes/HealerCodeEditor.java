@@ -788,17 +788,6 @@ class HealerCodeEditor extends JPanel
 
 		JPanel row = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		if (activeTimingOption == CellTimingOption.AT_OR_AFTER || activeTimingOption == CellTimingOption.WINDOW)
-		{
-			activeAfterField = timingField(
-					key,
-					instruction == null ? null : instruction.getAfterSeconds(),
-					activeTimingOption == CellTimingOption.WINDOW ? TIME_PAIR_FIELD_WIDTH : TIME_FIELD_WIDTH,
-					activeTimingOption == CellTimingOption.WINDOW ? "" : AFTER_PLACEHOLDER,
-					AFTER_TOOLTIP
-			);
-			row.add(activeAfterField);
-		}
 		if (activeTimingOption == CellTimingOption.BEFORE || activeTimingOption == CellTimingOption.WINDOW)
 		{
 			activeBeforeField = timingField(
@@ -809,6 +798,17 @@ class HealerCodeEditor extends JPanel
 					BEFORE_TOOLTIP
 			);
 			row.add(activeBeforeField);
+		}
+		if (activeTimingOption == CellTimingOption.AT_OR_AFTER || activeTimingOption == CellTimingOption.WINDOW)
+		{
+			activeAfterField = timingField(
+					key,
+					instruction == null ? null : instruction.getAfterSeconds(),
+					activeTimingOption == CellTimingOption.WINDOW ? TIME_PAIR_FIELD_WIDTH : TIME_FIELD_WIDTH,
+					activeTimingOption == CellTimingOption.WINDOW ? "" : AFTER_PLACEHOLDER,
+					AFTER_TOOLTIP
+			);
+			row.add(activeAfterField);
 		}
 		if (activeTimingOption == CellTimingOption.EXACT)
 		{
@@ -968,8 +968,8 @@ class HealerCodeEditor extends JPanel
 	private void requestActiveEditorFocus()
 	{
 		Component field = activeAdvancedField != null ? activeAdvancedField
-				: activeAfterField != null ? activeAfterField
 				: activeBeforeField != null ? activeBeforeField
+				: activeAfterField != null ? activeAfterField
 				: activeExactField != null ? activeExactField : activeFoodField;
 		if (field == activeFoodField && activeFoodField.getEditor() instanceof JSpinner.DefaultEditor)
 		{
@@ -1709,7 +1709,7 @@ class HealerCodeEditor extends JPanel
 		AT_OR_AFTER("After", AFTER_TOOLTIP),
 		BEFORE("Before", BEFORE_TOOLTIP),
 		EXACT("Exactly", EXACT_TOOLTIP),
-		WINDOW("Time Range", "The first food for this code must be used before the first time and the last food at or after the second time"),
+		WINDOW("First Before / Last After", "The first food for this code must be used before the first time and the last food at or after the second time"),
 		SPAM("Spam", "Spam this healer until it dies"),
 		ADVANCED("Advanced", "Use custom healer code text for this cell");
 
