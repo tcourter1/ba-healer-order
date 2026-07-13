@@ -97,7 +97,6 @@ class HealerCodeEditor extends JPanel
 	private static final int WAVE_TO_CODE_GAP = 54;
 	private static final int OPTIONS_TO_TABLE_GAP = 30;
 	private static final int TABLE_TO_TEXT_AREAS_GAP = 40;
-	private static final int TEXT_AREAS_TO_ACTIONS_GAP = 0;
 	private static final String AFTER_PLACEHOLDER = "At or after...";
 	private static final String BEFORE_PLACEHOLDER = "Before...";
 	private static final String EXACT_PLACEHOLDER = "Exactly...";
@@ -169,6 +168,7 @@ class HealerCodeEditor extends JPanel
 
 		add(createHeader(), BorderLayout.NORTH);
 		add(createBody(), BorderLayout.CENTER);
+		add(createActionRow(), BorderLayout.SOUTH);
 
 		BaPanelUi.addTextChangeListener(codeName, this::markDirty);
 		BaPanelUi.addTextChangeListener(codeTextSource, this::markDirty);
@@ -255,8 +255,6 @@ class HealerCodeEditor extends JPanel
 		modePanel.add(createAdvancedBody(), ADVANCED_CARD);
 		modePanel.add(createTextBody(), TEXT_CARD);
 		panel.add(modePanel);
-		panel.add(Box.createVerticalStrut(TEXT_AREAS_TO_ACTIONS_GAP));
-		panel.add(createActionRow());
 		return panel;
 	}
 
