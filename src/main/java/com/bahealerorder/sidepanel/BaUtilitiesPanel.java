@@ -235,6 +235,7 @@ public class BaUtilitiesPanel extends PluginPanel
 	{
 		setContent(normalPanel);
 		refreshAll();
+		SwingUtilities.updateComponentTreeUI(tabDisplayPanel);
 	}
 
 	private void setContent(JComponent component)
