@@ -48,6 +48,9 @@ class TileMarkerMapPanel extends JPanel
 	private static final int CANNON_HILL_Y = 24;
 	private static final int HORN_OF_GLORY_X = 52;
 	private static final int HORN_OF_GLORY_Y = 10;
+	private static final int PRIORITY_CHUNK_SIZE = 8;
+	private static final int PRIORITY_CHUNK_ORIGIN_X = 40;
+	private static final int PRIORITY_CHUNK_ORIGIN_Y = 39;
 
 	private final Supplier<TileMarkerMapLayout> layoutSupplier;
 	private final Supplier<TileMarkerMapMode> mapModeSupplier;
@@ -146,14 +149,18 @@ class TileMarkerMapPanel extends JPanel
 
 		for (int x = bounds.minX; x <= bounds.maxX; x++)
 		{
-			graphics.setColor(x % 5 == 0 ? new Color(82, 82, 82) : new Color(58, 58, 58));
+			graphics.setColor(Math.floorMod(x - PRIORITY_CHUNK_ORIGIN_X, PRIORITY_CHUNK_SIZE) == 0
+					? new Color(82, 82, 82)
+					: new Color(58, 58, 58));
 			int screenX = (x - bounds.minX) * tileSize;
 			graphics.drawLine(screenX, 0, screenX, height);
 		}
 
 		for (int y = bounds.minY; y <= bounds.maxY; y++)
 		{
-			graphics.setColor(y % 5 == 0 ? new Color(82, 82, 82) : new Color(58, 58, 58));
+			graphics.setColor(Math.floorMod(y - PRIORITY_CHUNK_ORIGIN_Y, PRIORITY_CHUNK_SIZE) == 0
+					? new Color(82, 82, 82)
+					: new Color(58, 58, 58));
 			int screenY = (bounds.maxY - y) * tileSize;
 			graphics.drawLine(0, screenY, width, screenY);
 		}
