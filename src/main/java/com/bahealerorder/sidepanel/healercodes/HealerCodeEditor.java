@@ -1150,7 +1150,6 @@ class HealerCodeEditor extends JPanel
 			selectedCodeId = code.getId();
 			selectedWave = code.getWave();
 			selectWaveComboValue();
-			textMode = false;
 			codeTextSource.setText(code.getSourceText());
 			textSnapshot = codeTextSource.getText();
 			textChangedAfterSnapshot = false;
@@ -1172,7 +1171,6 @@ class HealerCodeEditor extends JPanel
 		{
 			selectedCodeId = null;
 			codeName.setText("");
-			textMode = false;
 			codeTextSource.setText("");
 			visibleCallCount = defaultVisibleCallCountForWave(selectedWave);
 			activeCell = null;
