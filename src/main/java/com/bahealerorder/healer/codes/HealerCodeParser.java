@@ -12,6 +12,7 @@ public final class HealerCodeParser
 	private static final Pattern COUNT_PATTERN = Pattern.compile("^\\s*(\\d+)");
 	private static final Pattern VARIABLE_COUNT_PATTERN = Pattern.compile("^\\s*\\d+\\s*/\\s*\\d+");
 	private static final Pattern RESTOCK_COUNT_PATTERN = Pattern.compile("^\\s*\\d+\\s*,\\s*(\\d+)");
+	private static final Pattern RANGE_PATTERN = Pattern.compile("\\((\\d+)\\s*-\\s*(\\d+)\\)");
 	private static final Pattern AFTER_PATTERN = Pattern.compile("\\((\\d+)(?:\\s*-\\s*\\d+)?\\)");
 	private static final Pattern BEFORE_PATTERN = Pattern.compile("\\[(\\d+)]");
 	private static final Pattern EXACT_PATTERN = Pattern.compile("\\{(\\d+)}");
@@ -182,10 +183,19 @@ public final class HealerCodeParser
 			}
 		}
 
+		Integer afterSeconds = firstInt(AFTER_PATTERN, part);
+		Integer beforeSeconds = firstInt(BEFORE_PATTERN, part);
+		Matcher rangeMatcher = RANGE_PATTERN.matcher(part);
+		if (rangeMatcher.find())
+		{
+			beforeSeconds = parseInt(rangeMatcher.group(1));
+			afterSeconds = parseInt(rangeMatcher.group(2));
+		}
+
 		HealerInstruction instruction = new HealerInstruction(
 				count,
-				firstInt(AFTER_PATTERN, part),
-				firstInt(BEFORE_PATTERN, part),
+				afterSeconds,
+				beforeSeconds,
 				firstInt(EXACT_PATTERN, part),
 				part
 		);
@@ -252,9 +262,14 @@ public final class HealerCodeParser
 
 		if (!matcher.find()) return null;
 
+		return parseInt(matcher.group(1));
+	}
+
+	private static Integer parseInt(String value)
+	{
 		try
 		{
-			return Integer.parseInt(matcher.group(1));
+			return Integer.parseInt(value);
 		}
 		catch (NumberFormatException ignored)
 		{

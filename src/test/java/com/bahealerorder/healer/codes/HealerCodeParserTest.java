@@ -17,6 +17,7 @@ public class HealerCodeParserTest
 		assertEquals(1, instruction.getTargetFoodCount());
 		assertEquals(Integer.valueOf(33), instruction.getAfterSeconds());
 		assertEquals(Integer.valueOf(51), instruction.getBeforeSeconds());
+		assertEquals("1[51](33)", HealerCodeFormatter.formatInstruction(instruction));
 	}
 
 	@Test
@@ -34,12 +35,14 @@ public class HealerCodeParserTest
 		HealerInstruction instruction = HealerCodeParser.parseInstruction("6(18-27)");
 
 		assertEquals(6, instruction.getTargetFoodCount());
-		assertEquals(Integer.valueOf(18), instruction.getAfterSeconds());
-		assertEquals("6(18)", HealerCodeFormatter.formatInstruction(instruction));
+		assertEquals(Integer.valueOf(27), instruction.getAfterSeconds());
+		assertEquals(Integer.valueOf(18), instruction.getBeforeSeconds());
+		assertEquals("6[18](27)", HealerCodeFormatter.formatInstruction(instruction));
 
 		List<HealerInstruction> instructions = HealerCodeParser.parseCodeLine("6(18-27)-2[36]");
 		assertEquals(2, instructions.size());
-		assertEquals(Integer.valueOf(18), instructions.get(0).getAfterSeconds());
+		assertEquals(Integer.valueOf(27), instructions.get(0).getAfterSeconds());
+		assertEquals(Integer.valueOf(18), instructions.get(0).getBeforeSeconds());
 		assertEquals(Integer.valueOf(36), instructions.get(1).getBeforeSeconds());
 	}
 

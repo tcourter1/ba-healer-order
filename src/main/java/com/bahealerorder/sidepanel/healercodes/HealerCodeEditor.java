@@ -102,7 +102,7 @@ class HealerCodeEditor extends JPanel
 	private static final String BEFORE_PLACEHOLDER = "Before...";
 	private static final String EXACT_PLACEHOLDER = "Exactly...";
 	private static final String AFTER_TOOLTIP = "The last food for this code must be used at or after this time";
-	private static final String BEFORE_TOOLTIP = "The last food for this code must be used before this time";
+	private static final String BEFORE_TOOLTIP = "The first food for this code must be used before this time";
 	private static final String EXACT_TOOLTIP = "The last food for this code must be used exactly at this time";
 	private static final ImageIcon HEALER_ICON = loadHealerIcon();
 	private static final String ADVANCED_CARD = "advanced";
@@ -371,7 +371,7 @@ class HealerCodeEditor extends JPanel
 		));
 		helpPanel.add(Box.createVerticalStrut(6));
 		helpPanel.add(helpLine(
-				helpEmphasis("[Square brackets]") + " indicate that the last food must be used "
+				helpEmphasis("[Square brackets]") + " indicate that the first food must be used "
 						+ helpEmphasis("before") + " this time, e.g. " + helpCode("1[45]") + "."
 		));
 		helpPanel.add(Box.createVerticalStrut(6));
@@ -1703,7 +1703,7 @@ class HealerCodeEditor extends JPanel
 		AT_OR_AFTER("After", AFTER_TOOLTIP),
 		BEFORE("Before", BEFORE_TOOLTIP),
 		EXACT("Exactly", EXACT_TOOLTIP),
-		WINDOW("Time Range", "The last food for this code must be used at or after the first time and before the second time"),
+		WINDOW("Time Range", "The first food for this code must be used before the first time and the last food at or after the second time"),
 		SPAM("Spam", "Spam this healer until it dies"),
 		ADVANCED("Advanced", "Use custom healer code text for this cell");
 

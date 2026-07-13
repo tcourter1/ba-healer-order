@@ -735,14 +735,14 @@ public class HealerController
 			builder.append(status.getFoodFed()).append('/').append(targetFoodCount);
 		}
 
-		if (instruction.getAfterSeconds() != null)
-		{
-			builder.append(" (").append(instruction.getAfterSeconds()).append(')');
-		}
-
 		if (instruction.getBeforeSeconds() != null)
 		{
 			builder.append(" [").append(instruction.getBeforeSeconds()).append(']');
+		}
+
+		if (instruction.getAfterSeconds() != null)
+		{
+			builder.append(" (").append(instruction.getAfterSeconds()).append(')');
 		}
 
 		if (instruction.getExactSeconds() != null)
