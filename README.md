@@ -2,7 +2,7 @@
 
 BA Utilities is a RuneLite Plugin Hub plugin for Barbarian Assault. It adds side-panel tools, healer codes, tile marker strategies, role-aware overlays, menu helpers, poisoned-food tracking, and optional BA Party Sync.
 
-For a detailed feature guide, see [this document](https://docs.google.com/document/d/e/2PACX-1vTHMC5GHx8T8Y1dKU5voarGItnU5oorXI9S9WufXcLP-SL0yb0ietfNxwtPfIgF2A/pub).
+For a detailed feature guide, see [this document](https://docs.google.com/document/d/e/2PACX-1vTHMC5GHx8T8Y1dKU5voarGItnU5oorXI9S9WufXcLP-SL0yb0ietfNxwtPfIgF2A/pub). To suggest a feature, report a bug, provide feedback, or get plugin help, [join our discord server](https://discord.gg/2HrwVWf8Cx)!
 
 ## Features
 
@@ -69,6 +69,11 @@ BA Utilities does not automate gameplay. It provides visual tracking, menu organ
 
 <details>
 <summary>Show version history</summary>
+
+### 2.3.1
+
+* Minor bug fixes in healer code editor.
+* Adjust tile marker chunk gridlines.
 
 ### 2.3.0
 

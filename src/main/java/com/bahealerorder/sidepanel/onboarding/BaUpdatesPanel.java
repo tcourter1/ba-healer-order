@@ -1,11 +1,14 @@
 package com.bahealerorder.sidepanel.onboarding;
 
 import com.bahealerorder.common.BaIcons;
+import com.bahealerorder.common.TileMarkerStyle;
 import com.bahealerorder.sidepanel.BaPanelUi;
+import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Insets;
 import java.util.ArrayList;
 import java.util.List;
 import javax.inject.Inject;
@@ -16,12 +19,15 @@ import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingConstants;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.StyleConstants;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.util.LinkBrowser;
+import net.runelite.client.util.SwingUtil;
 
 @Singleton
 public class BaUpdatesPanel extends JPanel
@@ -85,6 +91,8 @@ public class BaUpdatesPanel extends JPanel
         panel.add(changelogSection());
         panel.add(Box.createVerticalStrut(10));
         panel.add(continueButton());
+        panel.add(Box.createVerticalStrut(30));
+        panel.add(discordFeedbackButton());
 
         return panel;
     }
@@ -108,7 +116,7 @@ public class BaUpdatesPanel extends JPanel
         JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR, CONTENT_WIDTH);
         panel.setBorder(new EmptyBorder(8, 8, 8, 8));
 
-        panel.add(scrollableChangelogArea(buildLatestChangelogText(), 296));
+        panel.add(scrollableChangelogArea(buildLatestChangelogText(), 480));
         panel.add(Box.createVerticalStrut(8));
         panel.add(previousUpdatesSection());
 
@@ -202,7 +210,10 @@ public class BaUpdatesPanel extends JPanel
 
     private String buildLatestChangelogText()
     {
-        return "2.3.0\n\n"
+        return "2.3.1\n\n"
+                + "\u2022 Minor bug fixes in healer code editor.\n\n"
+                + "\u2022 Adjust tile marker chunk gridlines.\n\n"
+                + "2.3.0\n\n"
                 + "\u2022 Added onboarding and update side panel.\n\n"
                 + "\u2022 Enhanced healer code parsing and introduced user-friendly healer code editor.\n\n"
                 + "\u2022 Introduced highlight options for omega egg dupe and current wave ladder.\n\n"
@@ -231,6 +242,19 @@ public class BaUpdatesPanel extends JPanel
         JButton button = styledButton("Continue to Plugin " + RIGHT_ARROW, CONTENT_WIDTH);
         button.addActionListener(event -> continueUpdates());
 
+        return button;
+    }
+
+    private JButton discordFeedbackButton()
+    {
+        JButton button = new JButton("<html><div style='text-align:center;' width='" + (CONTENT_WIDTH - 50)
+                + "'><u><font color='" + TileMarkerStyle.toHex(ColorScheme.BRAND_ORANGE)
+                + "'>Join our discord</font></u> to report a bug or give us feedback and suggestions!</div></html>", BaIcons.discordIcon());
+        SwingUtil.removeButtonDecorations(button);
+        button.setMargin(new Insets(8, 0, 8, 0));
+        button.setHorizontalAlignment(SwingConstants.CENTER);
+        button.addActionListener(event -> LinkBrowser.browse(BaUtilitiesPanel.DISCORD_URL));
+        BaPanelUi.fixedSize(button, CONTENT_WIDTH, 64);
         return button;
     }
 

@@ -97,12 +97,11 @@ class HealerCodeEditor extends JPanel
 	private static final int WAVE_TO_CODE_GAP = 54;
 	private static final int OPTIONS_TO_TABLE_GAP = 30;
 	private static final int TABLE_TO_TEXT_AREAS_GAP = 40;
-	private static final int TEXT_AREAS_TO_ACTIONS_GAP = 0;
 	private static final String AFTER_PLACEHOLDER = "At or after...";
 	private static final String BEFORE_PLACEHOLDER = "Before...";
 	private static final String EXACT_PLACEHOLDER = "Exactly...";
 	private static final String AFTER_TOOLTIP = "The last food for this code must be used at or after this time";
-	private static final String BEFORE_TOOLTIP = "The last food for this code must be used before this time";
+	private static final String BEFORE_TOOLTIP = "The first food for this code must be used before this time";
 	private static final String EXACT_TOOLTIP = "The last food for this code must be used exactly at this time";
 	private static final ImageIcon HEALER_ICON = loadHealerIcon();
 	private static final String ADVANCED_CARD = "advanced";
@@ -169,6 +168,7 @@ class HealerCodeEditor extends JPanel
 
 		add(createHeader(), BorderLayout.NORTH);
 		add(createBody(), BorderLayout.CENTER);
+		add(createActionRow(), BorderLayout.SOUTH);
 
 		BaPanelUi.addTextChangeListener(codeName, this::markDirty);
 		BaPanelUi.addTextChangeListener(codeTextSource, this::markDirty);
@@ -255,8 +255,6 @@ class HealerCodeEditor extends JPanel
 		modePanel.add(createAdvancedBody(), ADVANCED_CARD);
 		modePanel.add(createTextBody(), TEXT_CARD);
 		panel.add(modePanel);
-		panel.add(Box.createVerticalStrut(TEXT_AREAS_TO_ACTIONS_GAP));
-		panel.add(createActionRow());
 		return panel;
 	}
 
@@ -371,7 +369,7 @@ class HealerCodeEditor extends JPanel
 		));
 		helpPanel.add(Box.createVerticalStrut(6));
 		helpPanel.add(helpLine(
-				helpEmphasis("[Square brackets]") + " indicate that the last food must be used "
+				helpEmphasis("[Square brackets]") + " indicate that the first food must be used "
 						+ helpEmphasis("before") + " this time, e.g. " + helpCode("1[45]") + "."
 		));
 		helpPanel.add(Box.createVerticalStrut(6));
@@ -788,17 +786,6 @@ class HealerCodeEditor extends JPanel
 
 		JPanel row = new JPanel(new FlowLayout(FlowLayout.CENTER, 2, 0));
 		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		if (activeTimingOption == CellTimingOption.AT_OR_AFTER || activeTimingOption == CellTimingOption.WINDOW)
-		{
-			activeAfterField = timingField(
-					key,
-					instruction == null ? null : instruction.getAfterSeconds(),
-					activeTimingOption == CellTimingOption.WINDOW ? TIME_PAIR_FIELD_WIDTH : TIME_FIELD_WIDTH,
-					activeTimingOption == CellTimingOption.WINDOW ? "" : AFTER_PLACEHOLDER,
-					AFTER_TOOLTIP
-			);
-			row.add(activeAfterField);
-		}
 		if (activeTimingOption == CellTimingOption.BEFORE || activeTimingOption == CellTimingOption.WINDOW)
 		{
 			activeBeforeField = timingField(
@@ -809,6 +796,17 @@ class HealerCodeEditor extends JPanel
 					BEFORE_TOOLTIP
 			);
 			row.add(activeBeforeField);
+		}
+		if (activeTimingOption == CellTimingOption.AT_OR_AFTER || activeTimingOption == CellTimingOption.WINDOW)
+		{
+			activeAfterField = timingField(
+					key,
+					instruction == null ? null : instruction.getAfterSeconds(),
+					activeTimingOption == CellTimingOption.WINDOW ? TIME_PAIR_FIELD_WIDTH : TIME_FIELD_WIDTH,
+					activeTimingOption == CellTimingOption.WINDOW ? "" : AFTER_PLACEHOLDER,
+					AFTER_TOOLTIP
+			);
+			row.add(activeAfterField);
 		}
 		if (activeTimingOption == CellTimingOption.EXACT)
 		{
@@ -967,10 +965,20 @@ class HealerCodeEditor extends JPanel
 
 	private void requestActiveEditorFocus()
 	{
+		if (activeFoodField != null && activeFoodField.getEditor() instanceof JSpinner.DefaultEditor)
+		{
+			JTextField textField = ((JSpinner.DefaultEditor) activeFoodField.getEditor()).getTextField();
+			SwingUtilities.invokeLater(() ->
+			{
+				textField.requestFocusInWindow();
+				SwingUtilities.invokeLater(textField::selectAll);
+			});
+			return;
+		}
+
 		Component field = activeAdvancedField != null ? activeAdvancedField
-				: activeAfterField != null ? activeAfterField
 				: activeBeforeField != null ? activeBeforeField
-				: activeExactField != null ? activeExactField : activeFoodField;
+				: activeAfterField != null ? activeAfterField : activeExactField;
 		if (field != null) field.requestFocusInWindow();
 	}
 
@@ -1150,7 +1158,6 @@ class HealerCodeEditor extends JPanel
 			selectedCodeId = code.getId();
 			selectedWave = code.getWave();
 			selectWaveComboValue();
-			textMode = false;
 			codeTextSource.setText(code.getSourceText());
 			textSnapshot = codeTextSource.getText();
 			textChangedAfterSnapshot = false;
@@ -1172,7 +1179,6 @@ class HealerCodeEditor extends JPanel
 		{
 			selectedCodeId = null;
 			codeName.setText("");
-			textMode = false;
 			codeTextSource.setText("");
 			visibleCallCount = defaultVisibleCallCountForWave(selectedWave);
 			activeCell = null;
@@ -1703,7 +1709,7 @@ class HealerCodeEditor extends JPanel
 		AT_OR_AFTER("After", AFTER_TOOLTIP),
 		BEFORE("Before", BEFORE_TOOLTIP),
 		EXACT("Exactly", EXACT_TOOLTIP),
-		WINDOW("Time Range", "The last food for this code must be used at or after the first time and before the second time"),
+		WINDOW("First Before / Last After", "The first food for this code must be used before the first time and the last food at or after the second time"),
 		SPAM("Spam", "Spam this healer until it dies"),
 		ADVANCED("Advanced", "Use custom healer code text for this cell");
 

@@ -81,14 +81,14 @@ public class HealerInstruction
 			builder.append(',').append(postRestockFoodCount);
 		}
 
-		if (afterSeconds != null)
-		{
-			builder.append('(').append(afterSeconds).append(')');
-		}
-
 		if (beforeSeconds != null)
 		{
 			builder.append('[').append(beforeSeconds).append(']');
+		}
+
+		if (afterSeconds != null)
+		{
+			builder.append('(').append(afterSeconds).append(')');
 		}
 
 		if (exactSeconds != null)
