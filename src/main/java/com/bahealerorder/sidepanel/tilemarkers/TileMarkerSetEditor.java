@@ -73,7 +73,7 @@ public class TileMarkerSetEditor extends JPanel
 	private static final int FULL_ARENA_DEFAULT_ZOOM_STEPS_OUT = 10;
 	private static final int EAST_SIDE_DEFAULT_ZOOM_STEPS_IN = 1;
 	private static final int SECTION_GAP = 14;
-	private static final int APPLY_SECTION_GAP = 102;
+	private static final int APPLY_SECTION_GAP = 84;
 	private static final int MARKER_LABEL_WIDTH = 82;
 	private static final int TRASH_BUTTON_WIDTH = 24;
 	private static final int IMPORT_EXPORT_BUTTON_WIDTH = 140;
@@ -85,6 +85,7 @@ public class TileMarkerSetEditor extends JPanel
 	private final JComboBox<MarkerOption> markerCombo = new JComboBox<>();
 	private final JComboBox<WaveOption> applyWaveCombo = new JComboBox<>();
 	private final JComboBox<TileMarkerRoleContext> applyRoleCombo = new JComboBox<>();
+	private final JTextField setName = new JTextField();
 	private final JTextField markerName = new JTextField();
 	private final JTextField markerLabel = new JTextField();
 	private final JButton markerColorButton = new JButton();
@@ -124,7 +125,6 @@ public class TileMarkerSetEditor extends JPanel
 	private TileMarkerMapMode mapMode;
 	private TileMarkerWaveMap waveMap;
 	private String selectedSetId;
-	private String currentSetName = "";
 	private Color markerColor = TileMarkerStyle.DEFAULT_MARKER_COLOR;
 	private boolean legendVisible;
 	private boolean refreshing;
@@ -154,7 +154,7 @@ public class TileMarkerSetEditor extends JPanel
 				() -> markers,
 				() -> selectedMarkerIds,
 				mapZoom::getValue,
-				this::addOrSelectMarkerAt
+				this::handleTileClick
 		);
 		mapScrollPane = new JScrollPane(mapPanel);
 		markerColor = TileMarkerStyle.parseColor(strategyManager.getLastMarkerColor(), TileMarkerStyle.DEFAULT_MARKER_COLOR);
@@ -173,6 +173,7 @@ public class TileMarkerSetEditor extends JPanel
 		add(createHeader(), BorderLayout.NORTH);
 		add(createBody(), BorderLayout.CENTER);
 
+		BaPanelUi.addTextChangeListener(setName, this::markDirty);
 		BaPanelUi.addTextChangeListener(markerName, this::updateSelectedMarkerFromFields);
 		BaPanelUi.addTextChangeListener(markerLabel, this::updateSelectedMarkerFromFields);
 		ChangeListener markerStyleListener = event -> updateSelectedMarkerStyleFromFields();
@@ -185,8 +186,11 @@ public class TileMarkerSetEditor extends JPanel
 
 	private JPanel createHeader()
 	{
-		JLabel label = label("Click any tile on the map to add a marker.");
+		String helpText = "Left-click to add or select. Right-click a marker to delete.";
+		JLabel label = label(helpText);
 		label.setHorizontalAlignment(SwingConstants.LEFT);
+		label.setToolTipText(helpText);
+		mapPanel.setToolTipText(helpText);
 
 		JPanel actionRow = new JPanel(new BorderLayout(6, 0));
 		actionRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -485,7 +489,9 @@ public class TileMarkerSetEditor extends JPanel
 		panel.add(createOpacityRow());
 		panel.add(Box.createVerticalStrut(5));
 		panel.add(createSpinnerRow("Border", markerBorderWidth));
-		panel.add(Box.createVerticalStrut(8));
+		panel.add(Box.createVerticalStrut(SECTION_GAP * 2));
+		panel.add(createTextFieldRow("Set Name", setName));
+		panel.add(Box.createVerticalStrut(5));
 		saveMarkersButton.addActionListener(event -> saveSet());
 		BaPanelUi.styleActionButton(saveMarkersButton, SIDE_WIDTH, CONTROL_HEIGHT);
 		panel.add(saveMarkersButton);
@@ -649,7 +655,7 @@ public class TileMarkerSetEditor extends JPanel
 		{
 			selectedSetId = set.getId();
 			selectedSetBuiltIn = set.isBuiltIn();
-			currentSetName = set.getName() == null ? "" : set.getName();
+			setName.setText(set.getName() == null ? "" : set.getName());
 			selectSetComboValue(selectedSetId);
 			mapMode = set.getMapMode();
 			waveMap = set.getWaveMap();
@@ -677,7 +683,7 @@ public class TileMarkerSetEditor extends JPanel
 		{
 			selectedSetId = null;
 			selectedSetBuiltIn = false;
-			currentSetName = "";
+			setName.setText("");
 			mapMode = strategyManager.getLastMapMode();
 			waveMap = strategyManager.getLastWaveMap();
 			markers = new ArrayList<>();
@@ -699,8 +705,13 @@ public class TileMarkerSetEditor extends JPanel
 
 	private void saveSet()
 	{
-		String name = promptMarkerSetName();
-		if (name == null) return;
+		String name = setName.getText().trim();
+		if (name.isEmpty())
+		{
+			Toolkit.getDefaultToolkit().beep();
+			setName.requestFocusInWindow();
+			return;
+		}
 
 		TileMarkerSet saved;
 		if (selectedSetId != null
@@ -716,16 +727,16 @@ public class TileMarkerSetEditor extends JPanel
 
 		selectedSetId = saved.getId();
 		selectedSetBuiltIn = false;
-		currentSetName = saved.getName();
+		setName.setText(saved.getName());
 		refreshSetCombo(selectedSetId);
 		dirty = false;
 		updateSetControls();
 		setsChanged.run();
 	}
 
-	private String promptMarkerSetName()
+	private String promptNewMarkerSetName()
 	{
-		JTextField nameField = new JTextField(currentSetName);
+		JTextField nameField = new JTextField();
 		BaPanelUi.fixedSize(nameField, 260, CONTROL_HEIGHT);
 
 		JPanel panel = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
@@ -733,7 +744,7 @@ public class TileMarkerSetEditor extends JPanel
 		panel.add(Box.createVerticalStrut(5));
 		panel.add(nameField);
 
-		int result = JOptionPane.showConfirmDialog(this, panel, "Save Markers", JOptionPane.OK_CANCEL_OPTION);
+		int result = JOptionPane.showConfirmDialog(this, panel, "New Marker Set", JOptionPane.OK_CANCEL_OPTION);
 		if (result != JOptionPane.OK_OPTION) return null;
 
 		String name = nameField.getText().trim();
@@ -755,10 +766,24 @@ public class TileMarkerSetEditor extends JPanel
 			return;
 		}
 
+		List<String> strategyNames = strategyManager.getStrategyNamesUsingMarkerSet(selectedSetId);
+		if (!strategyNames.isEmpty())
+		{
+			JOptionPane.showMessageDialog(
+					this,
+					"This tile marker set is used by these strategies:\n- "
+							+ String.join("\n- ", strategyNames)
+							+ "\n\nRemove it from those strategies or delete the strategies first.",
+					"Marker Set In Use",
+					JOptionPane.WARNING_MESSAGE
+			);
+			return;
+		}
+
 		int result = JOptionPane.showConfirmDialog(this, "Delete this tile marker set?", "Delete Marker Set", JOptionPane.OK_CANCEL_OPTION);
 		if (result != JOptionPane.OK_OPTION) return;
 
-		strategyManager.deleteMarkerSet(selectedSetId);
+		if (!strategyManager.deleteMarkerSet(selectedSetId)) return;
 		refreshSetCombo(null);
 		clearDraft();
 		setsChanged.run();
@@ -831,7 +856,7 @@ public class TileMarkerSetEditor extends JPanel
 	{
 		return new TileMarkerSet(
 				selectedSetBuiltIn ? null : selectedSetId,
-				currentSetName.trim(),
+				setName.getText().trim(),
 				mapMode,
 				waveMap,
 				TileMarker.copyAll(markers),
@@ -871,7 +896,7 @@ public class TileMarkerSetEditor extends JPanel
 	{
 		deleteSetButton.setEnabled(selectedSetId != null && !selectedSetBuiltIn);
 		exportMarkersButton.setEnabled(!markers.isEmpty());
-		saveMarkersButton.setEnabled(!markers.isEmpty());
+		saveMarkersButton.setEnabled(!markers.isEmpty() && !setName.getText().trim().isEmpty());
 		boolean canApply = savedMarkerSetReady();
 		applyInstructionLabel.setText("<html><div width='" + SIDE_WIDTH + "'>" + (canApply
 				? "Select a wave and role to apply your markers to."
@@ -883,10 +908,15 @@ public class TileMarkerSetEditor extends JPanel
 
 	private void beginNewSet()
 	{
-		if (confirmDiscard(this))
-		{
-			clearDraft();
-		}
+		if (!confirmDiscard(this)) return;
+
+		String name = promptNewMarkerSetName();
+		if (name == null) return;
+
+		TileMarkerSet saved = strategyManager.createMarkerSet(name, mapMode, waveMap, new ArrayList<>());
+		refreshSetCombo(saved.getId());
+		loadSet(saved.getId());
+		setsChanged.run();
 	}
 
 	private void toggleLegend()
@@ -930,7 +960,7 @@ public class TileMarkerSetEditor extends JPanel
 
 	private boolean savedMarkerSetReady()
 	{
-		return selectedSetId != null && !dirty;
+		return selectedSetId != null && !markers.isEmpty() && !dirty;
 	}
 
 	private void updateLegendButtonText()
@@ -988,7 +1018,7 @@ public class TileMarkerSetEditor extends JPanel
 		SwingUtilities.invokeLater(mapPanel::scrollToTrap);
 	}
 
-	private void addOrSelectMarkerAt(int mapX, int mapY)
+	private void handleTileClick(int mapX, int mapY, boolean delete)
 	{
 		TileMarkerMapLayout layout = waveMap.getLayout();
 		if (!mapPanel.isSelectableMapTile(layout, mapX, mapY)) return;
@@ -996,23 +1026,20 @@ public class TileMarkerSetEditor extends JPanel
 		TileMarker existing = findMarkerAt(layout, mapX, mapY);
 		if (existing != null)
 		{
-			if (selectedMarkerIds.contains(existing.getId()) && isBlank(existing.getName()))
+			if (delete)
 			{
 				deleteMarker(existing);
 				return;
 			}
 
-			if (selectedMarkerIds.contains(existing.getId()))
-			{
-				selectedMarkerIds.remove(existing.getId());
-			}
-			else
+			if (!selectedMarkerIds.remove(existing.getId()))
 			{
 				selectedMarkerIds.add(existing.getId());
 			}
 			refreshMarkerControls();
 			return;
 		}
+		if (delete) return;
 
 		TileMarker marker = new TileMarker(
 				userMarkerId(mapX, mapY),
@@ -1393,11 +1420,6 @@ public class TileMarkerSetEditor extends JPanel
 	private JLabel label(String text, boolean bold)
 	{
 		return BaPanelUi.plainLabel(text, bold);
-	}
-
-	private static boolean isBlank(String value)
-	{
-		return value == null || value.isBlank();
 	}
 
 	interface StrategyEditorOpener

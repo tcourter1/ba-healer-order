@@ -125,7 +125,7 @@ public class BaUtilitiesPanel extends PluginPanel
 		return presetManager.shouldShowOnboarding();
 	}
 
-	public void showOnboarding()
+	public void showPreferredPanelLater()
 	{
 		SwingUtilities.invokeLater(this::showPreferredPanel);
 	}
