@@ -72,8 +72,9 @@ BA Utilities does not automate gameplay. It provides visual tracking, menu organ
 
 ### 2.3.1
 
-* Minor bug fixes in healer code editor.
-* Adjust tile marker chunk gridlines.
+* Updated tile marker set workflow and fixed side panel update flag and font cache growth
+* Fixed minor bugs in the healer code editor.
+* Adjusted tile marker chunk gridlines.
 
 ### 2.3.0
 

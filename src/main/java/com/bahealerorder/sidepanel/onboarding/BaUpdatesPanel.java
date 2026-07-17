@@ -211,8 +211,9 @@ public class BaUpdatesPanel extends JPanel
     private String buildLatestChangelogText()
     {
         return "2.3.1\n\n"
-                + "\u2022 Minor bug fixes in healer code editor.\n\n"
-                + "\u2022 Adjust tile marker chunk gridlines.\n\n"
+                + "\u2022 Updated tile marker set workflow and fixed side panel update flag and font cache growth\n\n"
+                + "\u2022 Fixed minor bugs in the healer code editor.\n\n"
+                + "\u2022 Adjusted tile marker chunk gridlines.\n\n"
                 + "2.3.0\n\n"
                 + "\u2022 Added onboarding and update side panel.\n\n"
                 + "\u2022 Enhanced healer code parsing and introduced user-friendly healer code editor.\n\n"
