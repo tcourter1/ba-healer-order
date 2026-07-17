@@ -21,6 +21,7 @@ import net.runelite.api.Perspective;
 import net.runelite.api.Point;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -240,7 +241,8 @@ public class HealerOverlay extends Overlay
 
 		Font originalFont = graphics.getFont();
 
-		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) HEALER_LABEL_TEXT_SIZE));
+		graphics.setFont(FontManager.getFallbackFont(
+				originalFont.getFamily(), Font.BOLD, HEALER_LABEL_TEXT_SIZE));
 		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, config.hullColor());
 		graphics.setFont(originalFont);
 	}
@@ -259,7 +261,8 @@ public class HealerOverlay extends Overlay
 
 		Font originalFont = graphics.getFont();
 
-		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) FOOD_COUNT_TEXT_SIZE));
+		graphics.setFont(FontManager.getFallbackFont(
+				originalFont.getFamily(), Font.BOLD, FOOD_COUNT_TEXT_SIZE));
 		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset), text, controller.getFoodCountColor(healerOrder, foodFed));
 		graphics.setFont(originalFont);
 	}
@@ -279,7 +282,8 @@ public class HealerOverlay extends Overlay
 
 		Font originalFont = graphics.getFont();
 
-		graphics.setFont(originalFont.deriveFont(Font.BOLD, (float) FOOD_COUNT_TEXT_SIZE));
+		graphics.setFont(FontManager.getFallbackFont(
+				originalFont.getFamily(), Font.BOLD, FOOD_COUNT_TEXT_SIZE));
 		renderOutlinedText(graphics, offsetPoint(textLocation, xOffset, TTK_Y_OFFSET), text, controller.getHealerTtkColor());
 		graphics.setFont(originalFont);
 	}

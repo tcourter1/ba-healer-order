@@ -1603,7 +1603,8 @@ class HealerCodeEditor extends JPanel
 	{
 		JLabel label = new JLabel(text);
 		label.setForeground(ColorScheme.TEXT_COLOR);
-		label.setFont(label.getFont().deriveFont(Font.BOLD));
+		Font font = label.getFont();
+		label.setFont(FontManager.getFallbackFont(font.getFamily(), Font.BOLD, font.getSize()));
 		BaPanelUi.fixedSize(label, ROW_LABEL_WIDTH, height);
 		return label;
 	}
@@ -1616,7 +1617,8 @@ class HealerCodeEditor extends JPanel
 
 		JLabel label = new JLabel(text);
 		label.setForeground(Color.WHITE);
-		label.setFont(label.getFont().deriveFont(Font.BOLD));
+		Font font = label.getFont();
+		label.setFont(FontManager.getFallbackFont(font.getFamily(), Font.BOLD, font.getSize()));
 		label.setHorizontalAlignment(SwingConstants.CENTER);
 
 		JPanel labelRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 3, 0));

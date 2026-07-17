@@ -20,6 +20,7 @@ import net.runelite.api.Scene;
 import net.runelite.api.Tile;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -192,7 +193,8 @@ public class AttackerCaveOverlay extends Overlay
         }
 
         Font originalFont = graphics.getFont();
-        graphics.setFont(originalFont.deriveFont(Font.BOLD, config.attackerSpawnCountTextSize()));
+        graphics.setFont(FontManager.getFallbackFont(
+                originalFont.getFamily(), Font.BOLD, config.attackerSpawnCountTextSize()));
 
         try
         {

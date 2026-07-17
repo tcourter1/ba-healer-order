@@ -51,6 +51,7 @@ import javax.swing.event.ChangeListener;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.ui.components.colorpicker.RuneliteColorPicker;
 import net.runelite.client.util.SwingUtil;
@@ -532,7 +533,8 @@ public class TileMarkerSetEditor extends JPanel
 	private JPanel createSelectionSummaryRow()
 	{
 		markerSelectionSummary.setForeground(ColorScheme.TEXT_COLOR);
-		markerSelectionSummary.setFont(markerSelectionSummary.getFont().deriveFont(Font.BOLD));
+		Font font = markerSelectionSummary.getFont();
+		markerSelectionSummary.setFont(FontManager.getFallbackFont(font.getFamily(), Font.BOLD, font.getSize()));
 		deleteMarkerButton.setIcon(BaIcons.trashIcon());
 		deleteMarkerButton.setToolTipText("Delete selected marker");
 		SwingUtil.removeButtonDecorations(deleteMarkerButton);

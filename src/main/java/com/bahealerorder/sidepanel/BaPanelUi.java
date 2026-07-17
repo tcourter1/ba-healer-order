@@ -176,7 +176,11 @@ public final class BaPanelUi
 	{
 		JLabel label = new JLabel(text);
 		label.setForeground(ColorScheme.TEXT_COLOR);
-		if (bold) label.setFont(label.getFont().deriveFont(Font.BOLD));
+		if (bold)
+		{
+			Font font = label.getFont();
+			label.setFont(FontManager.getFallbackFont(font.getFamily(), Font.BOLD, font.getSize()));
+		}
 		label.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return label;
 	}
