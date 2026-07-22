@@ -130,14 +130,29 @@ public class GeneralTileMarkerStrategyManager
 		return true;
 	}
 
-	public void deleteMarkerSet(String id)
+	public List<String> getStrategyNamesUsingMarkerSet(String id)
 	{
-		if (id == null || !store.getMarkerSets().removeIf(set -> id.equals(set.getId()))) return;
+		List<String> names = new ArrayList<>();
+		if (id == null) return names;
+
 		for (TileMarkerStrategyPreset preset : store.getStrategyPresets())
 		{
-			preset.setMarkerSetIds(without(preset.getMarkerSetIds(), id));
+			if (preset != null && preset.getMarkerSetIds().contains(id))
+			{
+				names.add(strategyPresetDisplayName(preset));
+			}
 		}
+		return names;
+	}
+
+	public boolean deleteMarkerSet(String id)
+	{
+		if (!getStrategyNamesUsingMarkerSet(id).isEmpty()
+				|| id == null
+				|| !store.getMarkerSets().removeIf(set -> id.equals(set.getId()))) return false;
+
 		save();
+		return true;
 	}
 
 	public TileMarkerWaveSelection getWaveSelection(TileMarkerRoleContext context, int wave)
@@ -1261,13 +1276,6 @@ public class GeneralTileMarkerStrategyManager
 			}
 		}
 		return ids;
-	}
-
-	private List<String> without(List<String> ids, String removedId)
-	{
-		List<String> result = new ArrayList<>(ids);
-		result.removeIf(removedId::equals);
-		return result;
 	}
 
 	private String userMarkerSetId()

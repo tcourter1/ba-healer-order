@@ -116,6 +116,8 @@ public class BaHealerOrderPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
+		onboardingSidePanelOpened = false;
+		panel.showPreferredPanelLater();
 		partySyncService.startUp();
 		scrollerController.startUp();
 		attackerController.startUp();
@@ -563,7 +565,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 		if (!isInOrNearBarbarianAssault()) return;
 
-		panel.showOnboarding();
+		panel.showPreferredPanelLater();
 		healerController.openSidePanel();
 		onboardingSidePanelOpened = true;
 	}

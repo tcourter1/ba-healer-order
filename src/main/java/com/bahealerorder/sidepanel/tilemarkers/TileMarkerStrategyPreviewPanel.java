@@ -75,7 +75,7 @@ public class TileMarkerStrategyPreviewPanel extends JPanel
 				() -> this.markers,
 				Collections::emptySet,
 				mapZoom::getValue,
-				(x, y) -> { }
+				(x, y, delete) -> { }
 		);
 		this.mapScrollPane = new JScrollPane(mapPanel);
 

@@ -80,14 +80,15 @@ class TileMarkerMapPanel extends JPanel
 			@Override
 			public void mousePressed(MouseEvent event)
 			{
-				if (!SwingUtilities.isLeftMouseButton(event)) return;
+				boolean delete = SwingUtilities.isRightMouseButton(event);
+				if (!delete && !SwingUtilities.isLeftMouseButton(event)) return;
 
 				int x = toMapX(event.getX());
 				int y = toMapY(event.getY());
 
 				if (mapBounds().contains(x, y))
 				{
-					tileClicked.accept(x, y);
+					tileClicked.accept(x, y, delete);
 				}
 			}
 		});
@@ -553,6 +554,6 @@ class TileMarkerMapPanel extends JPanel
 
 	interface TileClickHandler
 	{
-		void accept(int mapX, int mapY);
+		void accept(int mapX, int mapY, boolean delete);
 	}
 }
