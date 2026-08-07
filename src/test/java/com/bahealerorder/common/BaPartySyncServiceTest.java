@@ -126,6 +126,13 @@ public class BaPartySyncServiceTest
 		assertEquals(150, BaPartySyncService.cleanPartyChatMessage("x".repeat(151)).length());
 	}
 
+	@Test
+	public void partyChatExclusionsMatchVerbatim()
+	{
+		assertTrue(BaPartyChatExclusions.contains("Easter's majesty, of this now I yell!"));
+		assertFalse(BaPartyChatExclusions.contains("Healer: Poison Tofu!"));
+	}
+
 	private static java.util.function.Predicate<String> inParty(String... names)
 	{
 		Set<String> partyNames = new HashSet<>(names == null ? Collections.emptyList() : Arrays.asList(names));

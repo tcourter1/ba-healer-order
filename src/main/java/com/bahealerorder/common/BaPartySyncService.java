@@ -266,6 +266,7 @@ public class BaPartySyncService
 	{
 		if (!isPartyChatEnabled() || !isRealWaveActive()) return;
 		if (!isPublicChatType(event.getType())) return;
+		if (BaPartyChatExclusions.contains(event.getMessage())) return;
 
 		String playerName = client.getLocalPlayer() == null ? null : client.getLocalPlayer().getName();
 		if (playerName == null || playerName.isEmpty() || !samePlayerName(event.getName(), playerName)) return;

@@ -337,7 +337,7 @@ public class BaHealerOrderPlugin extends Plugin
 	@Subscribe
 	public void onBaPartyChatMessage(BaPartyChatMessage event)
 	{
-		partySyncService.onBaPartyChatMessage(event);
+		clientThread.invokeAtTickEnd(() -> partySyncService.onBaPartyChatMessage(event));
 	}
 
 	@Subscribe
