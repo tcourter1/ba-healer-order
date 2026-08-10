@@ -70,6 +70,11 @@ BA Utilities does not automate gameplay. It provides visual tracking, menu organ
 <details>
 <summary>Show version history</summary>
 
+### 2.3.2
+
+* Fixed BA Party chat relaying game callouts and duplicating messages.
+* Corrected built-in healer codes for waves 4, 7, 8, and 10.
+
 ### 2.3.1
 
 * Updated tile marker set workflow and fixed side panel update flag and font cache growth
