@@ -102,7 +102,7 @@ public class BaPartySyncServiceTest
 	{
 		List<MessageNode> messages = Arrays.asList(
 				messageNode(ChatMessageType.GAMEMESSAGE, "", "A game message.", null),
-				messageNode(ChatMessageType.PUBLICCHAT, "Healer One", "North cannon", null)
+				messageNode(ChatMessageType.PUBLICCHAT, "Healer One", "North Cannon", null)
 		);
 
 		assertTrue(BaPartySyncService.hasNativePublicChatMessage(messages, "healer_one", "North cannon"));

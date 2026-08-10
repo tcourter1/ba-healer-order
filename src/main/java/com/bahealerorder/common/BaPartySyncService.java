@@ -785,7 +785,7 @@ public class BaPartySyncService
 		if (messageNode == null || !isPublicChatType(messageNode.getType())) return false;
 		if (BA_PARTY_CHAT_SENDER.equals(messageNode.getSender())) return false;
 		return samePlayerName(messageNode.getName(), senderName)
-				&& normalizeChatMessage(messageNode.getValue()).equals(normalizeChatMessage(message));
+				&& normalizeChatMessage(messageNode.getValue()).equalsIgnoreCase(normalizeChatMessage(message));
 	}
 
 	static String cleanPartyChatMessage(String message)
