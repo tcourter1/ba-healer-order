@@ -102,7 +102,7 @@ public class BaPartySyncServiceTest
 	{
 		List<MessageNode> messages = Arrays.asList(
 				messageNode(ChatMessageType.GAMEMESSAGE, "", "A game message.", null),
-				messageNode(ChatMessageType.PUBLICCHAT, "Healer One", "North cannon", null)
+				messageNode(ChatMessageType.PUBLICCHAT, "Healer One", "North Cannon", null)
 		);
 
 		assertTrue(BaPartySyncService.hasNativePublicChatMessage(messages, "healer_one", "North cannon"));
@@ -124,6 +124,13 @@ public class BaPartySyncServiceTest
 		String message = BaPartySyncService.cleanPartyChatMessage("<img=10>North cannon");
 		assertEquals("North cannon", message);
 		assertEquals(150, BaPartySyncService.cleanPartyChatMessage("x".repeat(151)).length());
+	}
+
+	@Test
+	public void partyChatExclusionsMatchVerbatim()
+	{
+		assertTrue(BaPartyChatExclusions.contains("Easter's majesty, of this now I yell!"));
+		assertFalse(BaPartyChatExclusions.contains("Healer: Poison Tofu!"));
 	}
 
 	private static java.util.function.Predicate<String> inParty(String... names)

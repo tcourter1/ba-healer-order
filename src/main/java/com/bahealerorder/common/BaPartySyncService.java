@@ -266,6 +266,7 @@ public class BaPartySyncService
 	{
 		if (!isPartyChatEnabled() || !isRealWaveActive()) return;
 		if (!isPublicChatType(event.getType())) return;
+		if (BaPartyChatExclusions.contains(event.getMessage())) return;
 
 		String playerName = client.getLocalPlayer() == null ? null : client.getLocalPlayer().getName();
 		if (playerName == null || playerName.isEmpty() || !samePlayerName(event.getName(), playerName)) return;
@@ -784,7 +785,7 @@ public class BaPartySyncService
 		if (messageNode == null || !isPublicChatType(messageNode.getType())) return false;
 		if (BA_PARTY_CHAT_SENDER.equals(messageNode.getSender())) return false;
 		return samePlayerName(messageNode.getName(), senderName)
-				&& normalizeChatMessage(messageNode.getValue()).equals(normalizeChatMessage(message));
+				&& normalizeChatMessage(messageNode.getValue()).equalsIgnoreCase(normalizeChatMessage(message));
 	}
 
 	static String cleanPartyChatMessage(String message)
