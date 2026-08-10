@@ -14,7 +14,7 @@ public interface BaUtilitiesConfig extends Config
 {
 	String GROUP_NAME = "bahealerorder";
 
-	String CURRENT_UPDATE_NOTES_VERSION = "2.3.1";
+	String CURRENT_UPDATE_NOTES_VERSION = "2.3.2";
 	String CURRENT_ASSISTANCE_PRESET_VERSION = "2.3.0";
 
 	String SHOW_OVERVIEW_RANGERS_KEY = "showOverviewRangers";
