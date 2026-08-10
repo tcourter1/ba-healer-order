@@ -17,7 +17,7 @@ public final class BuiltInStrategyLibrary
 		List<WaveCode> waveCodes = new ArrayList<>();
 		List<RunPreset> runPresets = new ArrayList<>();
 
-		add(waveCodes, 4, "regular", "Reg", 42, "2-4-2(27) //\n0-0-0-8\nExpected: #4=30s");
+		add(waveCodes, 4, "regular", "Reg", 42, "2-5-1(24) //\n0-0-1-7\nExpected: #4=30s");
 		add(waveCodes, 4, "1x-os", "1x", 42, "2-5-4 //\n0-0-0-7\nExpected: #4=30s");
 		add(waveCodes, 5, "regular", "Reg", 57, "1-3(18)-2-2(27) //\n0-0-0-0-8\nExpected: #5=42s");
 		add(waveCodes, 5, "1x-os", "1x", 54, "2-5-2(21)-3(30) //\n0-0-0-0-7\nExpected: #5=36s");
@@ -25,16 +25,16 @@ public final class BuiltInStrategyLibrary
 		add(waveCodes, 6, "regular", "Reg", 66, "2/3(18)-4(24)-1-1 //\nRestock 3x os + 1x reg\n0-0-1-1-X-X\nExpected: #5=42s, #6=48s");
 		add(waveCodes, 6, "1x-os", "1x", 60, "3(18)-5-2(21)-2 //\nRestock 3x + 1x reg\n0-0-0-1-9-11\nExpected: #5=42s, #6=48s");
 		add(waveCodes, 6, "2x-os", "2x", 60, "3(18)-5-3-4 //\nRestock 3x os + 1x reg\n0-0-0-0-10-12\nExpected: #5=42s, #6=48s");
-		add(waveCodes, 7, "regular", "Reg", 75, "2-5(27)-1-1 //\n1(33)-0-1(33)-1-4-1\nRestock 13/13 or 1x os //\n0-0-0-0-1-5-X\nExpected: #5=42s, #6=48s, #7=60s");
-		add(waveCodes, 7, "2x-os", "2x", 66, "2(27)-6-6-1 //\nRestock 4x os\n0-0-0-1(39)-2-9-11\nExpected: #5=42s, #6=48s, #7=54s");
-		add(waveCodes, 8, "regular", "Reg", 78, "2-4(21)-2(27)-1 //\n1-1[42]-1/0-1-3(42)-1/2 //\nRestock\n0-0-0-0-6/5-X\nExpected: #6=48s, #7=60s");
+		add(waveCodes, 7, "regular", "Reg", 75, "2(18)-4/5(27)-1-1\n1(33)-1/0-1(33)-1-4/5(48)-1\n0-0-0-0-1/0-5-X\nExpected: #5=42s, #6=48s, #7=60s\nRestock: 13/14 or 1x os");
+		add(waveCodes, 7, "2x-os", "2x", 66, "2(27)-6-6-1-0-0-0\n0-0-0-1(39)-1/3-9-11\nExpected: #5=42s, #6=48s, #7=54s\nRestock: 4x os\nIf tofu, and/or if worms with alch, 3(21) on 6 works. 2(27) impossible with late poison on 6, the healer will need 3 food to die by 54.");
+		add(waveCodes, 8, "regular", "Reg", 78, "2-4(21)-1/2(27)-1 //\n1-1[42]-1/0-1-3(42)-1/2 //\nRestock\n0-0-0-0-6/5-X\nExpected: #6=48s, #7=60s");
 		add(waveCodes, 8, "1x-os", "1x", 78, "1-9-1-1 //\n2-0-1-1(36)-2-1\nRestock 13/13 or 1-2x os //\n0-0-0-0-0-3-10\nExpected: #6=36s, #7=66s");
 		add(waveCodes, 8, "2x-os", "2x", 69, "4(24)-9-1-1 //\n0-0-1-2(39)-1-1\nRestock 4x os + 1x reg\n0-0-0-0-3(51)-5(51)[57]-X\nExpected: #6=36s, #7=54s");
 		add(waveCodes, 9, "regular", "Reg", 90, "2(18)-4/5(18)-1-1 //\n1[54]-2/3-1(33)-1(42)-1-1-1 //\nRestock\n0-0-0-0-1[69]-2[69]-5[75]-X\nExpected: #7=48s, #8=60s");
 		add(waveCodes, 9, "1x-os", "1x", 87, "2-8(21)-1-1 //\n1-0-1(33)-1(45)-2(45)-1-1 //\nRestock 4x os\n0-0-0-0-0-3-5-X\nExpected: #7=48s, #8=66s");
 		add(waveCodes, 9, "b9", "B9 1x", 78, "9(27)-1-1-1 //\n0-1-1(42)-2[45](45)-1-1-1\nRestock 4x\n0-0-0-0-5-6-7[42]\nExpected: #7=42s");
-		add(waveCodes, 10, "regular", "Reg", 78, "2-4/5(27)-1-1 //\n1(33)-1/0-1(33)-1-4(51)-1\nRestock 13/13 or 2x os //\n0-0-0-0-1-3-7\nExpected: #5=42s, #6=48s, #7=60s");
-		add(waveCodes, 10, "2x-os", "2x", 69, "3(25)-5(27)-6-1 //\n0-0-0-2 \nRestock 5x os\n0-0-0-0-8-8-10\nExpected: #5=42s, #6=48s, #7=54s");
+		add(waveCodes, 10, "regular", "Reg", 78, "2(21)-4/5(27)-1-1\n1(33)-1/0-1(33)-1-3(51)-2/1\n0-0-0-0-1-3-7\nExpected: #5=42s, #6=48s, #7=60s\nRestock: 10/10 then 1x os after call");
+		add(waveCodes, 10, "2x-os", "2x", 69, "3(25)-5(27)-6-1 //\n0-0-0-2-8-9-10\nRestock: 5x os\nExpected: #5=42s, #6=48s, #7=54s");
 		add(waveCodes, 6, "dh-spam", "DH Spam", 54, "1x OS\n8-0-4-0\nRestock: 1x OS\n0-0-0-0-0-10\nExpected: #5=30s, #6=42s");
 		add(waveCodes, 7, "dh-spam", "DH Spam", 66, "1x OS\n9-0-3-0\nRestock: 1x OS\n0-0-0-0-0-7(51)-5\n0-0-0-0-0-0-4\nExpected: #5=30s, #6=42s, #7=54s");
 		add(waveCodes, 8, "dh-spam", "DH Spam", 66, "2x OS\n8-0-4-0\nRestock: 2x OS\n0-0-0-0-0-4-11\n0-0-0-0-0-5-0\nExpected: #6=42s, #7=48s");
