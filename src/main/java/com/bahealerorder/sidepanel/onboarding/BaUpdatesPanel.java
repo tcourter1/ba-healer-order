@@ -210,7 +210,10 @@ public class BaUpdatesPanel extends JPanel
 
     private String buildLatestChangelogText()
     {
-        return "2.3.1\n\n"
+        return "2.3.2\n\n"
+                + "\u2022 Fixed BA Party chat relaying game callouts and duplicating messages.\n\n"
+                + "\u2022 Corrected built-in healer codes for waves 4, 7, 8, and 10.\n\n"
+                + "2.3.1\n\n"
                 + "\u2022 Updated tile marker set workflow and fixed side panel update flag and font cache growth\n\n"
                 + "\u2022 Fixed minor bugs in the healer code editor.\n\n"
                 + "\u2022 Adjusted tile marker chunk gridlines.\n\n"
