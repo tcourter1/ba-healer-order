@@ -74,6 +74,10 @@ BA Utilities does not automate gameplay. It provides visual tracking, menu organ
 
 * Fixed BA Party chat relaying game callouts and duplicating messages.
 * Corrected built-in healer codes for waves 4, 7, 8, and 10.
+* Added upcoming wave details to the overlay panel while in a wave waiting room.
+* Added a per-role Show Dead Healers option that overrides the global hide dead NPCs setting.
+* Updated BA Party sync panel to be fixed height.
+* Replaced the saved run folder shortcut with a dialog showing the folder location to comply with restricted API update.
 
 ### 2.3.1
 

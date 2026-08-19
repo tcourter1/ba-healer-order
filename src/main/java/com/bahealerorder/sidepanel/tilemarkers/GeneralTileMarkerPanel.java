@@ -15,6 +15,7 @@ import com.bahealerorder.tilemarkers.TileMarkerWaveMap;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.Window;
@@ -27,6 +28,7 @@ import javax.inject.Singleton;
 import javax.swing.Box;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLayeredPane;
@@ -82,6 +84,7 @@ public class GeneralTileMarkerPanel extends JPanel
 	private final MaterialTabGroup roleTabGroup = new MaterialTabGroup();
 	private final Map<TileMarkerRoleContext, MaterialTab> roleTabs = new EnumMap<>(TileMarkerRoleContext.class);
 	private final JLabel strategyTitle = BaPanelUi.plainLabel("", false);
+	private final JButton strategyMenuButton = createStrategyMenuButton();
 	private final JComboBox<BaPanelUi.ComboOption> assignmentPresetCombo =
 			BaPanelUi.fixedPopupWidthCombo(ASSIGNMENT_PRESET_POPUP_WIDTH);
 
@@ -151,8 +154,7 @@ public class GeneralTileMarkerPanel extends JPanel
 		JPanel controls = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR, CONTENT_WIDTH);
 		controls.setBorder(new EmptyBorder(8, 8, 0, 8));
 
-		controls.add(BaPanelUi.centeredLabelRow(
-				strategyTitle, ColorScheme.DARKER_GRAY_COLOR, CONTENT_WIDTH, CONTROL_HEIGHT));
+		controls.add(createStrategyTitleRow());
 		controls.add(Box.createVerticalStrut(6));
 
 		controls.add(createRoleContextRow());
@@ -188,7 +190,7 @@ public class GeneralTileMarkerPanel extends JPanel
 				{
 					selectedContext = context;
 					strategyManager.setSelectedRoleContext(context);
-					strategyTitle.setText(selectedContext.getDisplayName() + " Wave Strategies");
+					refreshStrategyTitle();
 					refreshWaveRows();
 					refreshAssignmentPresetCombo();
 				}
@@ -219,7 +221,45 @@ public class GeneralTileMarkerPanel extends JPanel
 	private void refreshRoleTabs()
 	{
 		roleTabGroup.select(roleTabs.get(selectedContext));
+		refreshStrategyTitle();
+	}
+
+	private void refreshStrategyTitle()
+	{
 		strategyTitle.setText(selectedContext.getDisplayName() + " Wave Strategies");
+		strategyMenuButton.setVisible(selectedContext.getRole() != null);
+	}
+
+	private JPanel createStrategyTitleRow()
+	{
+		JPanel row = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
+		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		BaPanelUi.fixedSize(row, CONTENT_WIDTH - 16, CONTROL_HEIGHT);
+		row.add(strategyTitle);
+		row.add(strategyMenuButton);
+		return row;
+	}
+
+	private JButton createStrategyMenuButton()
+	{
+		JButton button = new JButton(BaIcons.hamburgerIcon());
+		button.setToolTipText("Role options");
+		button.addActionListener(event -> createStrategyMenu().show(button, 0, button.getHeight()));
+		SwingUtil.removeButtonDecorations(button);
+		BaPanelUi.fixedSize(button, CONTROL_HEIGHT + 4, CONTROL_HEIGHT);
+		return button;
+	}
+
+	private JPopupMenu createStrategyMenu()
+	{
+		BaRole role = selectedContext.getRole();
+		JCheckBoxMenuItem item = new JCheckBoxMenuItem("Show Dead Healers", strategyManager.showDeadHealers(role));
+		item.setToolTipText("Overrides the global 'Hide Dead NPCs' option per-role");
+		item.addActionListener(event -> strategyManager.setShowDeadHealers(role, item.isSelected()));
+
+		JPopupMenu menu = new JPopupMenu();
+		menu.add(item);
+		return menu;
 	}
 
 	private void refreshWaveRows()

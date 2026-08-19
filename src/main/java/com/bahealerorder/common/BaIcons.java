@@ -24,6 +24,7 @@ public final class BaIcons
 	private static final ImageIcon CLOSE_ICON = createCloseIcon();
 	private static final ImageIcon POPOUT_ICON = createPopoutIcon();
 	private static final ImageIcon PLUS_ICON = createPlusIcon(Color.WHITE);
+	private static final ImageIcon HAMBURGER_ICON = createHamburgerIcon();
 	private static final ImageIcon VERTICAL_ELLIPSIS_ICON = createVerticalEllipsisIcon();
 	private static final ImageIcon IMPORT_ICON = loadIcon("import_icon.png");
 	private static final ImageIcon EXPORT_ICON = loadIcon("export_icon.png");
@@ -98,6 +99,11 @@ public final class BaIcons
 	public static ImageIcon verticalEllipsisIcon()
 	{
 		return VERTICAL_ELLIPSIS_ICON;
+	}
+
+	public static ImageIcon hamburgerIcon()
+	{
+		return HAMBURGER_ICON;
 	}
 
 	public static ImageIcon importIcon()
@@ -202,6 +208,18 @@ public final class BaIcons
 			graphics.fillOval(7, 3, 2, 2);
 			graphics.fillOval(7, 7, 2, 2);
 			graphics.fillOval(7, 11, 2, 2);
+		});
+	}
+
+	private static ImageIcon createHamburgerIcon()
+	{
+		return drawIcon(14, graphics ->
+		{
+			graphics.setColor(ColorScheme.TEXT_COLOR);
+			graphics.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+			graphics.drawLine(2, 3, 12, 3);
+			graphics.drawLine(2, 7, 12, 7);
+			graphics.drawLine(2, 11, 12, 11);
 		});
 	}
 

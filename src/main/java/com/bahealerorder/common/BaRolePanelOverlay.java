@@ -16,6 +16,7 @@ import java.awt.event.MouseEvent;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import net.runelite.api.Client;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.input.MouseListener;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -46,6 +47,9 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
     @Inject
     private BaUtilitiesConfig config;
+
+    @Inject
+    private Client client;
 
     @Inject
     private ConfigManager configManager;
@@ -79,10 +83,10 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     {
         if (!config.showOverlayPanel() || healerController == null) return hidePanel();
 
-        if (!healerController.isWaveActive()) return hidePanel();
+        if (getDisplayWave() <= 0) return hidePanel();
 
         BaUtilitiesConfig.FoodPanelStyle panelStyle = healerController.getFoodPanelStyle();
-        String sourceText = healerController.getCurrentWaveCodeDisplaySource();
+        String sourceText = healerController.getWaveCodeDisplaySource(getDisplayWave());
         String notes = getCurrentWaveNotes();
         boolean healerContent = shouldRenderHealerContent(panelStyle, sourceText);
         boolean notesContent = !isBlank(notes);
@@ -101,7 +105,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
                 return renderPanel(graphics);
             }
 
-            List<Integer> healerOrders = healerController.getHealerOrdersForCurrentWave();
+			List<Integer> healerOrders = healerController.getHealerOrdersForWave(getDisplayWave());
 
             if (panelStyle == BaUtilitiesConfig.FoodPanelStyle.CODE_ONLY)
             {
@@ -123,7 +127,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
                 return renderPanel(graphics);
             }
 
-            if (healerController.hasActiveWaveCode())
+            if (healerController.hasActiveWaveCode(getDisplayWave()))
             {
                 addHealerCallRows(graphics, healerOrders);
             }
@@ -264,15 +268,15 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 	private String getPanelTitle()
 	{
         String title = "Wave";
-        int wave = healerController.getCurrentWave();
+		int wave = getDisplayWave();
 
         if (wave > 0)
         {
             title = "Wave " + wave;
         }
 
-        String codeName = healerController.isHealerRole() && healerController.hasActiveWaveCode()
-				? healerController.getCurrentWaveCodeName()
+        String codeName = healerController.isHealerRole() && healerController.hasActiveWaveCode(wave)
+				? healerController.getWaveCodeName(wave)
 				: null;
         String detail = !isBlank(codeName) ? codeName : getCurrentStrategyName();
 
@@ -299,7 +303,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 	private String getCurrentStrategyName()
 	{
 		return strategyManager.getActiveStrategyName(
-				healerController.getCurrentWave(),
+				getDisplayWave(),
 				getCurrentRoleContext()
 		);
 	}
@@ -312,7 +316,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
             boolean displayDead = healerController.isHealerDead(healerOrder);
             Color healerColor = getHealerColor(spawned, displayDead);
             String deathTime = getDeathTimeText(healerOrder);
-            String text = ColorUtil.prependColorTag(healerController.getFoodPanelHealerLabel(healerOrder), healerColor)
+            String text = ColorUtil.prependColorTag(healerController.getFoodPanelHealerLabel(getDisplayWave(), healerOrder), healerColor)
                     + " "
                     + ColorUtil.prependColorTag("(" + deathTime + ")", getDeathTimeColor(healerOrder, deathTime));
 
@@ -324,12 +328,12 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     {
         for (int healerOrder : healerOrders)
         {
-            String countText = healerController.getFoodPanelText(healerOrder, -1);
+            String countText = healerController.getFoodPanelText(getDisplayWave(), healerOrder, -1);
             boolean spawned = healerController.hasHealerSpawned(healerOrder);
             boolean displayDead = healerController.isHealerDead(healerOrder);
             Color rowColor = getHealerColor(spawned, displayDead);
-            Color rightColor = spawned && !displayDead ? healerController.getFoodPanelTextColor(healerOrder, -1) : getHealerColor(spawned, displayDead);
-            String ttkText = healerController.getHealerPanelTtkText(healerOrder);
+            Color rightColor = spawned && !displayDead ? healerController.getFoodPanelTextColor(getDisplayWave(), healerOrder, -1) : getHealerColor(spawned, displayDead);
+            String ttkText = healerController.getHealerPanelTtkText(getDisplayWave(), healerOrder);
 
             if (rightColor == null)
             {
@@ -343,7 +347,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
             panelComponent.getChildren().add(
                     LineComponent.builder()
-                            .left(healerController.getFoodPanelHealerLabel(healerOrder))
+                            .left(healerController.getFoodPanelHealerLabel(getDisplayWave(), healerOrder))
                             .leftColor(rowColor)
                             .right(countText)
                             .rightColor(rightColor)
@@ -383,12 +387,12 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
     private List<Integer> getColumnCallIndexes()
     {
-        if (!healerController.hasActiveWaveCode())
+        if (!healerController.hasActiveWaveCode(getDisplayWave()))
         {
             return List.of(-1);
         }
 
-        return healerController.getFoodPanelCallIndexes();
+        return healerController.getFoodPanelCallIndexes(getDisplayWave());
     }
 
     private void addHealerCallRows(Graphics2D graphics, List<Integer> healerOrders)
@@ -407,7 +411,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     {
         StringBuilder builder = new StringBuilder(padRightPixels("", scale(BASE_ROW_LABEL_WIDTH), metrics));
 
-        for (int callIndex : healerController.getFoodPanelCallIndexes())
+        for (int callIndex : healerController.getFoodPanelCallIndexes(getDisplayWave()))
         {
             builder.append(ColorUtil.prependColorTag(padCell("C" + (callIndex + 1), scale(BASE_ROW_CELL_WIDTH), metrics), TEXT_COLOR));
         }
@@ -421,10 +425,10 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
         boolean spawned = healerController.hasHealerSpawned(healerOrder);
         boolean displayDead = healerController.isHealerDead(healerOrder);
         StringBuilder builder = new StringBuilder(ColorUtil.prependColorTag(
-                padCell(healerController.getFoodPanelHealerLabel(healerOrder), scale(BASE_ROW_LABEL_WIDTH), metrics),
+                padCell(healerController.getFoodPanelHealerLabel(getDisplayWave(), healerOrder), scale(BASE_ROW_LABEL_WIDTH), metrics),
                 getHealerColor(spawned, displayDead)));
 
-        for (int callIndex : healerController.getFoodPanelCallIndexes())
+        for (int callIndex : healerController.getFoodPanelCallIndexes(getDisplayWave()))
         {
             appendFoodCell(builder, healerOrder, callIndex, scale(BASE_ROW_CELL_WIDTH), metrics);
         }
@@ -442,7 +446,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
             boolean spawned = healerController.hasHealerSpawned(healerOrder);
             boolean displayDead = healerController.isHealerDead(healerOrder);
             Color color = getHealerColor(spawned, displayDead);
-            String label = healerController.getFoodPanelHealerLabel(healerOrder);
+            String label = healerController.getFoodPanelHealerLabel(getDisplayWave(), healerOrder);
 
             builder.append(ColorUtil.prependColorTag(padCell(label, scale(BASE_COLUMN_CELL_WIDTH), metrics), color));
         }
@@ -479,14 +483,14 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     {
         boolean spawned = healerController.hasHealerSpawned(healerOrder);
         boolean displayDead = healerController.isHealerDead(healerOrder);
-        Color color = spawned && !displayDead ? healerController.getFoodPanelTextColor(healerOrder, callIndex) : getHealerColor(spawned, displayDead);
+        Color color = spawned && !displayDead ? healerController.getFoodPanelTextColor(getDisplayWave(), healerOrder, callIndex) : getHealerColor(spawned, displayDead);
 
         if (color == null)
         {
             color = getHealerColor(spawned, displayDead);
         }
 
-        builder.append(ColorUtil.prependColorTag(padCell(healerController.getFoodPanelText(healerOrder, callIndex), width, metrics), color));
+        builder.append(ColorUtil.prependColorTag(padCell(healerController.getFoodPanelText(getDisplayWave(), healerOrder, callIndex), width, metrics), color));
     }
 
     private void appendDeathTimeCell(StringBuilder builder, int healerOrder, int width, FontMetrics metrics)
@@ -499,7 +503,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
     private String getDeathTimeText(int healerOrder)
     {
-        String deathTime = healerController.getHealerPanelDeathTime(healerOrder);
+        String deathTime = healerController.getHealerPanelDeathTime(getDisplayWave(), healerOrder);
         return deathTime == null || deathTime.isEmpty() ? "-" : deathTime;
     }
 
@@ -561,7 +565,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 
     private boolean addCurrentWaveCode(boolean collapsible)
     {
-        String sourceText = healerController.getCurrentWaveCodeDisplaySource();
+        String sourceText = healerController.getWaveCodeDisplaySource(getDisplayWave());
 
         if (isBlank(sourceText)) return false;
 
@@ -619,7 +623,7 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
     private String getCurrentWaveNotes()
     {
 		String notes = strategyManager.getActiveNotes(
-				healerController.getCurrentWave(),
+				getDisplayWave(),
                 getCurrentRoleContext()
         );
 		return notes == null ? "" : notes.trim();
@@ -628,6 +632,13 @@ public class BaRolePanelOverlay extends OverlayPanel implements MouseListener
 	private TileMarkerRoleContext getCurrentRoleContext()
 	{
 		return TileMarkerRoleContext.fromRole(getDisplayRole());
+	}
+
+	private int getDisplayWave()
+	{
+		int waitingRoomWave = BaScrollerOverlay.getWaitingRoomWave(
+				client.getLocalPlayer() == null ? null : client.getLocalPlayer().getWorldLocation());
+		return waitingRoomWave > 1 ? waitingRoomWave : healerController.getCurrentWave();
 	}
 
     private int getCurrentWaveTick()

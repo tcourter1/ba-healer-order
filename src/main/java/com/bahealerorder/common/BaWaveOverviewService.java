@@ -4,7 +4,6 @@ import com.bahealerorder.sidepanel.BaUtilitiesPanel;
 import com.bahealerorder.healer.HealerSharedState;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
@@ -309,40 +308,9 @@ public class BaWaveOverviewService
 	private boolean saveCurrentRunMetadata()
 	{
 		List<BaTeamMember> teamMembers = partySyncService.getBaPartySyncTeamMembers();
-		boolean changed = store.updateCurrentRunPlayerRole(getCurrentPlayerRole(teamMembers));
+		boolean changed = store.updateCurrentRunPlayerRole(roleDetector.getCurrentRole());
 		changed |= store.updateCurrentRunTeamMembers(teamMembers);
 		return changed;
-	}
-
-	private BaRole getCurrentPlayerRole(List<BaTeamMember> teamMembers)
-	{
-		BaRole teamRole = getLocalPlayerRole(teamMembers);
-		return teamRole == null ? roleDetector.getCurrentRole() : teamRole;
-	}
-
-	private BaRole getLocalPlayerRole(List<BaTeamMember> teamMembers)
-	{
-		if (teamMembers.isEmpty() || client.getLocalPlayer() == null) return null;
-
-		String localName = normalizePlayerName(client.getLocalPlayer().getName());
-		if (localName.isEmpty()) return null;
-
-		for (BaTeamMember member : teamMembers)
-		{
-			if (!localName.equals(normalizePlayerName(member.getName()))) continue;
-
-			return BaRole.fromDisplayName(member.getRole());
-		}
-
-		return null;
-	}
-
-	private String normalizePlayerName(String name)
-	{
-		return Text.removeTags(name == null ? "" : name)
-				.replace('\u00A0', ' ')
-				.trim()
-				.toLowerCase(Locale.ROOT);
 	}
 
 	private void clearPendingCompletion()

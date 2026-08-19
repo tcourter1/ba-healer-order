@@ -80,6 +80,7 @@ public class BaPartySyncService
 	private final BaUtilitiesConfig config;
 	private final BaUtilitiesPanel panel;
 	private final BaWaveLifecycleService waveLifecycleService;
+	private final BaRoleDetector roleDetector;
 
 	private int baPartySyncJoinAttemptTick = -1;
 	private int baPartySyncPendingDoorExitTick = -1;
@@ -102,7 +103,8 @@ public class BaPartySyncService
 			ChatMessageManager chatMessageManager,
 			BaUtilitiesConfig config,
 			BaUtilitiesPanel panel,
-			BaWaveLifecycleService waveLifecycleService)
+			BaWaveLifecycleService waveLifecycleService,
+			BaRoleDetector roleDetector)
 	{
 		this.client = client;
 		this.partyService = partyService;
@@ -112,6 +114,7 @@ public class BaPartySyncService
 		this.config = config;
 		this.panel = panel;
 		this.waveLifecycleService = waveLifecycleService;
+		this.roleDetector = roleDetector;
 	}
 
 	public void startUp()
@@ -729,6 +732,18 @@ public class BaPartySyncService
 	{
 		baPartySyncTeamMembers = new ArrayList<>(roster.members);
 		baPartySyncTeamNames = new ArrayList<>(roster.names);
+		roleDetector.setCurrentRole(findBaTeamRole(roster.members,
+				client.getLocalPlayer() == null ? null : client.getLocalPlayer().getName()));
+	}
+
+	static BaRole findBaTeamRole(List<BaTeamMember> members, String playerName)
+	{
+		String name = normalizePlayerName(playerName);
+		for (BaTeamMember member : members)
+		{
+			if (normalizePlayerName(member.getName()).equals(name)) return BaRole.fromDisplayName(member.getRole());
+		}
+		return null;
 	}
 
 	private boolean isPartyChatEnabled()

@@ -389,7 +389,7 @@ public class BaHealerOrderPlugin extends Plugin
 
 	private void endWave(int wave)
 	{
-		roleDetector.reset();
+		roleDetector.setDevRoleOverride(null);
 		waveOverviewService.onWaveEnded();
 		partySyncService.onWaveEnded(wave);
 		attackerController.onWaveEnded();
