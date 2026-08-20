@@ -1,6 +1,7 @@
 package com.bahealerorder.sidepanel.overview;
 
 import com.bahealerorder.BaUtilitiesConfig;
+import com.bahealerorder.common.BaIcons;
 import com.bahealerorder.common.BaOverviewNpcType;
 import com.bahealerorder.common.BaRole;
 import com.bahealerorder.common.BaRoleColors;
@@ -19,7 +20,6 @@ import com.bahealerorder.sidepanel.BaPanelUi;
 import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import com.bahealerorder.tilemarkers.TileMarkerRoleContext;
 import java.awt.AlphaComposite;
-import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -309,27 +309,12 @@ public class WaveOverviewPanel extends JPanel
 
 	private JButton createColumnMenuButton()
 	{
-		JButton menuButton = new JButton(createHamburgerIcon());
+		JButton menuButton = new JButton(BaIcons.hamburgerIcon());
 		menuButton.setToolTipText("Choose NPC columns");
 		SwingUtil.removeButtonDecorations(menuButton);
 		BaPanelUi.fixedSize(menuButton, CONTROL_HEIGHT + 4, CONTROL_HEIGHT);
 		menuButton.addActionListener(event -> createColumnMenu().show(menuButton, 0, menuButton.getHeight()));
 		return menuButton;
-	}
-
-	private ImageIcon createHamburgerIcon()
-	{
-		int size = 14;
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(ColorScheme.TEXT_COLOR);
-		graphics.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-		graphics.drawLine(2, 3, 12, 3);
-		graphics.drawLine(2, 7, 12, 7);
-		graphics.drawLine(2, 11, 12, 11);
-		graphics.dispose();
-		return new ImageIcon(image);
 	}
 
 	private JPopupMenu createColumnMenu()

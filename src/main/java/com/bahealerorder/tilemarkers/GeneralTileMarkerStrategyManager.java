@@ -24,6 +24,7 @@ import net.runelite.client.config.ConfigManager;
 public class GeneralTileMarkerStrategyManager
 {
 	private static final String STRATEGY_STORE_KEY = "generalTileMarkerStore";
+	private static final String SHOW_DEAD_HEALERS_KEY_PREFIX = "showDeadHealers";
 
 	private final ConfigManager configManager;
 	private final Gson gson;
@@ -471,6 +472,18 @@ public class GeneralTileMarkerStrategyManager
 	{
 		store.setSelectedRoleContext(resolveContext(context));
 		save();
+	}
+
+	public boolean showDeadHealers(BaRole role)
+	{
+		return role != null && Boolean.parseBoolean(configManager.getConfiguration(
+				BaUtilitiesConfig.GROUP_NAME, SHOW_DEAD_HEALERS_KEY_PREFIX + role.name()));
+	}
+
+	public void setShowDeadHealers(BaRole role, boolean show)
+	{
+		configManager.setConfiguration(
+				BaUtilitiesConfig.GROUP_NAME, SHOW_DEAD_HEALERS_KEY_PREFIX + role.name(), show);
 	}
 
 	public String getActiveAssignmentPresetId(TileMarkerRoleContext context)

@@ -10,10 +10,8 @@ import com.bahealerorder.common.BaWaveOverviewStore;
 import com.bahealerorder.sidepanel.BaPanelUi;
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.io.File;
-import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -31,6 +29,7 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -40,7 +39,9 @@ import net.runelite.client.util.SwingUtil;
 
 class WaveOverviewSelectorPanel extends JPanel
 {
-	private static final Object OPEN_RUN_FOLDER_ACTION = new Object();
+	private static final Object RUN_FOLDER_INFO_ACTION = new Object();
+	private static final String RUN_FOLDER_DIALOG_TITLE = "Saved run folder";
+	private static final int RUN_FOLDER_PATH_COLUMNS = 30;
 	private static final int CONTROL_HEIGHT = 24;
 	private static final int CONTENT_WIDTH = PluginPanel.PANEL_WIDTH - 13;
 	private static final int SELECTOR_WIDTH = CONTENT_WIDTH - 16;
@@ -82,9 +83,9 @@ class WaveOverviewSelectorPanel extends JPanel
 			if (refreshingControls) return;
 
 			SelectorItem item = (SelectorItem) runCombo.getSelectedItem();
-			if (item != null && item.value == OPEN_RUN_FOLDER_ACTION)
+			if (item != null && item.value == RUN_FOLDER_INFO_ACTION)
 			{
-				openSavedRunFolder();
+				showSavedRunFolderLocation();
 				refreshSelectors();
 				return;
 			}
@@ -129,7 +130,7 @@ class WaveOverviewSelectorPanel extends JPanel
 		{
 			runModel.addElement(new SelectorItem(null, " ", ""));
 		}
-		runModel.addElement(new SelectorItem(OPEN_RUN_FOLDER_ACTION, "Open saved run folder..."));
+		runModel.addElement(new SelectorItem(RUN_FOLDER_INFO_ACTION, "Where are saved runs?"));
 
 		runCombo.setModel(runModel);
 		SelectorItem selectedRunItem = getSelectedRunItem(runModel, store.getSelectedRunId());
@@ -237,40 +238,58 @@ class WaveOverviewSelectorPanel extends JPanel
 		return value instanceof Integer && (Integer) value == JOptionPane.YES_OPTION;
 	}
 
-	private void openSavedRunFolder()
+	private void showSavedRunFolderLocation()
 	{
 		File directory = store.getRunsDirectory();
 		if (directory == null)
 		{
-			showOpenFolderError("Saved run folder is not available.");
+			JOptionPane.showMessageDialog(
+					this,
+					"Saved run folder is not available.",
+					RUN_FOLDER_DIALOG_TITLE,
+					JOptionPane.ERROR_MESSAGE);
 			return;
 		}
 
-		try
-		{
-			if (!directory.exists() && !directory.mkdirs())
-			{
-				showOpenFolderError("Could not create saved run folder.");
-				return;
-			}
-
-			if (!Desktop.isDesktopSupported() || !Desktop.getDesktop().isSupported(Desktop.Action.OPEN))
-			{
-				showOpenFolderError("Opening folders is not supported on this system.");
-				return;
-			}
-
-			Desktop.getDesktop().open(directory);
-		}
-		catch (IOException | RuntimeException ex)
-		{
-			showOpenFolderError("Could not open saved run folder.");
-		}
+		JOptionPane pane = new JOptionPane(
+				createRunFolderContent(directory),
+				JOptionPane.INFORMATION_MESSAGE,
+				JOptionPane.DEFAULT_OPTION);
+		JDialog dialog = pane.createDialog(this, RUN_FOLDER_DIALOG_TITLE);
+		dialog.setLocationRelativeTo(this);
+		dialog.setVisible(true);
 	}
 
-	private void showOpenFolderError(String message)
+	private JPanel createRunFolderContent(File directory)
 	{
-		JOptionPane.showMessageDialog(this, message, "Open saved run folder", JOptionPane.ERROR_MESSAGE);
+		JPanel content = new JPanel();
+		content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+		content.add(runFolderLabel("Saved runs are stored in this folder:"));
+		content.add(Box.createVerticalStrut(6));
+		content.add(runFolderPathField(directory));
+		content.add(Box.createVerticalStrut(6));
+		content.add(runFolderLabel(directory.isDirectory()
+				? "Open it in your file manager to back up or remove saved runs."
+				: "It is created the first time a run is saved."));
+		return content;
+	}
+
+	private JLabel runFolderLabel(String text)
+	{
+		JLabel label = new JLabel(text);
+		label.setAlignmentX(LEFT_ALIGNMENT);
+		return label;
+	}
+
+	private JTextField runFolderPathField(File directory)
+	{
+		JTextField field = new JTextField(directory.getAbsolutePath(), RUN_FOLDER_PATH_COLUMNS);
+		field.setEditable(false);
+		field.setCaretPosition(0);
+		field.setToolTipText("Select the path to copy it");
+		field.setAlignmentX(LEFT_ALIGNMENT);
+		field.setMaximumSize(new Dimension(Integer.MAX_VALUE, field.getPreferredSize().height));
+		return field;
 	}
 
 	private void notifySelectionChanged()

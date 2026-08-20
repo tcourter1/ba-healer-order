@@ -60,7 +60,7 @@ public class BaRoleDetector
 
 	public void onWidgetLoaded(WidgetLoaded event)
 	{
-		setRole(BaRole.fromGroupId(event.getGroupId()));
+		setCurrentRole(BaRole.fromGroupId(event.getGroupId()));
 	}
 
 	public void onGameStateChanged(GameStateChanged event)
@@ -85,13 +85,13 @@ public class BaRoleDetector
 		{
 			if (client.getWidget(role.getInterfaceGroupId(), 0) != null)
 			{
-				setRole(role);
+				setCurrentRole(role);
 				return;
 			}
 		}
 	}
 
-	private void setRole(BaRole role)
+	void setCurrentRole(BaRole role)
 	{
 		if (role != null)
 		{

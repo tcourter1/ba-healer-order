@@ -4,6 +4,7 @@ import com.bahealerorder.BaUtilitiesConfig;
 import com.bahealerorder.common.BaPartySyncMemberStatus;
 import com.bahealerorder.common.BaHealerFoodCounts;
 import com.bahealerorder.common.BaIcons;
+import com.bahealerorder.common.BaRole;
 import com.bahealerorder.sidepanel.healercodes.HealerCodePanel;
 import com.bahealerorder.sidepanel.onboarding.BaAssistancePresetManager;
 import com.bahealerorder.sidepanel.onboarding.BaAssistancePresetPanel;
@@ -51,6 +52,12 @@ public class BaUtilitiesPanel extends PluginPanel
 	private static final int HEADER_BUTTON_SIZE = 24;
 	private static final int TAB_ICON_SIZE = 24;
 	private static final int ROLE_ICON_SIZE = 18;
+	private static final int PARTY_SYNC_ROW_GAP = 3;
+	private static final BaRole[] PARTY_SYNC_ROLES = {
+			BaRole.ATTACKER, BaRole.ATTACKER, BaRole.HEALER, BaRole.COLLECTOR, BaRole.DEFENDER
+	};
+	private static final int PARTY_SYNC_MEMBERS_HEIGHT = PARTY_SYNC_ROLES.length * (CONTROL_HEIGHT + PARTY_SYNC_ROW_GAP);
+	private static final int PARTY_SYNC_SECTION_HEIGHT = 16 + CONTROL_HEIGHT + 6 + PARTY_SYNC_MEMBERS_HEIGHT;
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font LABEL_FONT = FontManager.getRunescapeSmallFont();
 	public static final String DISCORD_URL = "https://discord.gg/2HrwVWf8Cx";
@@ -181,20 +188,25 @@ public class BaUtilitiesPanel extends PluginPanel
 			lastPartySyncMemberStructure = memberStructure;
 			partySyncMemberStatusLabels.clear();
 			partySyncMembersPanel.removeAll();
-			partySyncMembersPanel.setVisible(!memberStatuses.isEmpty() || "Already in Party".equals(status));
+			int occupiedRows = memberStatuses.size();
 
 			if (!memberStatuses.isEmpty())
 			{
 				for (BaPartySyncMemberStatus memberStatus : memberStatuses)
 				{
 					partySyncMembersPanel.add(partySyncMemberRow(memberStatus));
-					partySyncMembersPanel.add(Box.createVerticalStrut(3));
+					partySyncMembersPanel.add(Box.createVerticalStrut(PARTY_SYNC_ROW_GAP));
 				}
 			}
 			else if ("Already in Party".equals(status))
 			{
-				partySyncMembersPanel.add(message("You must leave your current party to join a BA party.", ColorScheme.DARKER_GRAY_COLOR, CONTROL_HEIGHT * 2, false));
+				partySyncMembersPanel.add(message("You must leave your current party to join a BA party.",
+						ColorScheme.DARKER_GRAY_COLOR, CONTROL_HEIGHT * 2 + PARTY_SYNC_ROW_GAP, false));
+				partySyncMembersPanel.add(Box.createVerticalStrut(PARTY_SYNC_ROW_GAP));
+				occupiedRows = 2;
 			}
+
+			fillPartySyncPlaceholders(occupiedRows);
 
 			revalidateContent();
 		});
@@ -293,12 +305,13 @@ public class BaUtilitiesPanel extends PluginPanel
 	{
 		JPanel section = BaPanelUi.verticalPanel(ColorScheme.DARKER_GRAY_COLOR);
 		section.setBorder(new EmptyBorder(8, 8, 8, 8));
-		section.setMaximumSize(new Dimension(CONTENT_WIDTH, Integer.MAX_VALUE));
+		BaPanelUi.fixedSize(section, CONTENT_WIDTH, PARTY_SYNC_SECTION_HEIGHT);
 		section.setAlignmentX(LEFT_ALIGNMENT);
 		section.add(partySyncHeaderRow());
 		section.add(Box.createVerticalStrut(6));
 		partySyncMembersPanel.setAlignmentX(LEFT_ALIGNMENT);
-		partySyncMembersPanel.setVisible(false);
+		BaPanelUi.fixedSize(partySyncMembersPanel, CONTENT_WIDTH - 16, PARTY_SYNC_MEMBERS_HEIGHT);
+		fillPartySyncPlaceholders(0);
 		section.add(partySyncMembersPanel);
 		return section;
 	}
@@ -341,8 +354,20 @@ public class BaUtilitiesPanel extends PluginPanel
 		return row;
 	}
 
+	private void fillPartySyncPlaceholders(int occupiedRows)
+	{
+		for (int i = occupiedRows; i < PARTY_SYNC_ROLES.length; i++)
+		{
+			partySyncMembersPanel.add(partySyncMemberRow(new BaPartySyncMemberStatus(
+					"-", PARTY_SYNC_ROLES[i].getDisplayName(), false, null)));
+			partySyncMembersPanel.add(Box.createVerticalStrut(PARTY_SYNC_ROW_GAP));
+		}
+	}
+
 	private String getPartySyncMemberStatusText(BaPartySyncMemberStatus memberStatus)
 	{
+		if ("-".equals(memberStatus.getName())) return "Waiting for player";
+
 		BaHealerFoodCounts counts = memberStatus.getHealerFoodCounts();
 		if (counts != null) return formatHealerFoodCounts(counts);
 
@@ -351,6 +376,8 @@ public class BaUtilitiesPanel extends PluginPanel
 
 	private Color getPartySyncMemberStatusColor(BaPartySyncMemberStatus memberStatus)
 	{
+		if ("-".equals(memberStatus.getName())) return ColorScheme.TEXT_COLOR;
+
 		return memberStatus.getHealerFoodCounts() != null
 				? ColorScheme.TEXT_COLOR
 				: memberStatus.isInParty() ? Color.GREEN : Color.RED;

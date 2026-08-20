@@ -94,16 +94,22 @@ public class BaScrollerOverlay extends Overlay
 		return ladders.isEmpty() ? null : ladders.get(0);
 	}
 
-	private BaRoom findRoom(WorldPoint playerLocation)
+	private static BaRoom findRoom(WorldPoint playerLocation)
 	{
-		if (playerLocation == null) return null;
+		int wave = getWaitingRoomWave(playerLocation);
+		return wave < 1 ? null : BA_ROOMS[wave - 1];
+	}
 
-		for (BaRoom room : BA_ROOMS)
+	public static int getWaitingRoomWave(WorldPoint playerLocation)
+	{
+		if (playerLocation != null)
 		{
-			if (room.contains(playerLocation)) return room;
+			for (int i = 0; i < BA_ROOMS.length; i++)
+			{
+				if (BA_ROOMS[i].contains(playerLocation)) return i + 1;
+			}
 		}
-
-		return null;
+		return -1;
 	}
 
 	private List<TileObject> findRoomLadders(BaRoom room)

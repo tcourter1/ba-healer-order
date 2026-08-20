@@ -22,6 +22,7 @@ import com.bahealerorder.healer.codes.HealerInstruction;
 import com.bahealerorder.healer.codes.WaveCode;
 import com.bahealerorder.healer.ttk.HealerTtkPrediction;
 import com.bahealerorder.healer.ttk.HealerTtkTracker;
+import com.bahealerorder.tilemarkers.GeneralTileMarkerStrategyManager;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -148,6 +149,9 @@ public class HealerController
 
 	@Inject
 	private HealerSharedState sharedState;
+
+	@Inject
+	private GeneralTileMarkerStrategyManager strategyManager;
 
 	private final Map<Integer, Integer> healerOrderByNpcIndex = new HashMap<>();
 
@@ -496,18 +500,18 @@ public class HealerController
 		return formatTickAsWaveTime(deathTick);
 	}
 
-	public String getHealerPanelTtkText(int healerOrder)
+	public String getHealerPanelTtkText(int wave, int healerOrder)
 	{
-		String ttkText = getHealerPanelDeathTime(healerOrder);
+		String ttkText = getHealerPanelDeathTime(wave, healerOrder);
 		return ttkText == null ? null : "dead at " + ttkText;
 	}
 
-	public String getHealerPanelDeathTime(int healerOrder)
+	public String getHealerPanelDeathTime(int wave, int healerOrder)
 	{
 		if (healerOrder <= 0) return null;
 
 		String sharedDeathTime = getSharedHealerDeathTime(healerOrder);
-		String expectedDeathTime = getExpectedHealerDeathTime(healerOrder);
+		String expectedDeathTime = getExpectedHealerDeathTime(wave, healerOrder);
 
 		if (isHealerDead(healerOrder)) return sharedDeathTime;
 
@@ -524,9 +528,8 @@ public class HealerController
 		return formatTickAsWaveTime(prediction.getDeathTick());
 	}
 
-	private String getExpectedHealerDeathTime(int healerOrder)
+	private String getExpectedHealerDeathTime(int wave, int healerOrder)
 	{
-		int wave = getCurrentWave();
 		int initialHealerCount = BaWaveInfo.getInitialCount(wave, BaOverviewNpcType.HEALER);
 		if (healerOrder > initialHealerCount) return null;
 
@@ -575,34 +578,37 @@ public class HealerController
 		return getCurrentWaveElapsedMillis() / 1000f;
 	}
 
-	public String getCurrentWaveCodeDisplaySource()
+	public String getWaveCodeDisplaySource(int wave)
 	{
-		WaveCode waveCode = getCurrentWaveCode();
+		WaveCode waveCode = getWaveCode(wave);
 		return waveCode == null ? null : HealerCodeFormatter.formatDisplay(waveCode);
 	}
 
-	public String getCurrentWaveCodeName()
+	public String getWaveCodeName(int wave)
 	{
-		WaveCode waveCode = getCurrentWaveCode();
+		WaveCode waveCode = getWaveCode(wave);
 		return waveCode == null ? null : HealerCodeManager.waveCodeDisplayName(waveCode);
 	}
 
-	public boolean hasActiveWaveCode()
+	public boolean hasActiveWaveCode(int wave)
 	{
-		WaveCode waveCode = getCurrentWaveCode();
+		WaveCode waveCode = getWaveCode(wave);
 		return waveCode != null && !waveCode.getCalls().isEmpty();
 	}
 
-	private WaveCode getCurrentWaveCode()
+	private WaveCode getWaveCode(int wave)
 	{
-		return codeManager.getActiveWaveCode(getCurrentWave());
+		return codeManager.getActiveWaveCode(wave);
 	}
 
 	public int getExpectedFoodForOrder(int healerOrder)
 	{
-		if (healerOrder <= 0) return 0;
+		return getExpectedFoodForOrder(getCurrentWave(), healerOrder);
+	}
 
-		return codeManager.getExpectedFoodForOrder(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex());
+	private int getExpectedFoodForOrder(int wave, int healerOrder)
+	{
+		return healerOrder <= 0 ? 0 : codeManager.getExpectedFoodForOrder(wave, healerOrder, getEffectiveCurrentCallIndex());
 	}
 
 	public Map<NPC, Integer> getTrackedHealers()
@@ -625,7 +631,17 @@ public class HealerController
 
 	public List<Integer> getHealerOrdersForCurrentWave()
 	{
-		int healerCount = BaWaveInfo.getExpectedCount(getCurrentWave(), BaOverviewNpcType.HEALER);
+		return getHealerOrders(getCurrentWave());
+	}
+
+	public List<Integer> getHealerOrdersForWave(int wave)
+	{
+		return getHealerOrders(wave);
+	}
+
+	private List<Integer> getHealerOrders(int wave)
+	{
+		int healerCount = BaWaveInfo.getExpectedCount(wave, BaOverviewNpcType.HEALER);
 		if (healerCount <= 0) return Collections.emptyList();
 
 		List<Integer> healerOrders = new ArrayList<>();
@@ -638,9 +654,9 @@ public class HealerController
 		return healerOrders;
 	}
 
-	public List<Integer> getFoodPanelCallIndexes()
+	public List<Integer> getFoodPanelCallIndexes(int wave)
 	{
-		WaveCode waveCode = getCurrentWaveCode();
+		WaveCode waveCode = getWaveCode(wave);
 
 		if (waveCode == null || waveCode.getCalls().isEmpty()) return Collections.emptyList();
 
@@ -655,45 +671,45 @@ public class HealerController
 		return callIndexes;
 	}
 
-	public String getFoodPanelHealerLabel(int healerOrder)
+	public String getFoodPanelHealerLabel(int wave, int healerOrder)
 	{
 		if (config.healerLabelStyle() == BaUtilitiesConfig.HealerLabelStyle.TIME_BASED_NUMBERING)
 		{
-			String label = getHealerLabel(healerOrder);
+			String label = getHealerLabel(wave, healerOrder);
 			return label == null ? String.valueOf(healerOrder) : label.replaceFirst("^(\\d+)(\\s+\\(R\\d+\\))?$", "$1s$2");
 		}
 
 		return "#" + healerOrder;
 	}
 
-	public String getFoodPanelText(int healerOrder, int callIndex)
+	public String getFoodPanelText(int wave, int healerOrder, int callIndex)
 	{
 		if (isHealerDead(healerOrder)) return "-";
 
 		if (callIndex < 0)
 		{
 			int foodFed = getFoodFedByHealerOrder().getOrDefault(healerOrder, 0);
-			return getFoodCountText(healerOrder, foodFed);
+			return getFoodCountText(wave, healerOrder, foodFed);
 		}
 
-		HealerCodeStatus status = codeManager.getPanelStatusForCall(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
+		HealerCodeStatus status = codeManager.getPanelStatusForCall(wave, healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
 		String codeText = formatCodeStatus(status);
 
 		if (codeText != null) return codeText;
 
-		int foodFed = codeManager.getPanelFoodCountForCall(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
+		int foodFed = codeManager.getPanelFoodCountForCall(wave, healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
 		return String.valueOf(Math.max(foodFed, 0));
 	}
 
-	public Color getFoodPanelTextColor(int healerOrder, int callIndex)
+	public Color getFoodPanelTextColor(int wave, int healerOrder, int callIndex)
 	{
 		if (callIndex < 0)
 		{
-			HealerCodeStatus status = getDisplayCodeStatus(healerOrder);
+			HealerCodeStatus status = getDisplayCodeStatus(wave, healerOrder);
 			return status == null ? null : getFoodPanelCodeStatusColor(status.getState());
 		}
 
-		HealerCodeStatus status = codeManager.getPanelStatusForCall(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
+		HealerCodeStatus status = codeManager.getPanelStatusForCall(wave, healerOrder, getEffectiveCurrentCallIndex(), callIndex, sharedState.getFeedEvents());
 
 		return status == null ? null : getFoodPanelCodeStatusColor(status.getState());
 	}
@@ -715,7 +731,12 @@ public class HealerController
 
 	public HealerCodeStatus getDisplayCodeStatus(int healerOrder)
 	{
-		return codeManager.getDisplayStatus(getCurrentWave(), healerOrder, getEffectiveCurrentCallIndex(), sharedState.getFeedEvents());
+		return getDisplayCodeStatus(getCurrentWave(), healerOrder);
+	}
+
+	private HealerCodeStatus getDisplayCodeStatus(int wave, int healerOrder)
+	{
+		return codeManager.getDisplayStatus(wave, healerOrder, getEffectiveCurrentCallIndex(), sharedState.getFeedEvents());
 	}
 
 	public String formatCodeStatus(HealerCodeStatus status)
@@ -755,12 +776,17 @@ public class HealerController
 
 	public String getFoodCountText(int healerOrder, int foodFed)
 	{
-		HealerCodeStatus status = getDisplayCodeStatus(healerOrder);
+		return getFoodCountText(getCurrentWave(), healerOrder, foodFed);
+	}
+
+	private String getFoodCountText(int wave, int healerOrder, int foodFed)
+	{
+		HealerCodeStatus status = getDisplayCodeStatus(wave, healerOrder);
 		String codeText = formatCodeStatus(status);
 
 		if (codeText != null) return codeText;
 
-		int expected = getExpectedFoodForOrder(healerOrder);
+		int expected = getExpectedFoodForOrder(wave, healerOrder);
 
 		if (expected <= 0) return String.valueOf(Math.max(foodFed, 0));
 
@@ -807,9 +833,13 @@ public class HealerController
 
 	public String getHealerLabel(int healerOrder)
 	{
+		return getHealerLabel(getCurrentWave(), healerOrder);
+	}
+
+	private String getHealerLabel(int wave, int healerOrder)
+	{
 		if (config.healerLabelStyle() == BaUtilitiesConfig.HealerLabelStyle.SPAWN_ORDER) return String.valueOf(healerOrder);
 
-		int wave = getCurrentWave();
 		List<String> labelsForWave = BaWaveInfo.getLabels(wave, BaOverviewNpcType.HEALER);
 
 		if (healerOrder <= 0 || healerOrder > labelsForWave.size()) return String.valueOf(healerOrder);
@@ -1110,6 +1140,8 @@ public class HealerController
 		{
 			return false;
 		}
+
+		if (strategyManager.showDeadHealers(roleDetector.getCurrentRole()) && isDeadPenanceHealer(npc)) return false;
 
 		if (mode == BaUtilitiesConfig.HideDeadNpcMode.HEALERS_ONLY) return isDeadPenanceHealer(npc);
 
